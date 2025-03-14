@@ -160,7 +160,7 @@ async def send_welcome(message: types.Message):
     posts_param = "|".join([f"{p[0]}~{p[1]}~{p[2]}~{p[3]}" for p in posts])
     posts_param = quote(posts_param)  # Кодируем строку для URL
 
-    url_with_data = f"{WEB_APP_URL}?username={quote(username)}&user_id={user_id}&balance={balance}&posts={posts_param}"
+    url_with_data = f"{WEB_APP_URL}?user_id={user_id}"
 
     keyboard = InlineKeyboardMarkup().add(
         InlineKeyboardButton("Перейти на сайт", url=url_with_data)
