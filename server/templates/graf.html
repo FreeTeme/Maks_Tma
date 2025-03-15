@@ -303,263 +303,139 @@
 </head>
 <body>
 
-    <!-- Header -->
-    <div class="header">
-        <div class="logo">Referral program</div>
-        <div class="actions">
-            <button id="send-button">Get link <i class="fa-solid fa-copy"></i></button>
-        </div>
+<!-- Header -->
+<div class="header">
+    <div class="logo">Referral program</div>
+    <div class="actions">
+        <button id="send-button">Get link <i class="fa-solid fa-copy"></i></button>
     </div>
-
-    <!-- Search Bar -->
-    <div class="search-bar">
-        <input type="text" placeholder="Search users...">
-    </div>
-
-   
-    <div class="news-modal" id="news-modal">
-        <button class="close-btn" id="close-modal">&times;</button>
-        <h2 id="modal-title"></h2>
-        <p id="modal-content">This is the news content.</p>
-    </div>
- 
-
-
-    <!-- Crypto Prices Carousel -->
-<div class="crypto-carousel">
-  <div class="crypto-track">
-      <div class="crypto-card" id="crypto-btc">
-          <div class="crypto-header">
-          
-              <div class="crypto-title">
-                  <h3>   <i class="fa-solid fa-user-group"></i> My referrals </h3>
-
-              </div>
-          </div>
-          <div class="crypto-price"> <span id="price-btc">Loading...</span></div>
-          <div class="crypto-footer">
-             <span class="change-percent down"></span>
-          </div>
-      </div>
-      <div class="crypto-card" id="crypto-eth">
-          <div class="crypto-header">
-              <div class="crypto-title">
-                  <h3><i class="fa-solid fa-trophy"></i> Top 1</h3>
-              </div>
-          </div>
-          <div class="crypto-price"><span id="price-eth">Loading...</span></div>
-          <div class="crypto-footer">
-          </div>
-
-          
-      </div>
-
-      
-
-  </div>
-
 </div>
 
+<!-- Search Bar -->
+<div class="search-bar">
+    <input type="text" placeholder="Search users..." id="search-input">
+</div>
 
+<!-- Crypto Cards -->
+<div class="crypto-carousel">
+    <div class="crypto-track">
+        <div class="crypto-card" id="crypto-btc">
+            <div class="crypto-header">
+                <div class="crypto-title">
+                    <h3><i class="fa-solid fa-user-group"></i> My referrals</h3>
+                </div>
+            </div>
+            <div class="crypto-price"><span id="price-btc">{{ referral_count }}</span></div>
+        </div>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-      <div class="nav-item" id="open-glav"><i class="fa-solid fa-house"></i></div>
-      <div class="nav-item" id="open-chart" onclick="location.href='Chart.html'"><i class="fa-solid fa-chart-line"></i></div>
-      <div class="nav-item"  id="folow" onclick="location.href='graf.html'"><i class="fa-solid fa-star" style="color: #fff;"></i></div>
-    <div class="nav-item" id="open-search" onclick="location.href='result.html'"><i class="fa-regular fa-envelope"></i></div>
-  </nav>
-  
+        <div class="crypto-card" id="crypto-eth">
+            <div class="crypto-header">
+                <div class="crypto-title">
+                    <h3><i class="fa-solid fa-trophy"></i> Top 1</h3>
+                </div>
+            </div>
+            <div class="crypto-price">
+                <span id="price-eth">
+                    {% if top_referral %}
+                        {{ top_referral[0] }} ({{ top_referral[1] }})
+                    {% else %}
+                        No referrals
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- Overlay -->
-    <div class="overlay" id="overlay"></div>
-
-    <!-- Send button -->
-
-
-
-  <!-- News list -->
+<!-- Referrals List -->
 <div class="news-container">
-    <!-- <div class="news-item" data-news="Vlad_Tichonenko" data-content="balance: 0">Vlad_Tichonenko</div>
-    <div class="news-item" data-news="Vlad_Tichonenko" data-content="balance: 0">Vlad_Tichonenko</div>
-    <div class="news-item" data-news="Vlad_Tichonenko" data-content="balance: 0">Vlad_Tichonenko</div> -->
+    {% for referral in referrals %}
+        <div class="news-item" 
+             data-news="{{ referral[1] }}" 
+             data-content="balance: {{ referral[2] }}">
+            {{ referral[1] }} (Balance: {{ referral[2] }})
+        </div>
+    {% else %}
+        <div class="news-item">No referrals yet</div>
+    {% endfor %}
+</div>
 
+<!-- News Modal -->
+<div class="news-modal" id="news-modal">
+    <button class="close-btn" id="close-modal">&times;</button>
+    <h2 id="modal-title"></h2>
+    <p id="modal-content"></p>
+</div>
 
-  </div>
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+    <div class="nav-item" id="open-glav"><i class="fa-solid fa-house"></i></div>
+    <div class="nav-item" id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
+    <div class="nav-item" id="folow"><i class="fa-solid fa-star" style="color: #fff;"></i></div>
+    <div class="nav-item" id="open-search"><i class="fa-regular fa-envelope"></i></div>
+</nav>
 
-  
-  <!-- Notification -->
-  <div class="notification" id="notification">Copied</div>
-
-<!-- Social icons (moved to the bottom)
-<div class="social-icons">
-    <i class="fa-brands fa-facebook icon"></i>
-    <i class="fa-brands fa-twitter icon"></i>
-    <i class="fa-brands fa-instagram icon"></i>
-    <i class="fa-brands fa-linkedin icon"></i>
-    <i class="fa-brands fa-youtube icon"></i>
-    <i class="fa-brands fa-telegram icon"></i>
-</div> -->
+<!-- Notification -->
+<div class="notification" id="notification">Copied!</div>
 
     <script>
-// Получаем данные из localStorage
-const referralData = JSON.parse(localStorage.getItem('referralData'));
-
-// Проверяем, что данные есть и отображаем их
-if (referralData) {
-  document.getElementById('username').innerText = referralData.username;
-  document.getElementById('user_id').innerText = referralData.user_id;
-  document.getElementById('balance').innerText = referralData.balance;
-  document.getElementById('referral_count').innerText = referralData.referral_count;
-  document.getElementById('top_referral').innerText = `${referralData.top_referral.name} - ${referralData.top_referral.balance} coins`;
-}
-
-
-document.addEventListener('DOMContentLoaded', () => {
-            const referralData = JSON.parse(localStorage.getItem("referralData"));
-
-            // Если данные существуют
-            if (referralData) {
-                // Отображаем количество рефералов
-                document.getElementById('price-btc').innerText = referralData.referralCount;
-
-                // Отображаем топ-реферала
-                document.getElementById('price-eth').innerText = referralData.topReferral.name;
-
-                // Отображаем реферальную ссылку
-                document.getElementById('referral-link').innerText = referralData.referralLink;
-
-                // Отображаем список рефералов
-                const newsContainer = document.querySelector('.news-container');
-                referralData.referralsList.forEach(referral => {
-                    const newsItem = document.createElement('div');
-                    newsItem.classList.add('news-item');
-                    newsItem.dataset.news = referral.name;
-                    newsItem.dataset.content = `balance: ${referral.balance}`;
-                    newsItem.innerText = referral.name;
-                    newsContainer.appendChild(newsItem);
-                });
-            }
+ // Копирование реферальной ссылки
+ document.getElementById('send-button').addEventListener('click', () => {
+            navigator.clipboard.writeText('{{ referral_link }}').then(() => {
+                showNotification('Link copied!');
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                showNotification('Error copying!');
+            });
         });
 
-        const sideMenu = document.getElementById('side-menu');
-        const overlay = document.getElementById('overlay');
+        // Поиск рефералов
+        document.getElementById('search-input').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const items = document.querySelectorAll('.news-item');
+            
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            });
+        });
+
+        // Модальное окно
         const newsItems = document.querySelectorAll('.news-item');
         const newsModal = document.getElementById('news-modal');
-        const closeModal = document.getElementById('close-modal');
-        const modalTitle = document.getElementById('modal-title');
-        const sendButton = document.getElementById('send-button');
-        const shareButton = document.getElementById('share-button');
-
-        let selectedNews = null;
-
-     
+        const overlay = document.getElementById('overlay');
 
         newsItems.forEach(item => {
             item.addEventListener('click', () => {
-                const news = item.dataset.news;
-                modalTitle.textContent = news;
+                document.getElementById('modal-title').textContent = item.dataset.news;
+                document.getElementById('modal-content').textContent = item.dataset.content;
                 newsModal.style.display = 'block';
                 overlay.style.display = 'block';
             });
         });
 
-        closeModal.addEventListener('click', () => {
+        // Закрытие модального окна
+        document.getElementById('close-modal').addEventListener('click', closeModal);
+        overlay.addEventListener('click', closeModal);
+
+        function closeModal() {
             newsModal.style.display = 'none';
             overlay.style.display = 'none';
-        });
+        }
 
-        overlay.addEventListener('click', () => {
-            newsModal.style.display = 'none';
-            overlay.style.display = 'none';
-        });
+        // Уведомления
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 1500);
+        }
 
-        document.getElementById('folow').addEventListener('click', function() {
-      window.location.href = 'result.html';
-    });
-
-    document.getElementById('open-glav').addEventListener('click', function() {
-      window.location.href = 'index1.html';
-    });
-
-    document.getElementById('open-chart').addEventListener('click', function() {
-      window.location.href = 'Chart.html';
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-    const track = document.querySelector('.crypto-track');
-    const leftBtn = document.querySelector('.left-btn');
-    const rightBtn = document.querySelector('.right-btn');
-    const cryptoCards = document.querySelectorAll('.crypto-card');
-    let currentScroll = 0;
-    const cardWidth = 220; // ширина карточки + gap
-
-    
-
-    // Обработчики кнопок для прокрутки
-    rightBtn.addEventListener('click', () => {
-        currentScroll += cardWidth;
-        track.style.transform = `translateX(-${currentScroll}px)`;
-        toggleButtons();
-    });
-
-    leftBtn.addEventListener('click', () => {
-        currentScroll -= cardWidth;
-        track.style.transform = `translateX(-${currentScroll}px)`;
-        toggleButtons();
-    });
-
-    // Отключение кнопок, если нельзя скроллить дальше
-    const toggleButtons = () => {
-        const maxScroll = track.scrollWidth - track.parentElement.clientWidth;
-        leftBtn.style.display = currentScroll > 0 ? 'block' : 'none';
-        rightBtn.style.display = currentScroll < maxScroll ? 'block' : 'none';
-    };
-
-    toggleButtons();
-
-    // Добавляем "беление" карточек при нажатии
-    cryptoCards.forEach(card => {
-        card.addEventListener('click', () => {
-            // Сбрасываем стиль у всех карточек
-            cryptoCards.forEach(c => {
-                c.style.backgroundColor = '#1e1e1e';
-                c.style.color = '#fff';
-            });
-
-            // Выделяем текущую карточку
-            card.style.backgroundColor = '#fff';
-            card.style.color = '#000';
-        });
-    });
-});
-
-
-
-
-newsItems.forEach(item => {
-    item.addEventListener('click', () => {
-        const news = item.dataset.news;
-        const content = item.dataset.content;
-        modalTitle.textContent = news;
-        document.getElementById('modal-content').textContent = content;
-        newsModal.style.display = 'block';
-        overlay.style.display = 'block';
-    });
-});
-
-
-
-document.getElementById('send-button').addEventListener('click', () => {
-            navigator.clipboard.writeText('Copy message from friends').then(() => {
-                const notification = document.getElementById('notification');
-                notification.style.display = 'block'; // Show notification
-                setTimeout(() => {
-                    notification.style.display = 'none'; // Hide after 2 seconds
-                }, 1500);
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-            });
+        // Навигация
+        document.getElementById('open-glav').addEventListener('click', () => {
+            window.location.href = "{{ url_for('profile') }}";
         });
 
     </script>

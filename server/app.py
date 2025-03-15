@@ -4,8 +4,8 @@ import asyncio
 import jsonify
 
 app = Flask(__name__)
-
-DATABASE = '../bot/database.db'
+app.secret_key = 'supersecretkey'
+DATABASE = 'D:/Maks_TMA/Maks_Tma-1/bot/referrals.db'
 
 
 async def get_user_by_id(user_id):
@@ -30,15 +30,19 @@ async def update_user_balance(user_id, amount):
 @app.route('/')
 async def index1():
     # Получаем user_id из query-параметров
-    user_id = request.args.get('user_id')
-
+    # убрать меня из списка
+    user_id = request.args.get('user_id' , '6850731097')
+    # user_id =  '6850731097'
+    #
     if user_id:
         # Сохраняем user_id в сессии
         session['user_id'] = user_id
         return redirect(url_for('profile'))  # Перенаправляем на страницу профиля
     else:
         return "User ID не передан."
-
+    #
+    # session['user_id'] = user_id
+    # return redirect(url_for('profile'))
 
 @app.route('/profile')
 async def profile():
@@ -52,7 +56,7 @@ async def profile():
 
         if user:
             user_id, username, balance = user
-            return render_template('profile.html', user_id=user_id, username=username, balance=balance, posts=posts)
+            return render_template('index1.html', user_id=user_id, username=username, balance=balance, posts=posts)
         else:
             return "Пользователь не найден."
     else:
@@ -68,6 +72,60 @@ async def add_bonus():
         await update_user_balance(user_id, 10)
         return jsonify(success=True, message="Bonus added!")
     return jsonify(success=False, message="User not found.")
+
+
+async def get_referral_info(user_id):
+    async with aiosqlite.connect(DATABASE) as db:
+        # Получаем реферальную ссылку и количество рефералов
+        async with db.execute(
+                "SELECT referral_link, "
+                "(SELECT COUNT(*) FROM users WHERE referrer_id = ?) AS referral_count "
+                "FROM users WHERE user_id = ?",
+                (user_id, user_id)
+        ) as cursor:
+            return await cursor.fetchone()
+
+
+async def get_referrals(user_id):
+    async with aiosqlite.connect(DATABASE) as db:
+        async with db.execute(
+                "SELECT user_id, username, balance "
+                "FROM users WHERE referrer_id = ?",
+                (user_id,)
+        ) as cursor:
+            return await cursor.fetchall()
+
+
+async def get_top_referral(user_id):
+    async with aiosqlite.connect(DATABASE) as db:
+        async with db.execute(
+                "SELECT username, balance "
+                "FROM users WHERE referrer_id = ? "
+                "ORDER BY balance DESC LIMIT 1",
+                (user_id,)
+        ) as cursor:
+            return await cursor.fetchone()
+
+
+@app.route('/graf')
+async def graf():
+    user_id = session.get('user_id')
+    if not user_id:
+        return "Сессия не найдена. Пожалуйста, перейдите на сайт через бота."
+
+    # Получаем данные из БД
+    referral_link, referral_count = await get_referral_info(user_id)
+    referrals = await get_referrals(user_id)
+    top_referral = await get_top_referral(user_id)
+
+    return render_template(
+        'graf.html',
+        referral_link=referral_link,
+        referral_count=referral_count,
+        referrals=referrals,
+        top_referral=top_referral
+    )
+
 
 
 if __name__ == '__main__':

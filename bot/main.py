@@ -37,11 +37,18 @@ def create_db():
             user_id INTEGER PRIMARY KEY,
             username TEXT,
             referrer_id INTEGER,
-            balance INTEGER DEFAULT 100
+            balance INTEGER DEFAULT 100,
+            referral_link TEXT
         )
     """)
 
-    # Таблица постов
+    # Проверяем и добавляем столбец referral_link, если его нет
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'referral_link' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN referral_link TEXT")
+
+    # Таблица постов (остается без изменений)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,11 +92,19 @@ def add_user(user_id, username, referrer_id=None):
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
 
     if cursor.fetchone() is None:
-        cursor.execute("INSERT INTO users (user_id, username, referrer_id, balance) VALUES (?, ?, ?, 100)",
-                       (user_id, username, referrer_id))
+        # Генерируем реферальную ссылку
+        referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
+        
+        # Добавляем запись с ссылкой
+        cursor.execute("""
+            INSERT INTO users 
+            (user_id, username, referrer_id, balance, referral_link) 
+            VALUES (?, ?, ?, 100, ?)
+        """, (user_id, username, referrer_id, referral_link))
+        
         conn.commit()
 
-        # Начисление бонусов за рефералов
+        # Начисление бонусов за рефералов (остальное без изменений)
         if referrer_id:
             update_balance(referrer_id, 3)
             notify_referrer(referrer_id, username, 3)
