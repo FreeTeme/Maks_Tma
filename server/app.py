@@ -8,6 +8,26 @@ app.secret_key = 'supersecretkey'
 DATABASE = 'D:/Maks_TMA/Maks_Tma-1/bot/referrals.db'
 
 
+# Добавьте в app.py
+async def init_db():
+    async with aiosqlite.connect(DATABASE) as db:
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS questions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                admin_answer TEXT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        await db.commit()
+
+# Добавьте в начало приложения
+@app.before_request
+async def initialize():
+    await init_db()
+
+
 async def get_user_by_id(user_id):
     async with aiosqlite.connect(DATABASE) as db:
         async with db.execute("SELECT user_id, username, balance FROM user WHERE user_id = ?", (user_id,)) as cursor:
@@ -31,7 +51,7 @@ async def update_user_balance(user_id, amount):
 async def index1():
     # Получаем user_id из query-параметров
     # убрать меня из списка
-    user_id = request.args.get('user_id' , '6850731097')
+    user_id = request.args.get('user_id')
     # user_id =  '6850731097'
     #
     if user_id:
@@ -105,6 +125,72 @@ async def get_top_referral(user_id):
                 (user_id,)
         ) as cursor:
             return await cursor.fetchone()
+
+
+# Функция сохранения вопроса в БД
+async def save_question(user_id, question):
+    async with aiosqlite.connect(DATABASE) as db:
+        await db.execute(
+            "INSERT INTO questions (user_id, question) VALUES (?, ?)",
+            (user_id, question)
+        )
+        await db.commit()
+
+
+# Функция получения истории чата
+async def get_user_chat(user_id):
+    async with aiosqlite.connect(DATABASE) as db:
+        async with db.execute('''
+            SELECT question, admin_answer, created_at 
+            FROM questions 
+            WHERE user_id = ? 
+            ORDER BY created_at
+        ''', (user_id,)) as cursor:
+            return await cursor.fetchall()
+
+
+# Маршрут для отображения чата
+@app.route('/chat')
+async def chat():
+    user_id = '6850731097'  # Фиксированный ID вместо session.get('user_id')
+
+    chat_history = await get_user_chat(user_id)
+    return render_template('result.html', chat_history=chat_history)
+
+
+# Инициализация таблицы для чата (в составе init_db)
+async def init_db():
+    async with aiosqlite.connect(DATABASE) as db:
+        await db.execute('''
+            CREATE TABLE IF NOT EXISTS questions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                question TEXT NOT NULL,
+                admin_answer TEXT DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        await db.commit()
+
+
+
+@app.route('/submit_question', methods=['POST'])
+async def submit_question():
+    user_id = '6850731097' # Используйте user_id из сессии вместо фиксированного значения
+    if not user_id:
+        return redirect(url_for('index1'))
+    question = request.form.get('question')
+    await save_question(user_id, question)
+    return redirect(url_for('chat'))
+
+# @app.route('/ask', methods=['POST'])
+# async def ask_question():
+#     user_id = '6850731097'
+#     question = request.form.get('question')
+#     await save_question(user_id, question)
+#     return redirect(url_for('chat'))
+
+
 
 
 @app.route('/graf')
