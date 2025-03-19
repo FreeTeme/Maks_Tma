@@ -1,29 +1,30 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 import aiosqlite
 import asyncio
-import jsonify
+import jsonify 
+
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
-DATABASE = 'D:/Maks_TMA/Maks_Tma-1/bot/referrals.db'
+DATABASE = 'D:/Maks_Tma/bot/referrals.db'
 
 
 async def get_user_by_id(user_id):
     async with aiosqlite.connect(DATABASE) as db:
-        async with db.execute("SELECT user_id, username, balance FROM user WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT user_id, username, balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
             user = await cursor.fetchone()
             return user
 
 
-async def get_posts_by_user_id(user_id):
+async def get_posts_by_user_id():
     async with aiosqlite.connect(DATABASE) as db:
-        async with db.execute("SELECT task, description, link, bonus FROM post WHERE user_id = ?", (user_id,)) as cursor:
+        async with db.execute("SELECT title, description, link, bonus FROM posts") as cursor:
             posts = await cursor.fetchall()
             return posts
 
 async def update_user_balance(user_id, amount):
     async with aiosqlite.connect(DATABASE) as db:
-        await db.execute("UPDATE user SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+        await db.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
         await db.commit()
 
 
@@ -31,7 +32,7 @@ async def update_user_balance(user_id, amount):
 async def index1():
     # Получаем user_id из query-параметров
     # убрать меня из списка
-    user_id = request.args.get('user_id' , '6850731097')
+    user_id = request.args.get('user_id')
     # user_id =  '6850731097'
     #
     if user_id:
@@ -52,7 +53,7 @@ async def profile():
     if user_id:
         # Получаем данные пользователя и посты из базы данных
         user = await get_user_by_id(user_id)
-        posts = await get_posts_by_user_id(user_id)
+        posts = await get_posts_by_user_id()
 
         if user:
             user_id, username, balance = user
