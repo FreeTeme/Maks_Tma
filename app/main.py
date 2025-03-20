@@ -193,6 +193,46 @@ async def send_welcome(message: types.Message):
     await message.answer("Нажмите кнопку ниже, чтобы перейти на сайт:", reply_markup=keyboard)
     await message.answer(message_text)
 
+@dp.message_handler(commands=['ex'])
+async def show_exchange_info(message: types.Message):
+    """ Обработка команды /ex """
+    await message.answer("Введите тикер монеты (например, BTC, ETH, LUNA):")
+
+
+@dp.message_handler(lambda message: message.text.isupper() and len(message.text) <= 5)
+async def process_coin_input(message: types.Message):
+    """ Обработка ввода тикера монеты """
+    coin = message.text.upper()  # Приводим к верхнему регистру
+    results = []
+
+    # Получаем данные от всех парсеров
+    for parser in parsers:
+        try:
+            info = parser.get_staking_info(coin)
+            if info:
+                results.append(info)
+        except Exception as e:
+            logging.error(f"Error processing {parser.__class__.__name__}: {str(e)}")
+
+    if not results:
+        await message.answer(f"Данные по монете {coin} не найдены.")
+        return
+
+    # Формируем сообщение с данными
+    message_text = f"Данные по монете {coin}:\n\n"
+    for exchange in results:
+        message_text += f"🔹 <b>{exchange['exchange']}</b>\n"
+        if exchange['holdPosList']:
+            message_text += "  Гибкий стейкинг:\n"
+            for pos in exchange['holdPosList']:
+                message_text += f"    - APY: {pos['apy']}%\n"
+        if exchange['lockPosList']:
+            message_text += "  Фиксированный стейкинг:\n"
+            for pos in exchange['lockPosList']:
+                message_text += f"    - APY: {pos['apy']}% на {pos['days']} дней\n"
+        message_text += f"  Диапазон APY: {exchange['cost']}\n\n"
+
+    await message.answer(message_text, parse_mode="HTML")
 
 @dp.message_handler(commands=['points'])
 async def show_points(message: types.Message):
@@ -274,56 +314,6 @@ def load_parsers():
 
 parsers = load_parsers()
 
-@dp.message_handler(commands=['ex'])
-async def show_exchange_info(message: types.Message):
-    """ Обработка команды /ex """
-    # Создаем клавиатуру для выбора монеты
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    keyboard.add(
-        InlineKeyboardButton("BTC", callback_data="coin_BTC"),
-        InlineKeyboardButton("ETH", callback_data="coin_ETH"),
-        InlineKeyboardButton("LUNA", callback_data="coin_LUNA"),
-        InlineKeyboardButton("USDT", callback_data="coin_USDT"),
-    )
-    await message.answer("Выберите монету:", reply_markup=keyboard)
-
-
-@dp.callback_query_handler(lambda c: c.data.startswith("coin_"))
-async def process_coin_selection(callback_query: CallbackQuery):
-    """ Обработка выбора монеты """
-    await bot.answer_callback_query(callback_query.id)
-    
-    coin = callback_query.data.split("_")[1]  # Получаем выбранную монету
-    results = []
-
-    # Получаем данные от всех парсеров
-    for parser in parsers:
-        try:
-            info = parser.get_staking_info(coin)
-            if info:
-                results.append(info)
-        except Exception as e:
-            logging.error(f"Error processing {parser.__class__.__name__}: {str(e)}")
-
-    if not results:
-        await bot.send_message(callback_query.from_user.id, f"Данные по монете {coin} не найдены.")
-        return
-
-    # Формируем сообщение с данными
-    message_text = f"Данные по монете {coin}:\n\n"
-    for exchange in results:
-        message_text += f"🔹 <b>{exchange['exchange']}</b>\n"
-        if exchange['holdPosList']:
-            message_text += "  Гибкий стейкинг:\n"
-            for pos in exchange['holdPosList']:
-                message_text += f"    - APY: {pos['apy']}%\n"
-        if exchange['lockPosList']:
-            message_text += "  Фиксированный стейкинг:\n"
-            for pos in exchange['lockPosList']:
-                message_text += f"    - APY: {pos['apy']}% на {pos['days']} дней\n"
-        message_text += f"  Диапазон APY: {exchange['cost']}\n\n"
-
-    await bot.send_message(callback_query.from_user.id, message_text, parse_mode="HTML")
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
