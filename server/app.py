@@ -6,7 +6,7 @@ import jsonify
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
-DATABASE = 'D:/Maks_Tma/bot/referrals.db'
+DATABASE = '../bot/referrals.db'
 
 
 # Добавьте в app.py

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <head>
     <title>Чат поддержки</title>
     <style>
@@ -9,10 +10,60 @@
             font-family: Arial;
             margin: 0;
             padding: 20px;
+            padding-bottom: 160px; /* Добавлен отступ для навигации */
         }
         .chat-container {
             max-width: 800px;
             margin: 0 auto;
+            padding-bottom: 100px; /* Отступ для формы ввода */
+        }
+        
+        /* Стили для формы ввода */
+        form {
+            position: fixed;
+            bottom: 65px; /* Высота навигационной панели */
+            left: 0;
+            right: 0;
+            background: #000;
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        /* Стили для навигации */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: 65px;
+            background-color: #1e1e1e;
+            border-top: 2px solid #4c8cff;
+            z-index: 999;
+        }
+
+        /* Остальные стили остаются без изменений */
+        h1 {
+            background-image: linear-gradient(to right, #9ab3e1, #0066ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            padding-bottom: 15px;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        h1::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background: white;
+            box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
         }
         .message {
             margin: 15px 0;
@@ -31,16 +82,6 @@
             font-size: 0.8em;
             color: #888;
         }
-        form {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #000;
-            padding: 20px;
-            display: flex;
-            gap: 10px;
-        }
         input[type="text"] {
             flex-grow: 1;
             padding: 15px;
@@ -57,6 +98,18 @@
             color: white;
             cursor: pointer;
         }
+        .nav-item {
+            color: #4c8cff;
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .nav-item.active {
+            color: #ffffff;
+        }
+        .nav-item:hover {
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
@@ -65,7 +118,7 @@
         <div id="chat-history">
             {% for message in chat_history %}
                 <div class="message user-message">
-                    <div class="text">{{ message[0] }}</div>
+                    <div class="text">Вы: {{ message[0] }}</div>
                     <div class="timestamp">{{ message[2] }}</div>
                 </div>
                 {% if message[1] %}
@@ -83,10 +136,12 @@
         </form>
     </div>
 
-    <!-- Добавьте этот пункт меню в bottom-nav -->
-<div class="nav-item" onclick="location.href='/chat'">
-    <i class="fa-regular fa-comments"></i>
-</div> 
-
+    <!-- Навигационная панель -->
+    <nav class="bottom-nav" style="width: 500px;">
+        <div class="nav-item"><i class="fa-solid fa-house" id="home-icon"></i></div>
+        <div class="nav-item"  id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
+        <div class="nav-item" id="open-search" onclick="location.href='graf.html'"><i class="fa-solid fa-star"></i></div>
+        <div class="nav-item" id="folow" onclick="location.href='result.html'"><i class="fa-regular fa-envelope"></i></div>
+    </nav>
 </body>
 </html>
