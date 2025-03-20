@@ -8,7 +8,7 @@ class KucoinParser(BaseParser):
             normalized_coin = self.normalize_coin_name(coin)
             
             cookies = {
-                'cf_clearance': '.4uIxxfAsj6N8EkRfDl5mRi.dUV7M3oX9ph8A9SmoQ0-1741518259-1.2.1.1-ZW2KqvKleDjopWqMAVJWhHJIY_iexHN8P_Uf5cQXq0BApu4Hh3YHoN3Ree8Q07dc7HcLigeO41BdohtuNAKXTdouOM2u.8Pu3kheXtdhWLU.pNQPXXb3Hw8SFSXa_vzSPmJU3e9EJsnrkLffc2v4MvjmYJBZFrTkGOe1selPCAbibxaMa.1pPMF9S5izemUK5OiBsW7ssHJ1WUO0nHNK4mbDKuV1pepwH7_VQI2ag70yW2usl_.Nq2GaCYFW4M.iRcdKuFJae_xtoYf1g_0JUgFX1RPgULtdif.7HSX5HcW4Yeni_1jwDBUTU7oiSRjWev1hPDiq8DZoYHlzJWu_SEPHcQ5ApsDqFBu_nDtcVGRptn5O_NzZHSJ5W4haKIsRFA5XRfcNhTOC4fUh09_X1KXIafefpHjQhNKNfwa.340',
+                 'cf_clearance': '.4uIxxfAsj6N8EkRfDl5mRi.dUV7M3oX9ph8A9SmoQ0-1741518259-1.2.1.1-ZW2KqvKleDjopWqMAVJWhHJIY_iexHN8P_Uf5cQXq0BApu4Hh3YHoN3Ree8Q07dc7HcLigeO41BdohtuNAKXTdouOM2u.8Pu3kheXtdhWLU.pNQPXXb3Hw8SFSXa_vzSPmJU3e9EJsnrkLffc2v4MvjmYJBZFrTkGOe1selPCAbibxaMa.1pPMF9S5izemUK5OiBsW7ssHJ1WUO0nHNK4mbDKuV1pepwH7_VQI2ag70yW2usl_.Nq2GaCYFW4M.iRcdKuFJae_xtoYf1g_0JUgFX1RPgULtdif.7HSX5HcW4Yeni_1jwDBUTU7oiSRjWev1hPDiq8DZoYHlzJWu_SEPHcQ5ApsDqFBu_nDtcVGRptn5O_NzZHSJ5W4haKIsRFA5XRfcNhTOC4fUh09_X1KXIafefpHjQhNKNfwa.340',
                 'sajssdk_2015_cross_new_user': '1',
                 'WEBGRAY': 'stable',
                 'X-GRAY': 'xgray-claim&xgray-travel-rule-20250-03-07',
@@ -59,20 +59,62 @@ class KucoinParser(BaseParser):
                 timeout=10
             )
 
-            if response.status_code == 200:
-                data = response.json()
-                return self.parse_response(data, normalized_coin)
-            
-            self.logger.error(f"KuCoin API error: {response.status_code}")
-            return None
+            if response.status_code != 200:
+                self.logger.error(f"KuCoin API error: {response.status_code}")
+                return {}
+
+            return self.parse_response(response.json(), normalized_coin)
             
         except Exception as e:
             self.logger.error(f"KuCoin parser error: {str(e)}")
-            return None
+            return {}
 
-    def parse_response(self, data: dict, coin: str) -> tuple:
+    def parse_response(self, data: dict, coin: str) -> dict:
+        result = {
+            'exchange': 'KuCoin',
+            'coin': coin,
+            'holdPosList': [],
+            'lockPosList': [],
+            'cost': '0%'  # По умолчанию
+        }
+        
+        all_apy = []
+        
         for item in data.get('data', []):
-            if item.get('currency') == coin:
-                cost = float(item.get('total_apr', 0))  
-                return ('Kucoin', cost)
-        return None
+            if item.get('currency') != coin:
+                continue
+
+            # Обработка гибкого стейкинга (если есть)
+            if item.get('type') == 'DEMAND':  # DEMAND — гибкий стейкинг
+                apy = float(item.get('total_apr', 0))
+                if apy > 0:  # Игнорируем нулевые ставки
+                    result['holdPosList'].append({
+                        'days': 0,  # Гибкий стейкинг не имеет срока
+                        'apy': round(apy, 2),  # Округляем до сотых
+                        'min_amount': 0,  # Минимальная сумма не указана
+                        'max_amount': float('inf')  # Без ограничений
+                    })
+                    all_apy.append(apy)
+
+            # Обработка фиксированного стейкинга (если есть)
+            if item.get('type') == 'FIXED':  # FIXED — фиксированный стейкинг
+                apy = float(item.get('total_apr', 0))
+                if apy > 0:  # Игнорируем нулевые ставки
+                    result['lockPosList'].append({
+                        'days': item.get('duration', 0),  # Срок блокировки
+                        'apy': round(apy, 2),  # Округляем до сотых
+                        'min_amount': 0,  # Минимальная сумма не указана
+                        'max_amount': float('inf')  # Без ограничений
+                    })
+                    all_apy.append(apy)
+
+        # Формируем строку cost
+        if all_apy:
+            min_apy = round(min(all_apy), 2)  # Округляем до сотых
+            max_apy = round(max(all_apy), 2)  # Округляем до сотых
+            result['cost'] = f"{min_apy}%-{max_apy}%" if min_apy != max_apy else f"{min_apy}%"
+            
+        return result
+    
+
+

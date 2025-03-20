@@ -31,19 +31,15 @@ def get_staking_info():
         try:
             info = parser.get_staking_info(coin)
             if info:
-
-                exchange_name, apy_diff = info
-                results.append({
-                    'exchange': exchange_name,
-                    'apy': f"{apy_diff}%"
-                })
+                results.append(info)
         except Exception as e:
             app.logger.error(f"Error processing {parser.__class__.__name__}: {str(e)}")
     
     return jsonify({
         'coin': coin.upper(),
-        'exchanges': sorted(results, key=lambda x: x['exchange'])
+        'exchanges': results
     })
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
