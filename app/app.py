@@ -4,7 +4,8 @@ import logging
 from config import PARSERS
 
 app = Flask(__name__)
-logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(level=logging.DEBUG)
 
 def load_parsers():
     parsers = []
