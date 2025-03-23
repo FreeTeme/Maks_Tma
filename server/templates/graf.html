@@ -299,6 +299,56 @@
             }
         }
 
+
+        .referral-block {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #4c8cff;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        
+        .link-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #484747;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #007BFF;
+        }
+        
+        .copy-button {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .copy-button:hover {
+            background: #0056b3;
+        }
+        
+        .referral-link {
+            color: #ececec;
+            word-break: break-all;
+            font-family: monospace;
+        }
+        
+        .icon {
+            width: 20px;
+            height: 20px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007BFF"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>');
+        }
+
     </style>
 </head>
 <body>
@@ -347,16 +397,50 @@
     </div>
 </div>
 
+
+<div class="referral-block">
+    <h3 style="color: #007BFF; margin-top: 0;">Ваша реферальная ссылка</h3>
+    
+    <div class="link-container">
+        <div class="icon"></div>
+        <span class="referral-link">t.me/histobit_bot/start=oJSK...</span>
+    </div>
+    
+    <button class="copy-button" onclick="copyLink()">
+        <div class="icon"></div>
+        Копировать ссылку
+    </button>
+</div>
+
 <!-- Referrals List -->
 <div class="news-container">
     {% for referral in referrals %}
         <div class="news-item" 
              data-news="{{ referral[1] }}" 
-             data-content="balance: {{ referral[2] }}">
-            {{ referral[1] }} (Balance: {{ referral[2] }})
+             data-content="Бонус за этого реферала: 3$">
+            {{ referral[1] }}
         </div>
     {% else %}
-        <div class="news-item">No referrals yet</div>
+    <div class="news-item" 
+    style="
+        font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        text-align: center;
+        color: #959595;
+        font-size: 1.4em;
+        margin: 25px auto;
+        padding: 20px;
+        width: 80%;
+        border: 1px solid #1e1e1e;
+        border-radius: 15px;
+        background: linear-gradient(45deg, #1e1e1e, #1e1e1e);
+        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        letter-spacing: 0.05em;
+        transform: perspective(500px) rotateX(3deg);
+        line-height: 1.6;
+        text-shadow: 0 1px 1px #959595;
+    ">
+   У вас пока нет рефералов. Пригласите друзей, чтобы начать получать вознаграждения.
+</div>
     {% endfor %}
 </div>
 
@@ -370,9 +454,9 @@
 <!-- Bottom Navigation -->
 <nav class="bottom-nav">
     <div class="nav-item" id="open-glav"><i class="fa-solid fa-house"></i></div>
-    <div class="nav-item" id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
+    <div class="nav-item" id="open-chart"  onclick="location.href='/chart'"><i class="fa-solid fa-chart-line"></i></div>
     <div class="nav-item" id="folow"><i class="fa-solid fa-star" style="color: #fff;"></i></div>
-    <div class="nav-item" id="open-search"><i class="fa-regular fa-envelope"></i></div>
+    <div class="nav-item" id="open-search"  onclick="location.href='/chat'"><i class="fa-regular fa-envelope"></i></div>
 </nav>
 
 <!-- Notification -->
@@ -438,6 +522,20 @@
             window.location.href = "{{ url_for('profile') }}";
         });
 
+
+
+        function copyLink() {
+            const link = document.querySelector('.referral-link').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Ссылка скопирована в буфер!');
+            });
+            navigator.clipboard.writeText('{{ referral_link }}').then(() => {
+                showNotification('Link copied!');
+            }).catch(err => {
+                console.error('Copy failed:', err);
+                showNotification('Error copying!');
+            });
+        }
     </script>
 </body>
 </html>

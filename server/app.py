@@ -192,11 +192,14 @@ async def submit_question():
 #     return redirect(url_for('chat'))
 
 
-
+@app.route('/chart')
+async def chart_route():
+    return render_template('Chart.html')
 
 @app.route('/graf')
 async def graf():
-    user_id = session.get('user_id')
+    # user_id = session.get('user_id')
+    user_id = '6850731097'
     if not user_id:
         return "Сессия не найдена. Пожалуйста, перейдите на сайт через бота."
 
