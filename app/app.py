@@ -21,6 +21,10 @@ def load_parsers():
 
 parsers = load_parsers()
 
+def has_valid_staking_data(info: dict) -> bool:
+    """Проверяет, содержит ли информация о стейкинге действительные данные"""
+    return bool(info.get('holdPosList') or info.get('lockPosList'))
+
 @app.route('/staking-info', methods=['GET'])
 def get_staking_info():
     coin = request.args.get('coin')
@@ -31,7 +35,7 @@ def get_staking_info():
     for parser in parsers:
         try:
             info = parser.get_staking_info(coin)
-            if info:
+            if info and has_valid_staking_data(info):
                 results.append(info)
         except Exception as e:
             app.logger.error(f"Error processing {parser.__class__.__name__}: {str(e)}")
@@ -40,7 +44,6 @@ def get_staking_info():
         'coin': coin.upper(),
         'exchanges': results
     })
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
