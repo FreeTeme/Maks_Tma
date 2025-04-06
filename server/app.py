@@ -2,11 +2,21 @@ from flask import Flask, render_template, request, session, redirect, url_for
 import aiosqlite
 import asyncio
 import jsonify 
+import sys
+import os
 
+# Add the server directory to Python path
+server_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(server_dir)
+
+from app.parser import staking_bp
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'
 DATABASE = '../bot/referrals.db'
+
+# Register the staking Blueprint
+app.register_blueprint(staking_bp, url_prefix='/api')
 
 
 # Добавьте в app.py
