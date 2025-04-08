@@ -323,8 +323,32 @@
             updateInstructions();
         });
 
+
+
+        function getQueryParams() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                exchange: params.get('exchange'),
+                staking: params.get('staking')
+            };
+        }
+
+        function updateInstructions(exchange, staking) {
+            const accountType = 'noAccount'; // или 'hasAccount', в зависимости от контекста
+            const data = exchangeData[exchange][accountType];
+            let html = `<h2>Инструкция для ${exchange}:</h2>`;
+            html += `<p>Ставка: ${staking}</p>`;
+            html += data.steps.map(step => `<p>${step}</p>`).join('');
+            document.getElementById('instructions').innerHTML = html;
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
         // Инициализация
-        updateInstructions();
+        const { exchange, staking } = getQueryParams();
+        updateInstructions(exchange, staking);
     </script>
 </body>
 </html>

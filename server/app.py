@@ -52,8 +52,8 @@ async def update_user_balance(user_id, amount):
 async def index1():
     # Получаем user_id из query-параметров
     # убрать меня из списка
-    user_id = request.args.get('user_id')
-    # user_id =  '6850731097'
+    # user_id = request.args.get('user_id')
+    user_id =  '6850731097'
     #
     if user_id:
         # Сохраняем user_id в сессии
@@ -86,12 +86,15 @@ async def profile():
 
 @app.route('/add_bonus', methods=['POST'])
 async def add_bonus():
-    user_id = session.get('user_id')
-    user = await get_user_by_id('user_id')
+    user_id = session.get('user_id')  # Получаем user_id из сессии
+    if not user_id:
+        return jsonify(success=False, message="User not logged in.")
+
+    user = await get_user_by_id(user_id)  # Передаём user_id, а не строку 'user_id'
     if user:
-        user_id = user[0]
         await update_user_balance(user_id, 10)
         return jsonify(success=True, message="Bonus added!")
+
     return jsonify(success=False, message="User not found.")
 
 
