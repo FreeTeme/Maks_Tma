@@ -122,7 +122,7 @@ class BinanceParser(BaseParser):
                         "days": 0,  # Гибкий стейкинг не имеет срока
                         "apy": round(max_apr * 100, 2),  # Преобразуем APR в APY
                         "min_amount": 0,  # Минимальная сумма не указана
-                        "max_amount": float("inf")  # Без ограничений
+                        "max_amount": 0  # Без ограничений
                     })
                     all_apy.append(max_apr * 100)
 
@@ -139,7 +139,7 @@ class BinanceParser(BaseParser):
                         "days": project_duration,  # Срок блокировки
                         "apy": round(max_apr * 100, 2),  # Преобразуем APR в APY
                         "min_amount": 0,  # Минимальная сумма не указана
-                        "max_amount": float("inf")  # Без ограничений
+                        "max_amount": 0  # Без ограничений
                     })
                     all_apy.append(max_apr * 100)
 

@@ -145,14 +145,14 @@ class BitgetParser(BaseParser):
                             "days": 0,
                             "apy": round(float(apy), 2),
                             "min_amount": 0,
-                            "max_amount": float("inf")
+                            "max_amount": 0
                         })
                     else:  # Фиксированный стейкинг
                         result["lockPosList"].append({
                             "days": period,
                             "apy": round(float(apy), 2),
                             "min_amount": 0,
-                            "max_amount": float("inf")
+                            "max_amount": 0
                         })
                     all_apy.append(float(apy))
 

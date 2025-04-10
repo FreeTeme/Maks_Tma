@@ -114,7 +114,7 @@ class XTParser(BaseParser):
                     "days": 0,  # Гибкий стейкинг не имеет срока
                     "apy": round(maker_fee * 100, 2),  # Преобразуем комиссию в APY
                     "min_amount": 0,  # Минимальная сумма не указана
-                    "max_amount": float("inf")  # Без ограничений
+                    "max_amount": 0  # Без ограничений
                 })
                 self.logger.debug(f"Added to holdPosList: {result['holdPosList'][-1]}")
 
@@ -124,7 +124,7 @@ class XTParser(BaseParser):
                     "days": 30,  # Пример срока блокировки
                     "apy": round(taker_fee * 100, 2),  # Преобразуем комиссию в APY
                     "min_amount": 0,  # Минимальная сумма не указана
-                    "max_amount": float("inf")  # Без ограничений
+                    "max_amount": 0  # Без ограничений
                 })
                 self.logger.debug(f"Added to lockPosList: {result['lockPosList'][-1]}")
 
