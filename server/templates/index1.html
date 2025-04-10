@@ -16,6 +16,7 @@
 
          <!-- Всплывающее окно для уведомлений -->
     <div class="notifications-popup" id="notificationsPopup">
+        
         <div class="popup-content">
             <i class="fa-solid fa-bell-slash" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
             <p>You have no notifications</p>
@@ -52,13 +53,13 @@
         <div class="trading-options-block" id="tradingOptionsBlock">
             
             <p id="usernameText">
-                <i class="fa-solid fa-user" style="color: #4c8cff;"></i> My UserName: <span id="username">Loading...</span>
+                <i class="fa-solid fa-user" style="color: #4c8cff;"></i> My UserName: <span id="username">{{ username }}</span>
             </p>
             <p id="userIdText">
-                <i class="fa-solid fa-fingerprint" style="color: #4c8cff;"></i> My ID: <span id="user_id">Loading...</span>
+                <i class="fa-solid fa-fingerprint" style="color: #4c8cff;"></i> My ID: <span id="user_id">{{ user_id }}</span>
             </p>
             <p id="balanceText">
-                <i class="fa-solid fa-wallet" style="color: #4c8cff;"></i> My Balance: $<span id="balance">0</span>
+                <i class="fa-solid fa-wallet" style="color: #4c8cff;"></i> My Balance: $<span id="balance">{{ balance }}</span>
             </p>
             <button class="close-button" id="closeButton" >Close</button>
         </div>
@@ -109,7 +110,7 @@
               </button>
         </div>
 
-        <!-- <div class="tab-content" id="defi-content">
+        <div class="tab-content" id="defi-content">
             <div class="defi-buttons">
                 {% for post in posts %}
                 <div class="defi-btn" onclick="window.open('{{ post[2] }}', '_blank')" style="cursor: pointer;">
@@ -123,7 +124,7 @@
                 </div>
                 {% endfor %}
             </div>
-        </div> -->
+        </div>
 
         <div class="tab-content" id="defi-content">
             <div class="defi-buttons" id="posts-container">
@@ -138,8 +139,8 @@
 <nav class="bottom-nav">
     <div class="nav-item"><i class="fa-solid fa-house" id="home-icon"></i></div>
     <div class="nav-item"  id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
-    <div class="nav-item" id="open-search" onclick="location.href='graf.html'"><i class="fa-solid fa-star"></i></div>
-    <div class="nav-item" id="folow" onclick="location.href='result.html'"><i class="fa-regular fa-envelope"></i></div>
+    <div class="nav-item" id="open-search" onclick="location.href='graf'"><i class="fa-solid fa-star"></i></div>
+    <div class="nav-item" id="folow" onclick="location.href='chat'"><i class="fa-regular fa-envelope"></i></div>
 </nav>
 
 <!-- Модальное окно -->
@@ -185,58 +186,50 @@
 
 <script>
 
-function getQueryParam(param) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(param);
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch("/profile_data");
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById("username").textContent = data.username || "Guest";
+            document.getElementById("user_id").textContent = data.user_id || "Unknown";
+            document.getElementById("balance").textContent = `$${data.balance || "0"}`;
+
+            // Обработка постов
+            let container = document.getElementById("posts-container");
+            container.innerHTML = "";
+            
+            data.posts.forEach(post => {
+                let { title, description, link, bonus } = post;
+                let imgSrc = "../static/img/m.jpg";
+
+                if (link.includes("t.me")) imgSrc = "../static/img/tg.webp";
+                else if (link.includes("youtube.com")) imgSrc = "../static/img/youtube.png";
+
+                let postElement = document.createElement("div");
+                postElement.className = "defi-btn";
+                postElement.style.cursor = "pointer";
+                postElement.onclick = () => window.open(link, "_blank");
+
+                postElement.innerHTML = `
+                    <img src="${imgSrc}" alt="Defi Icon" class="defi-icon">
+                    <div class="defi-info">
+                        <h3>${title}</h3>
+                        <hr />
+                        <p class="description">${description}</p>
+                        <p class="price"><i class="fa-solid fa-coins"></i>${bonus}</p>
+                    </div>
+                `;
+                container.appendChild(postElement);
+            });
+        } else {
+            console.error("Ошибка получения данных: ", data.message);
+        }
+    } catch (error) {
+        console.error("Ошибка запроса: ", error);
     }
-
-    document.addEventListener("DOMContentLoaded", () => {
-        const balance = getQueryParam("balance") || "0";
-        document.getElementById("balanceText").textContent = `$${balance}`;
-    });
-
-
-    document.addEventListener("DOMContentLoaded", () => {
-        const username = getQueryParam("username") || "Guest";
-        const user_id = getQueryParam("user_id") || "Unknown";
-        const balance = getQueryParam("balance") || "0";
-
-        document.getElementById("username").textContent = username;
-        document.getElementById("user_id").textContent = user_id;
-        document.getElementById("balance").textContent = balance;
-    });
-
-
-    const postsString = getQueryParam("posts");
-    if (postsString) {
-        const posts = postsString.split("|").map(p => p.split("~"));
-        let container = document.getElementById("posts-container");
-        container.innerHTML = "";  // Очищаем перед добавлением новых
-
-        posts.forEach(post => {
-            let title = post[0], description = post[1], link = post[2], bonus = post[3];
-            let imgSrc = "../static/img/m.jpg";
-
-            if (link.includes("t.me")) imgSrc = "../static/img/tg.webp";
-            else if (link.includes("youtube.com")) imgSrc = "../static/img/yootube.png";
-
-            let postElement = document.createElement("div");
-            postElement.className = "defi-btn";
-            postElement.style.cursor = "pointer";
-            postElement.onclick = () => window.open(link, "_blank");
-
-            postElement.innerHTML = `
-                <img src="${imgSrc}" alt="Defi Icon" class="defi-icon">
-                <div class="defi-info">
-                    <h3>${title}</h3>
-                    <hr />
-                    <p class="description">${description}</p>
-                    <p class="price"><i class="fa-solid fa-coins"></i>${bonus}</p>
-                </div>
-            `;
-            container.appendChild(postElement);
-        });
-    }
+});
 
 
 
@@ -475,30 +468,29 @@ document.addEventListener("DOMContentLoaded", () => {
     bonusText.textContent = "+10 coins";
     document.body.appendChild(bonusText);
 
-    // Send a request to add the bonus to the database
+    // Отправляем запрос на сервер для добавления бонуса
     fetch('/add_bonus', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: "same-origin" // Передаём сессионные cookies
     })
     .then(response => response.json())
     .then(data => {
-        console.log(data.message); // Handle success or error messages
+        console.log(data.message);
         if (data.success) {
-            // Update the displayed balance
-            const balanceElement = document.getElementById('balanceText'); // Use the existing ID
+            const balanceElement = document.getElementById('balanceText');
             let currentBalance = parseFloat(balanceElement.textContent.replace('$', '').replace(',', '')) || 0;
-            currentBalance += 10; // Add the bonus
-            balanceElement.textContent = `$${currentBalance.toFixed(2)}`; // Update the balance display
+            currentBalance += 10;
+            balanceElement.textContent = `$${currentBalance.toFixed(2)}`;
         }
     })
-    .catch((error) => {
-        console.error('Error:', error);
-    });
+    .catch(error => console.error('Error:', error));
 
     setTimeout(() => bonusText.remove(), 5000);
 }
+
 
     document.addEventListener("DOMContentLoaded", () => {
     // Работа с вкладками
@@ -579,7 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chartButton = document.getElementById('open-chart');
     if (chartButton) {
         chartButton.addEventListener('click', function () {
-            window.location.href = 'Chart.html';
+            window.location.href = 'chart';
         });
     }
 
@@ -685,15 +677,23 @@ function showCryptoDetails(crypto) {
     }
 
     function selectExchange(exchange) {
-        const modalContent = document.getElementById('modalContentc');
-        modalContent.innerHTML = `
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>${exchange.name}</h2>
-            <p class="staking-rate">Ставка: ${exchange.staking}</p>
-            <button class="action-button" onclick="goToBuyPage('${exchange.name}')">I have an account</button>
-            <button class="action-button" onclick="goToSellPage('${exchange.name}')">I don't have an account</button>
-        `;
-    }
+    const modalContent = document.getElementById('modalContentc');
+    const urlParams = new URLSearchParams({
+        exchange: exchange.name,
+        staking: exchange.staking
+    }).toString();
+
+    modalContent.innerHTML = `
+        <span class="close" onclick="closeModal()">&times;</span>
+        <h2>Вы выбрали - ${exchange.name}</h2>
+        <p class="staking-rate">Ставка: ${exchange.staking}</p>
+        <button class="back-btn" onclick="location.href='instruction.html?${urlParams}'">
+            Перейти к инструкции
+        </button>
+    `;
+}
+
+
 
 
     function goToBuyPage(exchangeName) {
@@ -877,8 +877,77 @@ window.onclick = function (event) {
             margin-top: 20px;
         }
 
+        .earn-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vw;
+    height: 70vw;
+    max-width: 250px;
+    max-height: 250px;
+    border-radius: 50%;
+    background: #1e1e1e;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 4vw;
+    font-weight: bold;
+    color: white;
+    border: 3px solid #4c8cff;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
 
-.earn-button {
+/* Адаптация для маленьких экранов */
+@media screen and (max-width: 480px) {
+    .earn-button {
+        width: 60vw;
+        height: 60vw;
+        font-size: 5vw;
+        top: 40%;
+    }
+    
+    /* Для iPhone 5/SE */
+    @media (max-height: 568px) {
+        .earn-button {
+            top: 35%;
+            width: 55vw;
+            height: 55vw;
+        }
+    }
+}
+
+/* Портретная ориентация */
+@media (orientation: portrait) {
+    .earn-button {
+        width: 65vw;
+        height: 65vw;
+    }
+}
+
+/* Ландшафтная ориентация */
+@media (orientation: landscape) {
+    .earn-button {
+        width: 40vh;
+        height: 40vh;
+        font-size: 3vh;
+    }
+}
+
+.progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: rgba(76, 140, 255, 0.5);
+    width: 0%;
+    transition: width 0.2s;
+}
+
+
+/* .earn-button {
     position: absolute;
     top: 250px;
     left: 50%;
@@ -910,7 +979,43 @@ window.onclick = function (event) {
   .earn-button.disabled {
     filter: grayscale(100%);
     cursor: not-allowed;
-  }
+  } */
+
+
+
+
+
+
+
+
+
+  .back-btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #0066CC, #007BFF);
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(45deg, #0052a3, #0066CC);
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
   .coin {
     position: absolute;
     width: 30px;
