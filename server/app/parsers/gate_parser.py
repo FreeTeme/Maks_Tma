@@ -99,7 +99,7 @@ class GateIoParser(BaseParser):
                         'days': self._get_lock_duration(item),  # Срок блокировки
                         'apy': round(apy, 2),  # Округляем до сотых
                         'min_amount': float(item.get('min_mortgage_amount', 0)),
-                        'max_amount': float(item.get('day_max_mortgage_amount', 'inf'))
+                        'max_amount': float(item.get('day_max_mortgage_amount', 0))
                     })
                     all_apy.append(apy)
 

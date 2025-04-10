@@ -4,7 +4,7 @@ import asyncio
 import jsonify 
 import sys
 import os
-
+from flask_cors import CORS
 # Add the server directory to Python path
 server_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(server_dir)
@@ -12,6 +12,7 @@ sys.path.append(server_dir)
 from app.parser import staking_bp
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = 'supersecretkey'
 DATABASE = '../bot/referrals.db'
 

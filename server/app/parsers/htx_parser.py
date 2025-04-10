@@ -146,13 +146,13 @@ class HTXParser(BaseParser):
                 "days": 0,
                 "apy": round(apy, 2),
                 "min_amount": 0,
-                "max_amount": float("inf")
+                "max_amount": 0
             })
         else:  # Фиксированный стейкинг
             result["lockPosList"].append({
                 "days": int(term) if term else 30,  # По умолчанию 30 дней, если term не указан
                 "apy": round(apy, 2),
                 "min_amount": 0,
-                "max_amount": float("inf")
+                "max_amount": 0
             })
         all_apy.append(apy)

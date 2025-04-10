@@ -92,7 +92,7 @@ class KucoinParser(BaseParser):
                         'days': 0,  # Гибкий стейкинг не имеет срока
                         'apy': round(apy, 2),  # Округляем до сотых
                         'min_amount': 0,  # Минимальная сумма не указана
-                        'max_amount': float('inf')  # Без ограничений
+                        'max_amount': 0  # Без ограничений
                     })
                     all_apy.append(apy)
 
@@ -104,7 +104,7 @@ class KucoinParser(BaseParser):
                         'days': item.get('duration', 0),  # Срок блокировки
                         'apy': round(apy, 2),  # Округляем до сотых
                         'min_amount': 0,  # Минимальная сумма не указана
-                        'max_amount': float('inf')  # Без ограничений
+                        'max_amount': 0 # Без ограничений
                     })
                     all_apy.append(apy)
 

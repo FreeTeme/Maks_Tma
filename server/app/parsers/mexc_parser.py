@@ -116,7 +116,7 @@ class MexcParser(BaseParser):
                 'days': pos.get('minLockDays', 0) if staking_type == 'lock' else 0,
                 'apy': round(apy * 100, 2),  
                 'min_amount': 0,  
-                'max_amount': float(pos.get('limitMax', 'inf'))  
+                'max_amount': float(pos.get('limitMax', 0))  
                                         })
             apy_values.append(apy)
             

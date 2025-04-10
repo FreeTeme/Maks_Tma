@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staking Info</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        input, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        .exchanges-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .exchange-item {
+            background: #f5f5f5;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .exchange-item:hover {
+            background: #ddd;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .staking-type {
+            margin: 15px 0;
+        }
+
+        .apy-item {
+            margin: 5px 0;
+            padding: 5px;
+            background: #f0f0f0;
+        }
+
+        .close-btn {
+            float: right;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-box">
+        <input type="text" id="coinInput" placeholder="Enter coin (e.g. BNB)">
+        <button onclick="loadStakingInfo()">Search</button>
+    </div>
+
+    <ul id="exchangesList" class="exchanges-list"></ul>
+
+    <div id="exchangeModal" class="modal">
+        <div class="close-btn" onclick="closeModal()">×</div>
+        <h2 id="modalExchangeName"></h2>
+        <p>Cost: <span id="modalCost"></span></p>
+        
+        <div id="holdPosSection" class="staking-type">
+            <h3>Flexible Staking</h3>
+            <div id="holdPosList"></div>
+        </div>
+
+        <div id="lockPosSection" class="staking-type">
+            <h3>Locked Staking</h3>
+            <div id="lockPosList"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStakingInfo() {
+            const coin = document.getElementById('coinInput').value.trim().toUpperCase();
+            if (!coin) return alert('Please enter a coin');
+            
+            try {
+                const response = await fetch(`http://localhost:5000/api/staking-info?coin=${encodeURIComponent(coin)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.exchanges.length === 0) {
+                    alert('No staking info found for this coin');
+                    return;
+                }
+
+                renderExchanges(data.exchanges);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error fetching data: ' + error.message);
+            }
+        }
+
+        function renderExchanges(exchanges) {
+            const list = document.getElementById('exchangesList');
+            list.innerHTML = '';
+
+            exchanges.forEach(exchange => {
+                const li = document.createElement('li');
+                li.className = 'exchange-item';
+                li.innerHTML = `
+                    <strong>${exchange.exchange}</strong> - Cost: ${exchange.cost}
+                `;
+                li.onclick = () => showExchangeDetails(exchange);
+                list.appendChild(li);
+            });
+        }
+
+        function showExchangeDetails(exchange) {
+            document.getElementById('modalExchangeName').textContent = exchange.exchange;
+            document.getElementById('modalCost').textContent = exchange.cost;
+            
+            // Render Flexible Staking
+            const holdPosList = document.getElementById('holdPosList');
+            holdPosList.innerHTML = '';
+            if (exchange.holdPosList.length > 0) {
+                exchange.holdPosList.forEach(pos => {
+                    const div = document.createElement('div');
+                    div.className = 'apy-item';
+                    div.textContent = `APY: ${pos.apy}%`;
+                    holdPosList.appendChild(div);
+                });
+                document.getElementById('holdPosSection').style.display = 'block';
+            } else {
+                document.getElementById('holdPosSection').style.display = 'none';
+            }
+
+            // Render Locked Staking
+            const lockPosList = document.getElementById('lockPosList');
+            lockPosList.innerHTML = '';
+            if (exchange.lockPosList.length > 0) {
+                exchange.lockPosList.forEach(pos => {
+                    const div = document.createElement('div');
+                    div.className = 'apy-item';
+                    div.textContent = `${pos.days} Days - APY: ${pos.apy}%`;
+                    lockPosList.appendChild(div);
+                });
+                document.getElementById('lockPosSection').style.display = 'block';
+            } else {
+                document.getElementById('lockPosSection').style.display = 'none';
+            }
+
+            document.getElementById('exchangeModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('exchangeModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('exchangeModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+    </script>
+</body>
+</html>

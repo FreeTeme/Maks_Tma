@@ -136,7 +136,7 @@ class BitmartParser(BaseParser):
                         "days": 0,
                         "apy": round(apy, 2),
                         "min_amount": float(product.get("minSubcription", 0)),
-                        "max_amount": float("inf")
+                        "max_amount": 0
                     })
                     all_apy.append(apy)
             except (TypeError, ValueError) as e:
@@ -153,7 +153,7 @@ class BitmartParser(BaseParser):
                         "days": lock_days,
                         "apy": round(apy, 2),
                         "min_amount": float(product.get("minSubcription", 0)),
-                        "max_amount": float("inf")
+                        "max_amount": 0
                     })
                     all_apy.append(apy)
             except (TypeError, ValueError) as e:
