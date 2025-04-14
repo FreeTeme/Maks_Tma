@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance Exchange</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background-color: #0a192f;
+            color: #ffffff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #0066CC, #007BFF);
+            border: none;
+            border-radius: 25px;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .back-btn:hover {
+            background: linear-gradient(45deg, #0052a3, #0066CC);
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0;
+            font-size: 2.5em;
+            color: #007BFF;
+            text-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+
+        .coin-card {
+            background-color: #007BFF;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+
+        .coin-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .coin-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            color: white;
+        }
+
+        .coin-logo {
+            width: 40px;
+            height: 40px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .youtube-btn {
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .youtube-btn:hover {
+            background: linear-gradient(45deg, #cc0000, #990000);
+        }
+
+        .instructions {
+            margin: 40px 0;
+            padding: 25px;
+            background: rgba(0,123,255,0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(0,123,255,0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .nav-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            background: #007BFF;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:hover {
+            background: #0066CC;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,123,255,0.3);
+        }
+
+        /* Добавляем новые стили для активной кнопки */
+    .nav-btn.active-btn {
+        background: linear-gradient(45deg, #0056b3, #004499);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0,123,255,0.4);
+    }
+
+    .instructions h2 {
+        color: #007BFF;
+        margin-bottom: 15px;
+        font-size: 1.4em;
+    }
+
+    .instructions ol {
+        padding-left: 25px;
+    }
+
+    .instructions li {
+        margin-bottom: 10px;
+        padding-left: 10px;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <button class="back-btn" onclick="window.location.href='/profile'">← Назад</button>
+
+        <div class="coin-cards" style="margin-top: 20%;">
+            <div class="coin-card">
+                <div class="coin-info">
+                    <!-- <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" class="coin-logo" alt="USDT"> -->
+                    <div>
+                        <h3>BingX</h3>
+                        <p>Инструкция для стекинга:</p>
+                    </div>
+                </div>
+                <button class="youtube-btn">
+                    <i class="fab fa-youtube"></i>
+                    Смотреть видео
+                </button>
+            </div>
+            <!-- Добавьте больше карточек -->
+        </div>
+       
+        <div class="instructions" id="instructions">
+            <!-- Инструкция будет обновляться динамически -->
+        </div>
+
+
+        
+        <div class="nav-buttons">
+            <button class="nav-btn" id="noAccount" >У меня нет аккаунта</button>
+            <button class="nav-btn" id="hasAccount">Уже есть аккаунт</button>
+        </div>
+    </div>
+
+    <script>
+        const instructionsContent = {
+        noAccount: `
+            <h2>Если вы новичок и не знаете, как проходить верификацию на бирже и вносить криптовалюту на счет, посмотрите наше видео</h2>
+            <ol style="margin-top: 15px; line-height: 1.6;">
+                <li>Пройти регистрацию.</li>
+                <li>Пройти верификацию.</li>
+                <li>Внести криптовалюту на свой счет.</li>
+                <li>В верхней панели выбрать раздел “Wealth”.</li>
+                <li>В разделе “Wealth” выбрать “Earn”.</li>
+                <li>Нажать на иконку поиска найти монету, которую искали в нашем приложении. (Обратите внимание, что есть вклады на фиксированный срок, когда монеты блокируется на опр. количество дней и бессрочный, где можно снять монеты в любой момент и процент по ним может различаться.)</li>
+                 <li>Нажать “Подписка”, ввести количество монет, которые вы хотите внести в стейкинг нажать галочку с согласием и подтвердить.</li>
+             <button class="youtube-btn" style="background=#0056b3" onclick="window.open('https://bingx.com/invite/HZIZOF/')" >Перейти на биржу</button>
+            </ol>
+        `,
+        hasAccount: `
+            <h2>Инструкция для существующих пользователей</h2>
+            <ol style="margin-top: 15px; line-height: 1.6;">
+                <li>Перейдите в свой аккаунт.</li>
+                <li>В верхней панели выбрать раздел “Wealth”</li>
+                <li>В разделе “Wealth” выбрать “Earn”.</li>
+                <li>Нажать на иконку поиска найти монету, которую искали в нашем приложении. (Обратите внимание, что есть вклады на фиксированный срок, когда монеты блокируется на опр. количество дней и бессрочный, где можно снять монеты в любой момент и процент по ним может различаться.)</li>
+                <li>Нажать “Подписка”, ввести количество монет, которые вы хотите внести в стейкинг нажать галочку с согласием и подтвердить.</li>
+            </ol>
+        `
+    };
+
+    function updateInstructions(type) {
+        const instructions = document.getElementById('instructions');
+        const noAccountBtn = document.getElementById('noAccount');
+        const hasAccountBtn = document.getElementById('hasAccount');
+        
+        // Обновляем контент
+        instructions.innerHTML = instructionsContent[type];
+        
+        // Обновляем стили кнопок
+        noAccountBtn.classList.remove('active-btn');
+        hasAccountBtn.classList.remove('active-btn');
+        
+        if(type === 'noAccount') {
+            noAccountBtn.classList.add('active-btn');
+        } else {
+            hasAccountBtn.classList.add('active-btn');
+        }
+    }
+
+    // Инициализация при загрузке
+    document.addEventListener('DOMContentLoaded', () => {
+        updateInstructions('noAccount');
+        
+        // Назначаем обработчики событий
+        document.getElementById('noAccount').addEventListener('click', () => {
+            updateInstructions('noAccount');
+        });
+        
+        document.getElementById('hasAccount').addEventListener('click', () => {
+            updateInstructions('hasAccount');
+        });
+    });
+    </script>
+</body>
+</html>

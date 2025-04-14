@@ -32,11 +32,11 @@
         </div>
         
         <!-- Кнопка "гамбургер" -->
-<div id="hamburgerMenu" class="hamburger-menu" style="display: flex; flex-direction: column; justify-content: space-between; height: 24px; width: 30px; cursor: pointer;">
+<!-- <div id="hamburgerMenu" class="hamburger-menu" style="display: flex; flex-direction: column; justify-content: space-between; height: 24px; width: 30px; cursor: pointer;">
     <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
     <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
     <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
-</div>
+</div> -->
 
     </header>
     
@@ -74,8 +74,8 @@
         <div class="tab-content active" id="crypto-content">
             <div class="center-wrapper"> <!-- Обёрточный контейнер -->
             <div class="crypto-buttons">
-                <div class="crypto-btn1" id="openModalBtn">
-                    <div class="crypto-info" >
+                <div class="crypto-btn1" onclick="window.location.href='/staking'">
+                    <div class="crypto-info" onclick="window.location.href='/staking'">
                         <i class="fa-solid fa-circle-dollar-to-slot"style="font-size: 40px;"></i>
                         <br>
                         <br>
@@ -102,7 +102,7 @@
 
 
         <!-- Содержимое вкладок "coming soon" -->
-        <div class="tab-content" id="nfts-content">
+        <div class="tab-content" id="nfts-content" style="margin-top: 50%; ">
             <!-- Добавляем кнопку Earn в раздел Mining -->
             <button id="earnButton" class="earn-button">
                 <div class="progress-bar" id="progressBar"></div>
@@ -111,10 +111,15 @@
         </div>
 
         <div class="tab-content" id="defi-content">
-            <div class="defi-buttons">
+            <div class="defi-buttons" id="posts-container">
                 {% for post in posts %}
-                <div class="defi-btn" onclick="window.open('{{ post[2] }}', '_blank')" style="cursor: pointer;">
-                    <img src="{% if 't.me' in post[2] %}../static/img/tg.webp{% elif 'youtube.com' in post[2] %}../static/img/yootube.png{% else %}../static/img/m.jpg{% endif %}" alt="Defi Icon" class="defi-icon">
+                <div class="defi-btn social-card" 
+                     data-link="{{ post[2] }}"
+                     onclick="handleSocialCardClick(event)"
+                     style="cursor: pointer;">
+                    <img src="{% if 't.me' in post[2] %}../static/img/tg.webp{% elif 'youtube.com' in post[2] %}../static/img/yootube.png{% else %}../static/img/m.jpg{% endif %}" 
+                         alt="Defi Icon" 
+                         class="defi-icon">
                     <div class="defi-info">
                         <h3>{{ post[0] }}</h3>
                         <hr />
@@ -156,8 +161,8 @@
     <!-- Боковое меню -->
     <div class="side-menu" id="side-menu">
         <div class="menu-content">
-            <p id="settings" onclick="location.href='graf.html'">Referal</p>
-            <p id="help" onclick="location.href='result.html'">Help</p>            
+            <p id="settings" onclick="location.href='/graf'">Referal</p>
+            <p id="help" onclick="location.href='/chat'">Help</p>            
             <p id="bitry-link">BiTry-Studio <i class="fa-solid fa-code"></i></p>
 
         </div>
@@ -179,12 +184,50 @@
 <script src="../static/script.js"></script>
 
 
+ <!-- Menu Toggle Button -->
+ <div class="menu-toggle" id="menuToggle">
+    <i class="fas fa-bars"></i>
+  </div>
+
+  <!-- Side Menu -->
+  <div class="side-menu" id="sideMenu">
+    <div class="menu-header">
+      <div class="menu-title">
+        <i class="fas fa-cog"></i>
+        Menu
+      </div>
+      <button class="close-menu" id="closeMenu">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="menu-item" onclick="location.href='/graf'">
+      <i class="fas fa-users"></i>
+      <span>Referral Program</span>
+    </div>
+    
+    <div class="menu-item" onclick="location.href='/chat'">
+      <i class="fas fa-question-circle"></i>
+      <span>Help Center</span>
+    </div>
+    
+    <div class="menu-item" id="bitryLink">
+      <i class="fas fa-code"></i>
+      <span>BiTry Studio</span>
+    </div>
+  </div>
+
 
 
 </body>
 </html>
 
 <script>
+
+
+
+
+
 
 document.addEventListener("DOMContentLoaded", async () => {
     try {
@@ -273,7 +316,40 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+async function handleSocialCardClick(event) {
+    event.preventDefault();
+    const card = event.currentTarget;
+    const link = card.dataset.link;
 
+    try {
+        const response = await fetch('/add_social_points', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Network error');
+        
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('balance').textContent = data.new_balance.toFixed(2);
+            showBonusAnimation(card);
+        }
+        setTimeout(4000)
+        window.open(link, '_blank');
+    } catch (error) {
+        console.error('Ошибка:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+function showBonusAnimation(element) {
+    const bonusEl = document.createElement('div');
+    bonusEl.className = 'bonus-animation';
+    bonusEl.textContent = '+10';
+    element.appendChild(bonusEl);
+    setTimeout(() => bonusEl.remove(), 1000);
+}
 
 
 
@@ -412,6 +488,7 @@ document.addEventListener("DOMContentLoaded", () => {
       progressBar.style.width = "0%";
       button.classList.remove("disabled");
       buttonText.textContent = "Click to Earn";
+      
     }
 
     resetButton();
@@ -437,11 +514,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     function startTimer() {
-  let timeLeft = 50;
+  let timeLeft = 12 * 60 * 60; // 12 часов в секундах (43,200)
   timer = setInterval(() => {
     timeLeft--;
-    let formattedTime = `00:00:${timeLeft.toString().padStart(2, '0')}`;
+    
+    // Форматирование времени в HH:MM:SS
+    const hours = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (timeLeft % 60).toString().padStart(2, '0');
+    
+    let formattedTime = `${hours}:${minutes}:${seconds}`;
     buttonText.textContent = formattedTime;
+    
     if (timeLeft <= 0) {
       clearInterval(timer);
       resetButton();
@@ -530,6 +614,43 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
+
+    postElement.onclick = (event) => {
+    // Отправляем запрос на начисление баллов
+    fetch('/add_social_points', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin',
+        keepalive: true // Позволяет выполнить запрос даже при переходе на другую страницу
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Обновляем баланс на странице
+            const balanceElement = document.getElementById('balance');
+            let currentBalance = parseFloat(balanceElement.textContent) || 0;
+            currentBalance += 10;
+            balanceElement.textContent = currentBalance.toFixed(2);
+            
+            // Показываем визуальное подтверждение
+            const bonusText = document.createElement("div");
+            bonusText.classList.add("bonus-text");
+            bonusText.textContent = "+10 points";
+            document.body.appendChild(bonusText);
+            setTimeout(() => bonusText.remove(), 2000);
+        }
+    })
+    .catch(error => console.error('Error:', error));
+
+    // Открываем ссылку
+    window.open(link, "_blank");
+};
+
+
+
     // Работа с панелью торговых настроек
     const tradingModePanel = document.getElementById("tradingModePanel");
     const tradingOptionsBlock = document.getElementById("tradingOptionsBlock");
@@ -571,7 +692,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chartButton = document.getElementById('open-chart');
     if (chartButton) {
         chartButton.addEventListener('click', function () {
-            window.location.href = 'chart';
+            window.location.href = '/chart';
         });
     }
 
@@ -588,6 +709,27 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
 
+
+  // Menu Toggle
+const menuToggle = document.getElementById('menuToggle');
+    const sideMenu = document.getElementById('sideMenu');
+    const closeMenu = document.getElementById('closeMenu');
+    const overlay = document.getElementById('overlay');
+
+    menuToggle.addEventListener('click', () => {
+      sideMenu.classList.add('show');
+      overlay.classList.add('show');
+    });
+
+    closeMenu.addEventListener('click', () => {
+      sideMenu.classList.remove('show');
+      overlay.classList.remove('show');
+    });
+
+    overlay.addEventListener('click', () => {
+      sideMenu.classList.remove('show');
+      overlay.classList.remove('show');
+    });
 
 
 
@@ -1095,13 +1237,141 @@ body {
 }
 
 
-.hamburger-menu {
+ /* Side Menu */
+ .side-menu {
+      position: fixed;
+      top: 0;
+      left: -300px;
+      width: 280px;
+      height: 100%;
+      background: rgba(20, 20, 30, 0.98);
+      backdrop-filter: blur(20px);
+      padding: 20px;
+      transition: all 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+      z-index: 1000;
+      border-right: 1px solid rgba(108, 92, 231, 0.2);
+      overflow-y: auto;
+    }
+
+    .side-menu.show {
+      left: 0;
+    }
+
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(108, 92, 231, 0.2);
+    }
+
+    .menu-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-menu {
+      background: none;
+      border: none;
+      color: var(--gray);
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .close-menu:hover {
+      color: var(--primary);
+      transform: rotate(90deg);
+    }
+
+    .menu-item {
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      color: var(--light);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-item:hover {
+      background: rgba(108, 92, 231, 0.1);
+      transform: translateX(5px);
+    }
+
+    .menu-item i {
+      width: 24px;
+      text-align: center;
+      color: var(--primary);
+    }
+
+    /* Menu Toggle Button */
+    .menu-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1001;
+      background: rgba(40, 40, 50, 0.8);
+      border: 1px solid rgba(108, 92, 231, 0.3);
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .menu-toggle:hover {
+      background: rgba(108, 92, 231, 0.2);
+      transform: rotate(90deg);
+    }
+
+    .menu-toggle i {
+      color: var(--light);
+      font-size: 20px;
+    }
+
+
+
+
+
+
+
+    .bonus-animation {
+    position: absolute;
+    top: -15px;
+    right: -10px;
+    background: #4c8cff;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    animation: floatUp 0.8s ease-out;
+    z-index: 100;
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-25px); opacity: 0; }
+}
+
+
+/* .hamburger-menu {
     width: 25px;
     height: 20px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    cursor: pointer;
+    cursor: pointer; 
 }
 
 .hamburger-menu span {
@@ -1110,7 +1380,7 @@ body {
     height: 3px;
     background-color: #fff;
     border-radius: 2px;
-}
+} */
 
 /* Стили для кнопок действий */
 .actions {
@@ -1155,6 +1425,7 @@ body {
 .tab-content {
     display: none;
     padding: 15px;
+   
 }
 
 .tab-content.active {
@@ -1554,6 +1825,23 @@ body {
 
 
 
+.bonus-text {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    font-weight: bold;
+    color: #4c8cff;
+    opacity: 0;
+    animation: bonusFade 2s forwards;
+    z-index: 1000;
+}
+
+@keyframes bonusFade {
+    0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -150%) scale(1.5); }
+}
 
 
 

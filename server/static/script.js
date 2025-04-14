@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chartButton = document.getElementById('open-chart');
     if (chartButton) {
         chartButton.addEventListener('click', function () {
-            window.location.href = 'Chart.html';
+            window.location.href = '/chart';
         });
     }
 

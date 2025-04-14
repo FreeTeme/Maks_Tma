@@ -240,10 +240,72 @@
             background: rgba(83, 109, 254, 0.1);
             border-radius: 6px;
         }
+
+        /* New styles for confirmation modal */
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            width: 90%;
+            z-index: 1001;
+            text-align: center;
+        }
+
+        .confirmation-modal h3 {
+            margin-top: 0;
+            color: var(--accent-color);
+        }
+
+        .confirmation-modal p {
+            margin-bottom: 20px;
+        }
+
+        .confirmation-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .confirmation-buttons button {
+            padding: 10px 20px;
+            border-radius: 6px;
+        }
+
+        .confirm-btn {
+            background-color: var(--success-color);
+        }
+
+        .cancel-btn {
+            background-color: var(--error-color);
+        }
+
+        .instruction-button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px 20px;
+    background-color: var(--success-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: transform 0.2s;
+}
+
+.instruction-button:hover {
+    transform: scale(1.02);
+    background-color: #45a049;
+}
     </style>
 </head>
 <body>
-    <button class="back-btn" onclick="window.open('profile')">
+    <button class="back-btn" onclick="window.location.href='/profile'">
         <i class="fas fa-arrow-left"></i> Back
     </button>
     <br>
@@ -251,7 +313,7 @@
 
     <div class="search-box">
         <input type="text" id="coinInput" placeholder="Enter coin (e.g. BNB)">
-        <button onclick="loadStakingInfo()">
+        <button onclick="checkBalanceBeforeSearch()">
             <i class="fas fa-search"></i> Search
         </button>
     </div>
@@ -285,20 +347,117 @@
             <h3><i class="fas fa-lock"></i> Locked Staking</h3>
             <div id="lockPosList"></div>
         </div>
+
+        <!-- Добавляем новую кнопку -->
+    <button id="instructionBtn" class="instruction-button">
+        Перейти к инструкции <i class="fas fa-arrow-right"></i>
+    </button>
+
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="confirmation-modal">
+        <h3>Confirm Purchase</h3>
+        <p>Viewing staking results costs 40 points. Your current balance: <span id="currentBalance">0</span> points</p>
+        <p>Do you want to proceed?</p>
+        <div class="confirmation-buttons">
+            <button class="confirm-btn" onclick="confirmPurchase()">Yes</button>
+            <button class="cancel-btn" onclick="cancelPurchase()">No</button>
+        </div>
     </div>
 
     <script>
-        async function loadStakingInfo() {
-            const coin = document.getElementById('coinInput').value.trim().toUpperCase();
-            if (!coin) return alert('Please enter a coin');
+        let currentCoin = '';
+        let currentBalance = 0;
+
+        // Load user balance when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/get-balance');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentBalance = data.balance || 0;
+                    document.getElementById('currentBalance').textContent = currentBalance;
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error fetching balance:', errorData.error || response.status);
+                    currentBalance = 0;
+                    alert('Error loading your balance. Please refresh the page.');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                currentBalance = 0;
+                alert('Network error. Please check your connection.');
+            }
+        });
+
+        function checkBalanceBeforeSearch() {
+            currentCoin = document.getElementById('coinInput').value.trim().toUpperCase();
+            if (!currentCoin) {
+                alert('Please enter a coin name');
+                return;
+            }
             
+            // Show confirmation modal
+            document.getElementById('confirmationModal').style.display = 'block';
+            document.getElementById('modalOverlay').style.display = 'block';
+        }
+
+        async function confirmPurchase() {
+            if (currentBalance < 40) {
+                alert('Not enough points! You need 40 points to view staking results.');
+                closeConfirmationModal();
+                return;
+            }
+
+            try {
+                // Deduct points from user's balance
+                const response = await fetch('/api/deduct-points', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ points: 40 })
+                });
+
+                const responseData = await response.json();
+                
+                if (response.ok) {
+                    // Update local balance
+                    currentBalance = responseData.newBalance;
+                    document.getElementById('currentBalance').textContent = currentBalance;
+                    
+                    // Proceed with search
+                    closeConfirmationModal();
+                    loadStakingInfo();
+                } else {
+                    alert('Error: ' + (responseData.message || 'Failed to deduct points'));
+                    closeConfirmationModal();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while processing your request');
+                closeConfirmationModal();
+            }
+        }
+
+        function cancelPurchase() {
+            closeConfirmationModal();
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+            document.getElementById('modalOverlay').style.display = 'none';
+        }
+
+        async function loadStakingInfo() {
             // Show loader, hide other elements
             document.getElementById('loader').style.display = 'block';
             document.getElementById('notFound').style.display = 'none';
             document.getElementById('exchangesList').innerHTML = '';
             
             try {
-                const response = await fetch(`http://localhost:5000/api/staking-info?coin=${encodeURIComponent(coin)}`);
+                const response = await fetch(`/api/staking-info?coin=${encodeURIComponent(currentCoin)}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -306,7 +465,7 @@
                 
                 const data = await response.json();
                 
-                if (data.exchanges.length === 0) {
+                if (data.exchanges && data.exchanges.length === 0) {
                     document.getElementById('loader').style.display = 'none';
                     document.getElementById('notFound').style.display = 'block';
                     return;
@@ -342,10 +501,23 @@
             document.getElementById('modalExchangeName').textContent = exchange.exchange;
             document.getElementById('modalCost').textContent = exchange.cost;
             
+
+            const instructionBtn = document.getElementById('instructionBtn');
+    instructionBtn.onclick = () => {
+        const exchangeName = exchange.exchange
+            .toLowerCase()
+            .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
+            .replace(/[^a-z0-9-]/g, ''); // Удаляем спецсимволы
+        window.location.href = `/${exchangeName}`;
+    };
+
+
+
+
             // Render Flexible Staking
             const holdPosList = document.getElementById('holdPosList');
             holdPosList.innerHTML = '';
-            if (exchange.holdPosList.length > 0) {
+            if (exchange.holdPosList && exchange.holdPosList.length > 0) {
                 exchange.holdPosList.forEach(pos => {
                     const div = document.createElement('div');
                     div.className = 'apy-item';
@@ -363,7 +535,7 @@
             // Render Locked Staking
             const lockPosList = document.getElementById('lockPosList');
             lockPosList.innerHTML = '';
-            if (exchange.lockPosList.length > 0) {
+            if (exchange.lockPosList && exchange.lockPosList.length > 0) {
                 exchange.lockPosList.forEach(pos => {
                     const div = document.createElement('div');
                     div.className = 'apy-item';
@@ -385,10 +557,19 @@
         function closeModal() {
             document.getElementById('exchangeModal').style.display = 'none';
             document.getElementById('modalOverlay').style.display = 'none';
+            document.getElementById('instructionBtn').onclick = null;
         }
 
         // Close modal when clicking outside
-        document.getElementById('modalOverlay').onclick = closeModal;
+        document.getElementById('modalOverlay').onclick = function(event) {
+            if (event.target === document.getElementById('modalOverlay')) {
+                if (document.getElementById('confirmationModal').style.display === 'block') {
+                    closeConfirmationModal();
+                } else {
+                    closeModal();
+                }
+            }
+        };
     </script>
 </body>
 </html>

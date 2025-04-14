@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, session, redirect, url_for
 import aiosqlite
 import asyncio
-import jsonify 
+from flask import jsonify  # Правильно - импортирует функцию из Flask
 import sys
 import os
 from flask_cors import CORS
@@ -59,6 +59,58 @@ async def update_user_balance(user_id, amount):
         await db.commit()
 
 
+@app.route('/api/get-balance')
+async def get_balance():
+    user_id = session.get('user_id') or '6850731097'  # Fallback для тестирования
+    try:
+        async with aiosqlite.connect(DATABASE) as db:
+            async with db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                user = await cursor.fetchone()
+                if user:
+                    return jsonify({'balance': user[0]})  # Используем flask.jsonify
+                return jsonify({'balance': 0, 'error': 'User not found'}), 404
+    except Exception as e:
+        return jsonify({'balance': 0, 'error': str(e)}), 500
+
+
+@app.route('/api/deduct-points', methods=['POST'])
+async def deduct_points():
+    user_id = session.get('user_id')  # Получаем user_id из сессии
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+    try:
+        data = request.get_json()
+        points = int(data.get('points', 0))
+
+        if points <= 0:
+            return jsonify({'success': False, 'message': 'Invalid points value'}), 400
+
+        async with aiosqlite.connect(DATABASE) as db:
+            # Проверяем текущий баланс
+            async with db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                user = await cursor.fetchone()
+                if not user:
+                    return jsonify({'success': False, 'message': 'User not found'}), 404
+
+                current_balance = user[0]
+                if current_balance < points:
+                    return jsonify({'success': False, 'message': 'Insufficient balance'}), 400
+
+                # Обновляем баланс
+                new_balance = current_balance - points
+                await db.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
+                await db.commit()
+
+                return jsonify({
+                    'success': True,
+                    'newBalance': new_balance,
+                    'deducted': points
+                })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/')
 async def index1():
     # Получаем user_id из query-параметров
@@ -93,6 +145,78 @@ async def profile():
             return "Пользователь не найден."
     else:
         return "Сессия не найдена. Пожалуйста, перейдите на сайт через бота."
+
+
+@app.route('/add_social_points', methods=['POST'])
+async def add_social_points():
+    # Проверяем авторизацию пользователя
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 401
+
+    try:
+        # user_id = session['user_id']
+        user_id='6850731097'
+
+        # Обновляем баланс в базе данных
+        async with aiosqlite.connect(DATABASE) as db:
+            # Проверяем существование пользователя
+            async with db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                user = await cursor.fetchone()
+                if not user:
+                    return jsonify({'success': False, 'message': 'User not found'}), 404
+
+            # Добавляем 10 баллов
+            await db.execute("UPDATE users SET balance = balance + 10 WHERE user_id = ?", (user_id,))
+            await db.commit()
+
+            # Получаем обновленный баланс
+            async with db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)) as cursor:
+                new_balance = (await cursor.fetchone())[0]
+
+            return jsonify({
+                'success': True,
+                'new_balance': new_balance,
+                'message': '+10 points added successfully'
+            })
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/profile_data')
+async def profile_data():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'Not authorized'}), 401
+
+    try:
+        user = await get_user_by_id(user_id)
+        posts = await get_posts_by_user_id()
+
+        if user:
+            return jsonify({
+                'success': True,
+                'user_id': user[0],
+                'username': user[1],
+                'balance': user[2],
+                'posts': [
+                    {
+                        'title': post[0],
+                        'description': post[1],
+                        'link': post[2],
+                        'bonus': post[3]
+                    }
+                    for post in posts
+                ]
+            })
+        return jsonify({'success': False, 'message': 'User not found'}), 404
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
+
 
 
 @app.route('/add_bonus', methods=['POST'])
@@ -209,6 +333,41 @@ async def submit_question():
 @app.route('/chart')
 async def chart_route():
     return render_template('Chart.html')
+
+@app.route('/staking')
+async def staking_route():  # Изменил имя функции
+    return render_template('staking.html')
+
+
+@app.route('/binance')
+async def binance_route():  # Изменил имя функции
+    return render_template('binance.html')
+
+@app.route('/bingx')
+async def bingx_route():  # Изменил имя функции
+    return render_template('bingx.html')
+
+@app.route('/bitget')
+async def bitget_route():  # Изменил имя функции
+    return render_template('bitget.html')
+
+@app.route('/bybit')
+async def bybit_route():  # Изменил имя функции
+    return render_template('bybit.html')
+
+@app.route('/kucoin')
+async def kucoin_route():  # Изменил имя функции
+    return render_template('kucoin.html')
+
+@app.route('/okx')
+async def okx_route():  # Изменил имя функции
+    return render_template('okx.html')
+
+@app.route('/xtcoin')
+async def xtcoin_route():  # Изменил имя функции
+    return render_template('xtcoin.html')
+
+
 
 @app.route('/graf')
 async def graf():

@@ -189,6 +189,12 @@ async def process_add_admin(message: types.Message, state: FSMContext):
     await state.finish()
 
 
+
+
+
+
+
+
 @dp.message_handler(commands=['del'])
 async def del_admin_command(message: types.Message):
     """Удаление администратора"""

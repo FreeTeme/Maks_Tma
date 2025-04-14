@@ -3,539 +3,774 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>News Portal</title>
+    <title>Premium Referral Program</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        html, body {
-        
-            font-family: Arial, sans-serif;
-            background-color: #000;
-            color: #fff;
+        :root {
+            --primary: #007bff;
+            --primary-dark: #5649c0;
+            --secondary: #00cec9;
+            --dark: #2d3436;
+            --light: #f5f6fa;
+            --success: #00b894;
+            --warning: #fdcb6e;
+            --danger: #d63031;
+            --gray: #636e72;
+            --dark-gray: #3a4042;
         }
 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0f0f13;
+            color: var(--light);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 25% 25%, rgba(108, 92, 231, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(0, 206, 201, 0.15) 0%, transparent 50%);
+        }
 
         /* Header */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 20px;
-            background-color: #111;
-            border-bottom: 2px solid #4c8cff;
-        }
-
-        .header .logo {
-            font-size: 20px;
-            font-weight: bold;
-            color: #4c8cff;
-        }
-
-        .header .actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .header .actions button {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .header .actions button:hover {
-            color: #4c8cff;
-        }
-
-        /* Search Bar */
-        .search-bar {
-            display: flex;
-            justify-content: center;
-            padding: 20px 0;
-            background-color: #111;
-            border-bottom: 2px solid #4c8cff;
-        }
-
-        .search-bar input {
-            width: 80%;
-            max-width: 800px;
-            padding: 15px;
-            font-size: 16px;
-            border: 2px solid #4c8cff;
-            border-radius: 10px;
-            background-color: #222;
-            color: #fff;
-        }
-
-        .search-bar input::placeholder {
-            color: #aaa;
-        }
-
-        /* News list */
-        .news-container {
-            padding: 20px;
-        }
-
-        .news-item {
-            padding: 10px 0;
-            border-bottom: 2px solid #4c8cff;
-            cursor: pointer;
-        }
-
-        .news-item:hover {
-            color: #4c8cff;
-        }
-
-        /* Social icons */
-        .social-icons {
-            display: flex;
-            justify-content: center;
-            margin-top: 30px;
-            gap: 0;
-        }
-
-        .social-icons .icon {
-            font-size: 30px;
-            color: #4c8cff;
-            cursor: pointer;
-            margin: 0 15px;
-        }
-
-        .social-icons .icon:hover {
-            color: #3b6dcc;
-        }
-
-        /* Bottom Navigation */
-        .bottom-nav {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            height: 65px;
-            background-color: #1e1e1e;
-            border-top: 2px solid #4c8cff;
-        }
-
-        .nav-item {
-            color: #4c8cff;
-            font-size: 24px;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .nav-item.active {
-            color: #ffffff;
-        }
-
-        .nav-item:hover {
-            color: #ffffff;
-        }
-
-
-         /* News modal */
-         .news-modal {
-            position: fixed;
-            top: 15%;
-            left: 50%;
-            transform: translate(-50%, 0);
-            width: 70%;
-            padding: 20px;
-            background-color: #111;
-            border-radius: 20px;
-            display: none;
-            z-index: 1000;
-        }
-
-        .news-modal h2 {
-            margin: 0 0 10px;
-        }
-
-        .news-modal .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 20px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        .news-modal .close-btn:hover {
-            color: #4c8cff;
-        }
-
-        .overlay {
-            position: fixed;
+            padding: 15px 25px;
+            background: rgba(15, 15, 20, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(108, 92, 231, 0.3);
+            position: sticky;
             top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            z-index: 900;
+            z-index: 100;
         }
 
-
-        /* Crypto Carousel */
-.crypto-carousel {
-    display: flex;
-    align-items: center;
-    position: relative;
-    margin: 20px auto;
-    max-width: 800px;
-    overflow: hidden;
-    background-color: #141414;
-    border-radius: 10px;
-    padding: 10px;
-    overflow-y: 100px; 
-}
-
-.crypto-track {
-    display: flex;
-    gap: 20px;
-    transition: transform 0.3s ease;
-}
-
-.crypto-card {
-    flex: 0 0 150px; /* Fixed width for cards */
-    background-color: #1e1e1e;
-    border: 2px solid #4c8cff; /* Blue border */
-    border-radius: 12px;
-    padding: 15px;
-    color: #fff;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-y: 10px; 
-    height: 90px;
-    text-align: center; /* Center text */
-    margin: 10px; /* Add margin */
-    margin-left: 7%;
-}
-
-/* Беление карточек */
-.crypto-card:active {
-    background-color: #fff;
-    color: #000;
-}
-
-
-.carousel-btn {
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 24px;
-    cursor: pointer;
-    z-index: 1;
-    padding: 5px;
-}
-
-.carousel-btn:hover {
-    color: #4c8cff;
-}
-
-.left-btn {
-    position: absolute;
-    left: 10px;
-}
-
-.right-btn {
-    position: absolute;
-    right: 10px;
-}
-
-/* Кнопка звезда */
-.crypto-star {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 100px;/* Такая же ширина, как у карточек */
-    height: 120px;
-    background-color: #1e1e1e;
-    border-radius: 10px;
-    margin: 0 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.star-btn {
-    background: none;
-    border: none;
-    color: #4c8cff; /* Золотистый цвет для звезды */
-    font-size: 30px;
-    cursor: pointer;
-    transition: transform 0.2s;
-}
-
-.star-btn:hover {
-    transform: scale(1.1);
-}
-
-
-
-.notification {
-            position: fixed;
-            top: 33px;
-            left: 85%;
-            transform: translateX(-50%);
-            color: #4c8cff;
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: none; /* Hidden by default */
-            z-index: 1000;
-            animation: slide-up 0.5s forwards; /* Add animation */
-        }
-
-        @keyframes slide-up {
-            from {
-                bottom: 10px; /* Start position */
-                opacity: 0; /* Start transparent */
-            }
-            to {
-                bottom: 60px; /* End position */
-                opacity: 1; /* Fully visible */
-            }
-        }
-
-
-        .referral-block {
-            background: #1e1e1e;
-            padding: 20px;
-            border-radius: 12px;
-            border: 2px solid #4c8cff;
-            max-width: 500px;
-            margin: 20px auto;
-        }
-        
-        .link-container {
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
             display: flex;
             align-items: center;
             gap: 10px;
-            background: #484747;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid #007BFF;
         }
-        
-        .copy-button {
-            background: #007BFF;
-            color: white;
+
+        .logo i {
+            font-size: 24px;
+        }
+
+        .actions button {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-top: 15px;
-            transition: background 0.3s;
-        }
-        
-        .copy-button:hover {
-            background: #0056b3;
-        }
-        
-        .referral-link {
-            color: #ececec;
-            word-break: break-all;
-            font-family: monospace;
-        }
-        
-        .icon {
-            width: 20px;
-            height: 20px;
-            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23007BFF"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>');
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3);
         }
 
+        .actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4);
+        }
+
+        /* Search Bar */
+        .search-bar {
+            padding: 20px;
+            background: linear-gradient(to right, rgba(15, 15, 20, 0.9), rgba(30, 30, 40, 0.9));
+            backdrop-filter: blur(5px);
+        }
+
+        .search-container {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 30px;
+            background: rgba(30, 30, 40, 0.8);
+            color: var(--light);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.3);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 5px 20px rgba(108, 92, 231, 0.4);
+        }
+
+        .search-input::placeholder {
+            color: var(--gray);
+        }
+
+        /* Stats Cards */
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            padding: 0 20px;
+            margin: 20px auto;
+            max-width: 1000px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            flex: 1;
+            min-width: 250px;
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 12px 40px rgba(108, 92, 231, 0.3);
+        }
+
+        .stat-icon {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: var(--primary);
+            background: rgba(108, 92, 231, 0.1);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .stat-title {
+            font-size: 16px;
+            color: var(--gray);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--light);
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* Referral Link Section */
+        .referral-section {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .referral-block {
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+        }
+
+        .referral-block:hover {
+            border-color: var(--primary);
+            box-shadow: 0 12px 40px rgba(108, 92, 231, 0.3);
+        }
+
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: var(--light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i {
+            color: var(--primary);
+        }
+
+        .link-container {
+            display: flex;
+            background: rgba(40, 40, 50, 0.6);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(108, 92, 231, 0.3);
+        }
+
+        .referral-link {
+            flex: 1;
+            padding: 15px;
+            color: var(--light);
+            font-family: monospace;
+            word-break: break-all;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .copy-button {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 0 25px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .copy-button:hover {
+            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+        }
+
+        /* Referrals List */
+        .referrals-container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .referrals-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .referrals-list {
+            background: rgba(30, 30, 40, 0.7);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .referral-item {
+            padding: 18px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(108, 92, 231, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .referral-item:last-child {
+            border-bottom: none;
+        }
+
+        .referral-item:hover {
+            background: rgba(108, 92, 231, 0.1);
+        }
+
+        .referral-name {
+            font-weight: 600;
+            color: var(--light);
+        }
+
+        .referral-bonus {
+            background: rgba(0, 206, 201, 0.1);
+            color: var(--secondary);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .empty-referrals {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--gray);
+        }
+
+        .empty-referrals i {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: var(--primary);
+            opacity: 0.7;
+        }
+
+        .empty-referrals p {
+            font-size: 16px;
+            max-width: 400px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: rgba(30, 30, 40, 0.95);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: var(--gray);
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: var(--light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-title i {
+            color: var(--primary);
+        }
+
+        .modal-content {
+            color: var(--gray);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .modal-bonus {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(15, 15, 20, 0.95);
+            border-top: 1px solid rgba(108, 92, 231, 0.3);
+            padding: 12px 0;
+            z-index: 90;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-item {
+            color: var(--gray);
+            font-size: 22px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 8px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-item:hover {
+            color: var(--light);
+            transform: translateY(-3px);
+        }
+
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 5px;
+            height: 5px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 30, 40, 0.95);
+            color: var(--light);
+            padding: 12px 25px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(108, 92, 231, 0.3);
+        }
+
+        .notification.active {
+            opacity: 1;
+            visibility: visible;
+            top: 40px;
+        }
+
+        .notification i {
+            color: var(--primary);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .stat-card {
+                width: 100%;
+            }
+            
+            .referral-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
     </style>
 </head>
 <body>
-
-<!-- Header -->
-<div class="header">
-    <div class="logo">Referral program</div>
-    <div class="actions">
-        <button id="send-button">Get link <i class="fa-solid fa-copy"></i></button>
-    </div>
-</div>
-
-<!-- Search Bar -->
-<div class="search-bar">
-    <input type="text" placeholder="Search users..." id="search-input">
-</div>
-
-<!-- Crypto Cards -->
-<div class="crypto-carousel">
-    <div class="crypto-track">
-        <div class="crypto-card" id="crypto-btc">
-            <div class="crypto-header">
-                <div class="crypto-title">
-                    <h3><i class="fa-solid fa-user-group"></i> My referrals</h3>
-                </div>
-            </div>
-            <div class="crypto-price"><span id="price-btc">{{ referral_count }}</span></div>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <!-- <i class="fas fa-rocket"></i> -->
         </div>
-
-        <div class="crypto-card" id="crypto-eth">
-            <div class="crypto-header">
-                <div class="crypto-title">
-                    <h3><i class="fa-solid fa-trophy"></i> Top 1</h3>
-                </div>
-            </div>
-            <div class="crypto-price">
-                <span id="price-eth">
-                    {% if top_referral %}
-                        {{ top_referral[0] }} ({{ top_referral[1] }})
-                    {% else %}
-                        No referrals
-                    {% endif %}
-                </span>
-            </div>
+        <div class="actions">
+            <button id="send-button">
+                <i class="fas fa-copy"></i>
+                Get Link
+            </button>
         </div>
     </div>
-</div>
 
-
-<div class="referral-block">
-    <h3 style="color: #007BFF; margin-top: 0;">Ваша реферальная ссылка</h3>
-    
-    <div class="link-container">
-        <div class="icon"></div>
-        <span class="referral-link">t.me/histobit_bot/start=oJSK...</span>
-    </div>
-    
-    <button class="copy-button" onclick="copyLink()">
-        <div class="icon"></div>
-        Копировать ссылку
-    </button>
-</div>
-
-<!-- Referrals List -->
-<div class="news-container">
-    {% for referral in referrals %}
-        <div class="news-item" 
-             data-news="{{ referral[1] }}" 
-             data-content="Бонус за этого реферала: 3$">
-            {{ referral[1] }}
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-container">
+            <input type="text" placeholder="Search users..." id="search-input" class="search-input">
         </div>
-    {% else %}
-    <div class="news-item" 
-    style="
-        font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-        text-align: center;
-        color: #959595;
-        font-size: 1.4em;
-        margin: 25px auto;
-        padding: 20px;
-        width: 80%;
-        border: 1px solid #1e1e1e;
-        border-radius: 15px;
-        background: linear-gradient(45deg, #1e1e1e, #1e1e1e);
-        box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-        letter-spacing: 0.05em;
-        transform: perspective(500px) rotateX(3deg);
-        line-height: 1.6;
-        text-shadow: 0 1px 1px #959595;
-    ">
-   У вас пока нет рефералов. Пригласите друзей, чтобы начать получать вознаграждения.
-</div>
-    {% endfor %}
-</div>
+    </div>
 
-<!-- News Modal -->
-<div class="news-modal" id="news-modal">
-    <button class="close-btn" id="close-modal">&times;</button>
-    <h2 id="modal-title"></h2>
-    <p id="modal-content"></p>
-</div>
+    <!-- Stats Cards -->
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-title">My Referrals</div>
+            <div class="stat-value">{{ referral_count }}</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-title">Top Referral</div>
+            <div class="stat-value">
+                {% if top_referral %}
+                    {{ top_referral[0] }}
+                {% else %}
+                    -
+                {% endif %}
+            </div>
+        </div>
+    </div>
 
-<!-- Bottom Navigation -->
-<nav class="bottom-nav">
-    <div class="nav-item" id="open-glav"><i class="fa-solid fa-house"></i></div>
-    <div class="nav-item" id="open-chart"  onclick="location.href='/chart'"><i class="fa-solid fa-chart-line"></i></div>
-    <div class="nav-item" id="folow"><i class="fa-solid fa-star" style="color: #fff;"></i></div>
-    <div class="nav-item" id="open-search"  onclick="location.href='/chat'"><i class="fa-regular fa-envelope"></i></div>
-</nav>
+    <!-- Referral Link Section -->
+    <div class="referral-section">
+        <div class="referral-block">
+            <h3 class="section-title">
+                <i class="fas fa-link"></i>
+                Your Referral Link
+            </h3>
+            
+            <div class="link-container">
+                <div class="referral-link" id="referral-link-text">{{ referral_link }}</div>
+                <button class="copy-button" id="copy-button">
+                    <i class="fas fa-copy"></i>
+                    Copy
+                </button>
+            </div>
+        </div>
+    </div>
 
-<!-- Notification -->
-<div class="notification" id="notification">Copied!</div>
+    <!-- Referrals List -->
+    <div class="referrals-container">
+        <div class="referrals-header">
+            <h3 class="section-title">
+                <i class="fas fa-list"></i>
+                Your Referrals
+            </h3>
+        </div>
+        
+        {% if referrals %}
+        <div class="referrals-list" style="margin-bottom: 50%;">
+            {% for referral in referrals %}
+            <div class="referral-item" 
+                 data-name="{{ referral[1] }}" 
+                 data-bonus="Bonus: ${{ loop.index * 2 }}">
+                <span class="referral-name">{{ referral[1] }}</span>
+                <span class="referral-bonus">${{ loop.index * 2 }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-referrals">
+            <i class="fas fa-user-plus"></i>
+            <p>You don't have any referrals yet. Share your link to start earning rewards!</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <button class="modal-close" id="modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+            <h3 class="modal-title">
+                <i class="fas fa-user"></i>
+                <span id="modal-name"></span>
+            </h3>
+            <p class="modal-content" id="modal-content"></p>
+            <div class="modal-bonus" id="modal-bonus"></div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <i class="fas fa-check-circle"></i>
+        <span id="notification-text">Copied to clipboard!</span>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item "  onclick="location.href='/profile'">
+            <i class="fas fa-home"></i>
+        </div>
+        <div class="nav-item"  onclick="location.href='/chart'">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="nav-item active">
+            <i class="fas fa-star"></i>
+        </div>
+        <div class="nav-item "  onclick="location.href='/chat'">
+            <i class="fas fa-envelope"></i>
+        </div>
+    </nav>
 
     <script>
- // Копирование реферальной ссылки
- document.getElementById('send-button').addEventListener('click', () => {
-            navigator.clipboard.writeText('{{ referral_link }}').then(() => {
-                showNotification('Link copied!');
-            }).catch(err => {
-                console.error('Copy failed:', err);
-                showNotification('Error copying!');
-            });
-        });
+        // DOM Elements
+        const searchInput = document.getElementById('search-input');
+        const referralItems = document.querySelectorAll('.referral-item');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalName = document.getElementById('modal-name');
+        const modalContent = document.getElementById('modal-content');
+        const modalBonus = document.getElementById('modal-bonus');
+        const modalClose = document.getElementById('modal-close');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        const copyButton = document.getElementById('copy-button');
+        const sendButton = document.getElementById('send-button');
+        const referralLinkText = document.getElementById('referral-link-text');
 
-        // Поиск рефералов
-        document.getElementById('search-input').addEventListener('input', function() {
+        // Search functionality
+        searchInput.addEventListener('input', function() {
             const searchTerm = this.value.toLowerCase();
-            const items = document.querySelectorAll('.news-item');
+            let hasResults = false;
             
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(searchTerm) ? 'block' : 'none';
+            referralItems.forEach(item => {
+                const name = item.dataset.name.toLowerCase();
+                if (name.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                    hasResults = true;
+                } else {
+                    item.style.display = 'none';
+                }
             });
+            
+            // Show no results message if needed
+            const emptyMessage = document.querySelector('.empty-referrals');
+            if (!hasResults && searchTerm.length > 0) {
+                if (!emptyMessage) {
+                    const noResults = document.createElement('div');
+                    noResults.className = 'empty-referrals';
+                    noResults.innerHTML = `
+                        <i class="fas fa-search"></i>
+                        <p>No referrals found matching "${searchTerm}"</p>
+                    `;
+                    document.querySelector('.referrals-container').appendChild(noResults);
+                }
+            } else if (emptyMessage && emptyMessage.parentNode && searchTerm.length === 0) {
+                emptyMessage.remove();
+            }
         });
 
-        // Модальное окно
-        const newsItems = document.querySelectorAll('.news-item');
-        const newsModal = document.getElementById('news-modal');
-        const overlay = document.getElementById('overlay');
-
-        newsItems.forEach(item => {
+        // Modal functionality
+        referralItems.forEach(item => {
             item.addEventListener('click', () => {
-                document.getElementById('modal-title').textContent = item.dataset.news;
-                document.getElementById('modal-content').textContent = item.dataset.content;
-                newsModal.style.display = 'block';
-                overlay.style.display = 'block';
+                modalName.textContent = item.dataset.name;
+                modalContent.textContent = item.dataset.bonus;
+                modalBonus.textContent = item.querySelector('.referral-bonus').textContent;
+                modalOverlay.classList.add('active');
             });
         });
 
-        // Закрытие модального окна
-        document.getElementById('close-modal').addEventListener('click', closeModal);
-        overlay.addEventListener('click', closeModal);
+        // Close modal
+        modalClose.addEventListener('click', closeModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                closeModal();
+            }
+        });
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modalOverlay.classList.contains('active')) {
+                closeModal();
+            }
+        });
 
         function closeModal() {
-            newsModal.style.display = 'none';
-            overlay.style.display = 'none';
+            modalOverlay.classList.remove('active');
         }
 
-        // Уведомления
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.display = 'block';
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 1500);
+        // Copy referral link
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification('Link copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                showNotification('Failed to copy link');
+            });
         }
 
-        // Навигация
-        document.getElementById('open-glav').addEventListener('click', () => {
-            window.location.href = "{{ url_for('profile') }}";
+        copyButton.addEventListener('click', () => {
+            copyToClipboard(referralLinkText.textContent);
         });
 
+        sendButton.addEventListener('click', () => {
+            copyToClipboard(referralLinkText.textContent);
+        });
 
-
-        function copyLink() {
-            const link = document.querySelector('.referral-link').textContent;
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Ссылка скопирована в буфер!');
-            });
-            navigator.clipboard.writeText('{{ referral_link }}').then(() => {
-                showNotification('Link copied!');
-            }).catch(err => {
-                console.error('Copy failed:', err);
-                showNotification('Error copying!');
-            });
+        // Show notification
+        function showNotification(message) {
+            notificationText.textContent = message;
+            notification.classList.add('active');
+            
+            setTimeout(() => {
+                notification.classList.remove('active');
+            }, 3000);
         }
+
+        // Bottom nav active state
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                navItems.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Animate elements on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const animatedElements = document.querySelectorAll('.stat-card, .referral-block, .referrals-list, .empty-referrals');
+            animatedElements.forEach((el, index) => {
+                setTimeout(() => {
+                    el.classList.add('fade-in');
+                }, index * 100);
+            });
+        });
     </script>
 </body>
 </html>
