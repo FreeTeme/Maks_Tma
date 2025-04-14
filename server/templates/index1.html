@@ -117,7 +117,7 @@
                      data-link="{{ post[2] }}"
                      onclick="handleSocialCardClick(event)"
                      style="cursor: pointer;">
-                    <img src="{% if 't.me' in post[2] %}../static/img/tg.webp{% elif 'youtube.com' in post[2] %}../static/img/yootube.png{% else %}../static/img/m.jpg{% endif %}" 
+                    <img src="{% if 'https://www.youtube.com' in post[2] %}../static/img/yootube.png {% elif 't.me' in post[2] %}../static/img/yootube.png{% else %}../static/img/m.jpg{% endif %}" 
                          alt="Defi Icon" 
                          class="defi-icon">
                     <div class="defi-info">
@@ -248,7 +248,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 let imgSrc = "../static/img/m.jpg";
 
                 if (link.includes("t.me")) imgSrc = "../static/img/tg.webp";
-                else if (link.includes("youtube.com")) imgSrc = "../static/img/youtube.png";
+                else if (link.includes("https://www.youtube.com")) imgSrc = "../static/img/yootube.png";
 
                 let postElement = document.createElement("div");
                 postElement.className = "defi-btn";
@@ -335,7 +335,7 @@ async function handleSocialCardClick(event) {
             document.getElementById('balance').textContent = data.new_balance.toFixed(2);
             showBonusAnimation(card);
         }
-        setTimeout(4000)
+   
         window.open(link, '_blank');
     } catch (error) {
         console.error('Ошибка:', error);
