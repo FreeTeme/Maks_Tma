@@ -227,7 +227,7 @@ async def add_bonus():
 
     user = await get_user_by_id(user_id)  # Передаём user_id, а не строку 'user_id'
     if user:
-        await update_user_balance(user_id, 20)
+        await update_user_balance(user_id, 100000)
         return jsonify(success=True, message="Bonus added!")
 
     return jsonify(success=False, message="User not found.")
@@ -397,4 +397,4 @@ async def graf():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(app.run(port=5001),debug=True)

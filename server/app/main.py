@@ -11,7 +11,7 @@ from importlib import import_module
 import asyncio
 
 
-API_TOKEN = "8165391157:AAHJr_b-FRzZUwM5S_FTM4WLqXUqThYij_k"
+API_TOKEN = "7972918156:AAGvSPb3tscthKLnEb3eQ2uvtgeVNiHbQ4U"
 ADMIN_ID = 6850731097
 WEB_APP_URL = "https://vladtichonenko.github.io/test_post1/"
 

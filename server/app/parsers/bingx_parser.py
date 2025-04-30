@@ -4,18 +4,15 @@ import logging
 
 class BingXParser(BaseParser):
     def get_staking_info(self, coin: str) -> dict:
-    
         try:
             normalized_coin = self.normalize_coin_name(coin)
             self.logger.debug(f"Normalized coin: {normalized_coin}")
 
-            # Запрос к API BingX
             response = self._make_api_request()
             if not response.ok:
                 self.logger.error(f"BingX API error: {response.status_code}")
                 return {}
 
-            # Обрабатываем данные, начиная с ключа 'data'
             data = response.json()
             self.logger.debug(f"Raw API response: {data}")
 
@@ -30,37 +27,52 @@ class BingXParser(BaseParser):
 
     def _make_api_request(self):
         """
-        Запрос к API BingX.
+        Запрос к актуальному API BingX для стейкинга.
         """
+        
+
+        cookies = {
+            'locale': 'en',
+            'uuid': '2cd47536900844939eeb1b389c883ad0',
+            '_gid': 'GA1.2.450072761.1745753377',
+            '_fbp': 'fb.1.1745753384756.80230797195555829',
+            '__cf_bm': '..p7W23SYXztneMGZuiKtrRxL67cb.r5hZBPGGpCaeQ-1745763032-1.0.1.1-DmOpLWHsF.glZAgqPPVw1H6By1MYzLiZUemusmqKCJ49vP7dm6pW3LYVxFmHQNCKVOCY2g5wh7sHNMDlXDf9FL1xhAUJGffqeW6kQtVcIPQ',
+            '_ga': 'GA1.1.1078388942.1745753377',
+            '_uetsid': 'eb106640235a11f0a67e09aaeba947e3',
+            '_uetvid': 'eb1083c0235a11f0bb712ba311fb8d9e',
+            '_ga_GH1NE7LJK0': 'GS1.1.1745763028.2.1.1745763047.0.0.0',
+            '_ga_F8FPFG5ZCL': 'GS1.1.1745763029.2.1.1745763047.0.0.0',
+            'network_delay': '102',
+        }
+
         headers = {
             'accept': 'application/json, text/plain, */*',
             'accept-language': 'ru-RU,ru;q=0.9,en-DE;q=0.8,en;q=0.7,en-US;q=0.6',
-            'app_version': '5.1.85',
+            'app_version': '5.1.90',
             'appid': '30004',
             'appsiteid': '0',
             'channel': 'official',
-            'device_brand': 'Windows 10_Chrome_134.0.0.0',
-            'device_id': 'cc0534161158478aa11e3c9484d2e282',
+            'device_brand': 'Windows 10_Chrome_135.0.0.0',
+            'device_id': '2cd47536900844939eeb1b389c883ad0',
             'lang': 'en',
             'mainappid': '10009',
-            'origin': 'https://bingx.com',
             'platformid': '30',
             'priority': 'u=1, i',
-            'referer': 'https://bingx.com/',
+            'referer': 'https://bingx.com/en/wealth/earn/',
             'reg_channel': 'official',
-            'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
+            'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
             'sec-ch-ua-mobile': '?0',
             'sec-ch-ua-platform': '"Windows"',
             'sec-fetch-dest': 'empty',
             'sec-fetch-mode': 'cors',
-            'sec-fetch-site': 'cross-site',
-            'sec-fetch-storage-access': 'active',
-            'sign': '66FD38866BCAD6A2DDA684FE8EFC00563A31B3E17272119602D72494C1C7CB0E',
-            'timestamp': '1742730682315',
+            'sec-fetch-site': 'same-origin',
+            'sign': '8FD054526C2846945C39FF8D4263165171B106846F6B943907ADB105EC1A109F',
+            'timestamp': '1745763119854',
             'timezone': '3',
-            'traceid': 'f7ea13ead7f148bcafb249ebfe410e40',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+            'traceid': '46636f879ed448809b03f8feae71ff94',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
             'x-requested-with': 'XMLHttpRequest',
+            # 'cookie': 'locale=en; uuid=2cd47536900844939eeb1b389c883ad0; _gid=GA1.2.450072761.1745753377; _fbp=fb.1.1745753384756.80230797195555829; __cf_bm=..p7W23SYXztneMGZuiKtrRxL67cb.r5hZBPGGpCaeQ-1745763032-1.0.1.1-DmOpLWHsF.glZAgqPPVw1H6By1MYzLiZUemusmqKCJ49vP7dm6pW3LYVxFmHQNCKVOCY2g5wh7sHNMDlXDf9FL1xhAUJGffqeW6kQtVcIPQ; _ga=GA1.1.1078388942.1745753377; _uetsid=eb106640235a11f0a67e09aaeba947e3; _uetvid=eb1083c0235a11f0bb712ba311fb8d9e; _ga_GH1NE7LJK0=GS1.1.1745763028.2.1.1745763047.0.0.0; _ga_F8FPFG5ZCL=GS1.1.1745763029.2.1.1745763047.0.0.0; network_delay=102',
         }
 
         params = {
@@ -70,55 +82,53 @@ class BingXParser(BaseParser):
             'orderBy': '',
         }
 
-        response = requests.get('https://api-app.we-api.com/api/wealth-sales-trading/v1/product/list', params=params, headers=headers)
+        response = requests.get(
+            'https://bingx.com/api/wealth-sales-trading/v1/product/list?searchType=&dataType=&assetName=&orderBy=',
+            params=params,
+            cookies=cookies,
+            headers=headers,
+        )
         self.logger.debug(f"API request to BingX, status code: {response.status_code}")
         return response
 
     def parse_response(self, data: list, coin: str) -> dict:
-        """
-        Парсит данные от BingX и возвращает их в формате, аналогичном Gate.io.
-        """
         result = {
             "exchange": "BingX",
             "coin": coin,
-            "holdPosList": [],  # Гибкий стейкинг
-            "lockPosList": [],  # Фиксированный стейкинг
+            "holdPosList": [],
+            "lockPosList": [],
             "cost": "0%"
         }
 
         all_apy = []
 
-        # Обрабатываем данные о монетах
         for item in data:
             if item.get("assetName") != coin:
                 continue
 
-            # Обрабатываем продукты для текущей монеты
-            for product in item.get("products", []):
-                apy = float(product.get("apy", 0))
-                duration = int(product.get("duration", 0))
+            products = item.get("products", [])
+            for product in products:
+                try:
+                    apy = round(float(product.get("apy", "0")), 2)
+                    duration = int(product.get("duration", -1))
+                    product_type = int(product.get("productType", 0))
+                except (ValueError, TypeError):
+                    continue
 
-                # Гибкий стейкинг (productType = 2)
-                if product.get("productType") == 2:
-                    result["holdPosList"].append({
-                        "days": 0,  # Гибкий стейкинг не имеет срока
-                        "apy": round(apy, 2),  # Округляем до сотых
-                        "min_amount": 0,  # Минимальная сумма не указана
-                        "max_amount": 0  # Без ограничений
-                    })
-                    all_apy.append(apy)
+                entry = {
+                    "days": 0 if duration == -1 else duration,
+                    "apy": apy,
+                    "min_amount": 0,
+                    "max_amount": 0
+                }
 
-                # Фиксированный стейкинг (productType = 1)
-                elif product.get("productType") == 1:
-                    result["lockPosList"].append({
-                        "days": duration,  # Срок блокировки
-                        "apy": round(apy, 2),  # Округляем до сотых
-                        "min_amount": 0,  # Минимальная сумма не указана
-                        "max_amount": 0  # Без ограничений
-                    })
-                    all_apy.append(apy)
+                if duration == -1 or product_type == 2:
+                    result["holdPosList"].append(entry)
+                elif duration > 0 or product_type == 1:
+                    result["lockPosList"].append(entry)
 
-        # Формируем строку cost
+                all_apy.append(apy)
+
         if all_apy:
             min_apy = round(min(all_apy), 2)
             max_apy = round(max(all_apy), 2)
