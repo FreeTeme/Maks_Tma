@@ -241,11 +241,9 @@ def add_bonus():
 
     user = get_user_by_id(user_id)  # Синхронный вызов
     if user:
-<<<<<<< HEAD
-        await update_user_balance(user_id, 100000)
-=======
+
         update_user_balance(user_id, 20)  # Синхронный вызов
->>>>>>> d334971b91602e7cc0eed7754da299c79d2bf1a4
+
         return jsonify(success=True, message="Bonus added!")
 
     return jsonify(success=False, message="User not found.")
@@ -391,8 +389,5 @@ def graf():
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    app.run(app.run(port=5001),debug=True)
-=======
     app.run(host='0.0.0.0', port=5000, debug=False)
->>>>>>> d334971b91602e7cc0eed7754da299c79d2bf1a4
+
