@@ -1,14 +1,15 @@
 import logging
 import sqlite3
 import asyncio
+import pandas as pd
 from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.utils import executor
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from urllib.parse import quote
+import io
 
-
-API_TOKEN = "8165391157:AAHJr_b-FRzZUwM5S_FTM4WLqXUqThYij_k"
+API_TOKEN = "8071846167:AAH5iIcF8Z_dQ-RrmKEfxYO8mebDZ3T1uTE"
 ADMIN_ID = 6850731097
 WEB_APP_URL = "https://vladtichonenko.github.io/test_post1/"
 
@@ -38,7 +39,8 @@ def create_db():
             username TEXT,
             referrer_id INTEGER,
             balance INTEGER DEFAULT 100,
-            referral_link TEXT
+            referral_link TEXT,
+            mining_end_time INTEGER
         )
     """)
 
@@ -94,14 +96,14 @@ def add_user(user_id, username, referrer_id=None):
     if cursor.fetchone() is None:
         # Генерируем реферальную ссылку
         referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
-        
+
         # Добавляем запись с ссылкой
         cursor.execute("""
             INSERT INTO users 
             (user_id, username, referrer_id, balance, referral_link) 
             VALUES (?, ?, ?, 100, ?)
         """, (user_id, username, referrer_id, referral_link))
-        
+
         conn.commit()
 
         # Начисление бонусов за рефералов (остальное без изменений)
@@ -148,6 +150,31 @@ def get_referrals(user_id):
     referrals = cursor.fetchall()
     conn.close()
     return [ref[0] for ref in referrals]
+
+
+def get_all_users():
+    """ Получение всех пользователей с их рефералами """
+    conn, cursor = get_db()
+
+    # Получаем всех пользователей
+    cursor.execute("SELECT user_id, username, balance FROM users")
+    users = cursor.fetchall()
+
+    # Для каждого пользователя получаем его рефералов
+    users_data = []
+    for user_id, username, balance in users:
+        cursor.execute("SELECT username FROM users WHERE referrer_id = ?", (user_id,))
+        referrals = cursor.fetchall()
+        referrals_list = [ref[0] for ref in referrals] if referrals else []
+        users_data.append({
+            "user_id": user_id,
+            "username": username or f"id{user_id}",
+            "balance": balance,
+            "referrals": referrals_list
+        })
+
+    conn.close()
+    return users_data
 
 
 ### --- Обработчики команд --- ###
@@ -208,12 +235,59 @@ async def show_referrals(message: types.Message):
         await message.answer("У тебя пока нет рефералов.")
 
 
+@dp.message_handler(commands=['all_users'])
+async def show_all_users(message: types.Message):
+    """ Показывает всех пользователей (только для админа) """
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("У вас нет прав доступа к этой команде.")
+        return
+
+    users_data = get_all_users()
+
+    if not users_data:
+        await message.answer("В базе нет пользователей.")
+        return
+
+    # Создаем красивое текстовое представление
+    text = "📊 <b>Список всех пользователей:</b>\n\n"
+    for user in users_data:
+        referrals_text = ", ".join([f"@{ref}" for ref in user['referrals']]) if user['referrals'] else "нет рефералов"
+        text += (
+            f"👤 <b>Пользователь:</b> @{user['username']} (ID: {user['user_id']})\n"
+            f"💰 <b>Баланс:</b> {user['balance']} баллов\n"
+            f"👥 <b>Рефералы:</b> {referrals_text}\n"
+            f"────────────────────\n"
+        )
+
+    # Создаем Excel файл с использованием openpyxl
+    df = pd.DataFrame([{
+        'ID': user['user_id'],
+        'Username': user['username'],
+        'Balance': user['balance'],
+        'Referrals': ", ".join(user['referrals']) if user['referrals'] else "None",
+        'Referrals Count': len(user['referrals'])
+    } for user in users_data])
+
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Users')
+
+    excel_buffer.seek(0)
+
+    # Отправляем сообщение и файл
+    await message.answer(text, parse_mode='HTML')
+    await message.answer_document(
+        types.InputFile(excel_buffer, filename='users_list.xlsx'),
+        caption="📋 Excel файл со списком пользователей"
+    )
+
 @dp.message_handler(commands=['admin'])
 async def admin_panel(message: types.Message):
     """ Показывает админ-панель """
     if message.from_user.id == ADMIN_ID:
         keyboard = InlineKeyboardMarkup().add(
-            InlineKeyboardButton("Добавить пост", callback_data="add_post")
+            InlineKeyboardButton("Добавить пост", callback_data="add_post"),
+            InlineKeyboardButton("Список пользователей", callback_data="all_users")
         )
         await message.reply("Админ-панель. Выберите действие:", reply_markup=keyboard)
     else:
@@ -225,6 +299,18 @@ async def add_post_command(callback_query: CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
     await bot.send_message(callback_query.from_user.id,
                            "Введите пост в формате:\n/task <title>\n/description <desc>\n/link <link>\n/bonus <bonus>")
+
+
+@dp.callback_query_handler(lambda c: c.data == "all_users")
+async def all_users_callback(callback_query: CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    await show_all_users(types.Message(
+        message_id=callback_query.message.message_id,
+        from_user=callback_query.from_user,
+        chat=callback_query.message.chat,
+        text="/all_users"
+    ))
+
 
 @dp.message_handler(lambda message: message.text.startswith("/task"))
 async def handle_task(message: types.Message):
@@ -250,6 +336,7 @@ async def handle_task(message: types.Message):
 
     add_post(title, description, link, bonus)
     await message.reply("✅ Пост успешно добавлен!")
+
 
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
