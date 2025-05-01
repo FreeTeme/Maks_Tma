@@ -1,45 +1,56 @@
 import logging
-from aiogram import Bot, Dispatcher, executor, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ParseMode
+from aiogram.filters import Command, CommandStart
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 import sqlite3
 from datetime import datetime
 import asyncio
 
 # Настройка логгера
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Инициализация бота
-bot = Bot(token="7614037945:AAFrWrjShd62i_QDfqN-5YnfKNcthUXkb4w")  # ← ЗАМЕНИТЕ ТОКЕН
+# Инициализация бота с новым синтаксисом
+bot = Bot(
+    token="7614037945:AAFrWrjShd62i_QDfqN-5YnfKNcthUXkb4w")
+    # default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+
 storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+dp = Dispatcher(storage=storage)
 
 # Подключение к базе данных
 conn = sqlite3.connect('referrals.db', check_same_thread=False)
 cursor = conn.cursor()
 
+# Конфигурация
+ADMIN_ID = 6850731097  # ← ЗАМЕНИТЕ НА ВАШ ID
+last_checked_id = 0
 
 # Классы состояний
 class AnswerState(StatesGroup):
     waiting_for_answer = State()
 
-
 class AddAdminState(StatesGroup):
     waiting_for_user_id = State()
-
 
 class DelAdminState(StatesGroup):
     waiting_for_user_id = State()
 
+# Middleware для проверки админа
+class AdminMiddleware:
+    async def __call__(self, handler, event, data):
+        if event.from_user.id == ADMIN_ID or is_admin(event.from_user.id):
+            return await handler(event, data)
+        await event.answer("⛔ Доступ запрещен")
+        return
 
-# Конфигурация
-ADMIN_ID = 6850731097  # ← ЗАМЕНИТЕ НА ВАШ ID
-last_checked_id = 0
-
-
+# Инициализация базы данных
 def check_database():
-    """Инициализация структуры базы данных"""
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS questions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,23 +69,18 @@ def check_database():
         )
     ''')
 
-    # Добавляем главного админа если его нет
     cursor.execute('INSERT OR IGNORE INTO admins (user_id, username) VALUES (?, ?)',
-                   (ADMIN_ID, 'Главный админ'))
+                  (ADMIN_ID, 'Главный админ'))
     conn.commit()
 
-
 def is_admin(user_id: int) -> bool:
-    """Проверка прав администратора"""
     cursor.execute('SELECT 1 FROM admins WHERE user_id = ?', (user_id,))
     return cursor.fetchone() is not None
 
-
 check_database()
 
-
+# Фоновые задачи
 async def check_new_questions():
-    """Фоновая проверка новых вопросов"""
     global last_checked_id
     while True:
         await asyncio.sleep(10)
@@ -89,34 +95,26 @@ async def check_new_questions():
                 await notify_admin(new_count)
                 cursor.execute("SELECT MAX(id) FROM questions")
                 last_checked_id = cursor.fetchone()[0] or 0
-
         except Exception as e:
-            logging.error(f"Ошибка проверки вопросов: {e}")
-
-
-async def on_startup(dp):
-    """Действия при запуске бота"""
-    global last_checked_id
-    cursor.execute("SELECT MAX(id) FROM questions")
-    last_checked_id = cursor.fetchone()[0] or 0
-    asyncio.create_task(check_new_questions())
-
+            logger.error(f"Ошибка проверки вопросов: {e}")
 
 async def notify_admin(new_count: int):
-    """Уведомление администраторов"""
     cursor.execute('SELECT user_id FROM admins')
     admins = cursor.fetchall()
     for admin in admins:
         try:
-            await bot.send_message(admin[0], f"🔔 Новых неотвеченных вопросов: {new_count}\nПосмотреть список - /start")
+            await bot.send_message(
+                admin[0], 
+                f"🔔 Новых неотвеченных вопросов: {new_count}\nПосмотреть список - /start"
+            )
         except Exception as e:
-            logging.error(f"Ошибка уведомления админа {admin[0]}: {e}")
+            logger.error(f"Ошибка уведомления админа {admin[0]}: {e}")
 
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    """Главное меню администратора"""
+# Обработчики команд
+@dp.message(CommandStart())
+async def send_welcome(message: Message):
     if not is_admin(message.from_user.id):
-        await message.reply("⛔ Доступ запрещен")
+        await message.answer("⛔ Доступ запрещен")
         return
 
     cursor.execute("SELECT id, question FROM questions WHERE is_answered = FALSE")
@@ -126,81 +124,60 @@ async def send_welcome(message: types.Message):
         await message.answer("📭 Нет новых вопросов")
         return
 
-    keyboard = types.InlineKeyboardMarkup()
+    builder = InlineKeyboardBuilder()
     for q_id, q_text in questions:
-        button_text = f"❓ {q_text[:30]}{'...' if len(q_text) > 30 else ''}"
-        keyboard.add(types.InlineKeyboardButton(
-            text=button_text,
+        builder.button(
+            text=f"❓ {q_text[:30]}{'...' if len(q_text) > 30 else ''}",
             callback_data=f"question_{q_id}"
-        ))
+        )
+    builder.adjust(1)
+    
+    await message.answer("📝 Список новых вопросов:", reply_markup=builder.as_markup())
 
-    await message.answer("📝 Список новых вопросов:", reply_markup=keyboard)
-
-# Команды администратора
-@dp.message_handler(commands=['add'])
-async def add_admin_command(message: types.Message):
-    """Добавление администратора"""
-    x=message.from_user.id
-    if x!=ADMIN_ID:
-        await message.reply("⛔ Доступ запрещен")
+@dp.message(Command('add'))
+async def add_admin_command(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Доступ запрещен")
         return
 
     await message.answer("Введите ID пользователя для добавления:")
-    await AddAdminState.waiting_for_user_id.set()
+    await state.set_state(AddAdminState.waiting_for_user_id)
 
-
-@dp.message_handler(state=AddAdminState.waiting_for_user_id)
-async def process_add_admin(message: types.Message, state: FSMContext):
-    """Обработка добавления администратора"""
+@dp.message(AddAdminState.waiting_for_user_id)
+async def process_add_admin(message: Message, state: FSMContext):
     try:
         user_id = int(message.text)
-
-        # Проверяем существование пользователя через попытку отправки сообщения
         try:
             await bot.send_message(user_id, "🤖 Вы были назначены администратором!")
             username = "неизвестно"
-        except Exception as e:
-            await message.answer(f"❌ Ошибка: Не удалось найти пользователя. Убедитесь что:\n"
-                                 f"1. Пользователь существует\n"
-                                 f"2. Он запустил бота\n"
-                                 f"3. ID введен правильно")
+        except Exception:
+            await message.answer(
+                "❌ Ошибка: Не удалось найти пользователя. Убедитесь что:\n"
+                "1. Пользователь существует\n"
+                "2. Он запустил бота\n"
+                "3. ID введен правильно"
+            )
             return
 
-        # Получаем username если доступно
-        if message.forward_from:
-            username = message.forward_from.username or "нет"
-        else:
-            cursor.execute('SELECT username FROM admins WHERE user_id = ?', (user_id,))
-            result = cursor.fetchone()
-            username = result[0] if result else "неизвестно"
-
-        cursor.execute('INSERT OR IGNORE INTO admins (user_id, username) VALUES (?, ?)',
-                       (user_id, username))
+        cursor.execute(
+            'INSERT OR IGNORE INTO admins (user_id, username) VALUES (?, ?)',
+            (user_id, username)
+        )
         conn.commit()
 
-        await message.answer(f"✅ Пользователь (ID: {user_id}) добавлен в администраторы!\n"
-                             f"Username: @{username}")
-
+        await message.answer(
+            f"✅ Пользователь (ID: {user_id}) добавлен в администраторы!\n"
+            f"Username: @{username}"
+        )
     except ValueError:
         await message.answer("❌ Ошибка: Введите корректный ID пользователя (число)")
-    except Exception as e:
-        await message.answer(f"❌ Неизвестная ошибка: {str(e)}")
+    finally:
+        await state.clear()
 
-    await state.finish()
-
-
-
-
-
-
-
-
-@dp.message_handler(commands=['del'])
-async def del_admin_command(message: types.Message):
-    """Удаление администратора"""
-    x = message.from_user.id
-    if x != ADMIN_ID:
-        await message.reply("⛔ Доступ запрещен")
+@dp.message(Command('del'))
+async def del_admin_command(message: Message, state: FSMContext):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("⛔ Доступ запрещен")
         return
 
     cursor.execute('SELECT user_id, username FROM admins')
@@ -212,15 +189,12 @@ async def del_admin_command(message: types.Message):
 
     admins_list = "\n".join([f"ID: {a[0]} | Username: @{a[1]}" for a in admins])
     await message.answer(
-        f"Список администраторов:\n{admins_list}\n\nВведите ID для удаления:",
-        parse_mode="HTML"
+        f"Список администраторов:\n{admins_list}\n\nВведите ID для удаления:"
     )
-    await DelAdminState.waiting_for_user_id.set()
+    await state.set_state(DelAdminState.waiting_for_user_id)
 
-
-@dp.message_handler(state=DelAdminState.waiting_for_user_id)
-async def process_del_admin(message: types.Message, state: FSMContext):
-    """Обработка удаления администратора"""
+@dp.message(DelAdminState.waiting_for_user_id)
+async def process_del_admin(message: Message, state: FSMContext):
     try:
         user_id = int(message.text)
         if user_id == ADMIN_ID:
@@ -234,21 +208,15 @@ async def process_del_admin(message: types.Message, state: FSMContext):
             await message.answer(f"✅ Пользователь с ID {user_id} удален из администраторов!")
         else:
             await message.answer("❌ Пользователь с таким ID не найден!")
-
     except ValueError:
         await message.answer("❌ Ошибка: Введите корректный ID пользователя (число)")
     finally:
-        await state.finish()
+        await state.clear()
 
-
-# Обработка вопросов
-
-
-
-@dp.callback_query_handler(lambda c: c.data.startswith('question_'))
-async def show_question_details(callback_query: types.CallbackQuery):
-    """Просмотр деталей вопроса"""
-    q_id = int(callback_query.data.split('_')[1])
+# Обработчики вопросов
+@dp.callback_query(F.data.startswith('question_'))
+async def show_question_details(callback: CallbackQuery):
+    q_id = int(callback.data.split('_')[1])
 
     cursor.execute('''
         SELECT user_id, question, created_at 
@@ -257,7 +225,7 @@ async def show_question_details(callback_query: types.CallbackQuery):
 
     result = cursor.fetchone()
     if not result:
-        await bot.answer_callback_query(callback_query.id, "Вопрос не найден")
+        await callback.answer("Вопрос не найден")
         return
 
     user_id, question, created_at = result
@@ -269,52 +237,41 @@ async def show_question_details(callback_query: types.CallbackQuery):
         f"📝 Вопрос:\n{question}"
     )
 
-    await bot.send_message(
-        chat_id=callback_query.from_user.id,
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✍️ Ответить", callback_data=f"answer_{q_id}")
+
+    await callback.message.answer(
         text=text,
-        reply_markup=types.InlineKeyboardMarkup().add(
-            types.InlineKeyboardButton(
-                text="✍️ Ответить",
-                callback_data=f"answer_{q_id}"
-            )
-        )
+        reply_markup=builder.as_markup()
     )
-    await bot.answer_callback_query(callback_query.id)
+    await callback.answer()
 
+@dp.callback_query(F.data.startswith('answer_'))
+async def start_answer(callback: CallbackQuery, state: FSMContext):
+    q_id = int(callback.data.split('_')[1])
+    await state.update_data(question_id=q_id)
+    await state.set_state(AnswerState.waiting_for_answer)
+    await callback.message.answer("Введите ваш ответ:")
+    await callback.answer()
 
-@dp.callback_query_handler(lambda c: c.data.startswith('answer_'))
-async def start_answer(callback_query: types.CallbackQuery, state: FSMContext):
-    """Начало процесса ответа"""
-    q_id = int(callback_query.data.split('_')[1])
-    async with state.proxy() as data:
-        data['question_id'] = q_id
-
-    await AnswerState.waiting_for_answer.set()
-    await bot.send_message(callback_query.from_user.id, "Введите ваш ответ:")
-
-
-@dp.message_handler(state=AnswerState.waiting_for_answer)
-async def save_answer(message: types.Message, state: FSMContext):
-    """Сохранение ответа"""
-    answer = message.text
-    async with state.proxy() as data:
-        q_id = data['question_id']
+@dp.message(AnswerState.waiting_for_answer)
+async def save_answer(message: Message, state: FSMContext):
+    data = await state.get_data()
+    q_id = data['question_id']
 
     cursor.execute('''
         UPDATE questions 
         SET admin_answer = ?, is_answered = TRUE 
         WHERE id = ?
-    ''', (answer, q_id))
+    ''', (message.text, q_id))
     conn.commit()
 
     await message.answer("✅ Ответ сохранен!")
-    await state.finish()
+    await state.clear()
     await send_welcome(message)
 
-
-@dp.message_handler(content_types=types.ContentTypes.TEXT)
-async def handle_user_question(message: types.Message):
-    """Обработка вопросов от пользователей"""
+@dp.message()
+async def handle_user_question(message: Message):
     if is_admin(message.from_user.id):
         return
 
@@ -327,6 +284,16 @@ async def handle_user_question(message: types.Message):
     await message.answer("✅ Ваш вопрос принят! Ожидайте ответа.")
     await notify_admin(1)
 
+# Запуск бота
+async def on_startup():
+    global last_checked_id
+    cursor.execute("SELECT MAX(id) FROM questions")
+    last_checked_id = cursor.fetchone()[0] or 0
+    asyncio.create_task(check_new_questions())
+
+async def main():
+    await on_startup()
+    await dp.start_polling(bot, skip_updates=True)
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
+    asyncio.run(main())

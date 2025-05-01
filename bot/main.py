@@ -2,34 +2,39 @@ import logging
 import sqlite3
 import asyncio
 import pandas as pd
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.utils import executor
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.filters import Command, CommandStart
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from urllib.parse import quote
 import io
+from datetime import datetime
 
+# Настройка логгера
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Конфигурация
 API_TOKEN = "8071846167:AAH5iIcF8Z_dQ-RrmKEfxYO8mebDZ3T1uTE"
 ADMIN_ID = 6850731097
 WEB_APP_URL = "https://vladtichonenko.github.io/test_post1/"
 
-logging.basicConfig(level=logging.INFO)
-
+# Инициализация бота и диспетчера
 bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
-
+dp = Dispatcher(storage=storage)
 
 ### --- Функции работы с БД --- ###
 
 def get_db():
-    """ Возвращает соединение и курсор к базе данных """
+    """Возвращает соединение и курсор к базе данных"""
     conn = sqlite3.connect("referrals.db")
     return conn, conn.cursor()
 
-
 def create_db():
-    """ Создание базы данных, если её нет """
+    """Создание базы данных, если её нет"""
     conn, cursor = get_db()
 
     # Таблица пользователей
@@ -50,7 +55,7 @@ def create_db():
     if 'referral_link' not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN referral_link TEXT")
 
-    # Таблица постов (остается без изменений)
+    # Таблица постов
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,32 +69,26 @@ def create_db():
     conn.commit()
     conn.close()
 
-
 def add_post(title, description, link, bonus):
-    """ Добавление поста в базу данных """
+    """Добавление поста в базу данных"""
     conn, cursor = get_db()
-    cursor.execute("INSERT INTO posts (title, description, link, bonus) VALUES (?, ?, ?, ?)",
-                   (title, description, link, bonus))
+    cursor.execute(
+        "INSERT INTO posts (title, description, link, bonus) VALUES (?, ?, ?, ?)",
+        (title, description, link, bonus)
+    )
     conn.commit()
     conn.close()
 
-
 def get_posts():
-    """ Получение всех постов """
+    """Получение всех постов"""
     conn, cursor = get_db()
     cursor.execute("SELECT title, description, link, bonus FROM posts")
     posts = cursor.fetchall()
     conn.close()
     return posts
 
-
-async def on_startup(dp):
-    """ Запускается при старте бота """
-    create_db()
-
-
 def add_user(user_id, username, referrer_id=None):
-    """ Добавление нового пользователя """
+    """Добавление нового пользователя"""
     conn, cursor = get_db()
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
 
@@ -97,7 +96,6 @@ def add_user(user_id, username, referrer_id=None):
         # Генерируем реферальную ссылку
         referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
 
-        # Добавляем запись с ссылкой
         cursor.execute("""
             INSERT INTO users 
             (user_id, username, referrer_id, balance, referral_link) 
@@ -106,7 +104,7 @@ def add_user(user_id, username, referrer_id=None):
 
         conn.commit()
 
-        # Начисление бонусов за рефералов (остальное без изменений)
+        # Начисление бонусов за рефералов
         if referrer_id:
             update_balance(referrer_id, 3)
             notify_referrer(referrer_id, username, 3)
@@ -120,47 +118,46 @@ def add_user(user_id, username, referrer_id=None):
 
     conn.close()
 
-
 def update_balance(user_id, points):
-    """ Обновление баланса пользователя """
+    """Обновление баланса пользователя"""
     conn, cursor = get_db()
-    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (points, user_id))
+    cursor.execute(
+        "UPDATE users SET balance = balance + ? WHERE user_id = ?", 
+        (points, user_id)
+    )
     conn.commit()
     conn.close()
 
-
 def get_balance(user_id):
-    """ Получение баланса пользователя """
+    """Получение баланса пользователя"""
     conn, cursor = get_db()
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else 0
 
-
-def notify_referrer(referrer_id, new_username, points):
-    """ Уведомление реферера о новом пользователе """
-    asyncio.create_task(bot.send_message(referrer_id, f"Ваш реферал @{new_username} принес вам {points} баллов!"))
-
+async def notify_referrer(referrer_id, new_username, points):
+    """Уведомление реферера о новом пользователе"""
+    await bot.send_message(
+        referrer_id, 
+        f"Ваш реферал @{new_username} принес вам {points} баллов!"
+    )
 
 def get_referrals(user_id):
-    """ Получение списка рефералов """
+    """Получение списка рефералов"""
     conn, cursor = get_db()
     cursor.execute("SELECT username FROM users WHERE referrer_id = ?", (user_id,))
     referrals = cursor.fetchall()
     conn.close()
     return [ref[0] for ref in referrals]
 
-
 def get_all_users():
-    """ Получение всех пользователей с их рефералами """
+    """Получение всех пользователей с их рефералами"""
     conn, cursor = get_db()
 
-    # Получаем всех пользователей
     cursor.execute("SELECT user_id, username, balance FROM users")
     users = cursor.fetchall()
 
-    # Для каждого пользователя получаем его рефералов
     users_data = []
     for user_id, username, balance in users:
         cursor.execute("SELECT username FROM users WHERE referrer_id = ?", (user_id,))
@@ -176,12 +173,11 @@ def get_all_users():
     conn.close()
     return users_data
 
-
 ### --- Обработчики команд --- ###
 
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    """ Обработка команды /start """
+@dp.message(CommandStart())
+async def send_welcome(message: Message):
+    """Обработка команды /start"""
     user_id = message.from_user.id
     username = message.from_user.username or f"user_{user_id}"
     referrer_id = None
@@ -197,16 +193,15 @@ async def send_welcome(message: types.Message):
     add_user(user_id, username, referrer_id)
     balance = get_balance(user_id)
 
-    # Получаем все посты из базы
+    # Формируем URL с данными
     posts = get_posts()
     posts_param = "|".join([f"{p[0]}~{p[1]}~{p[2]}~{p[3]}" for p in posts])
-    posts_param = quote(posts_param)  # Кодируем строку для URL
-
+    posts_param = quote(posts_param)
     url_with_data = f"{WEB_APP_URL}?user_id={user_id}"
 
-    keyboard = InlineKeyboardMarkup().add(
-        InlineKeyboardButton("Перейти на сайт", url=url_with_data)
-    )
+    # Создаем клавиатуру
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Перейти на сайт", url=url_with_data)
 
     referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
     message_text = (
@@ -215,29 +210,26 @@ async def send_welcome(message: types.Message):
         f"Приглашай друзей по этой ссылке и зарабатывай баллы:\n{referral_link}"
     )
 
-    await message.answer("Нажмите кнопку ниже, чтобы перейти на сайт:", reply_markup=keyboard)
+    await message.answer("Нажмите кнопку ниже, чтобы перейти на сайт:", reply_markup=builder.as_markup())
     await message.answer(message_text)
 
-
-@dp.message_handler(commands=['points'])
-async def show_points(message: types.Message):
-    """ Показывает баланс пользователя """
+@dp.message(Command('points'))
+async def show_points(message: Message):
+    """Показывает баланс пользователя"""
     await message.answer(f"Ваш баланс: {get_balance(message.from_user.id)} баллов")
 
-
-@dp.message_handler(commands=['ref'])
-async def show_referrals(message: types.Message):
-    """ Показывает список рефералов пользователя """
+@dp.message(Command('ref'))
+async def show_referrals(message: Message):
+    """Показывает список рефералов пользователя"""
     referrals = get_referrals(message.from_user.id)
     if referrals:
         await message.answer("Твои рефералы:\n" + "\n".join([f"@{r}" for r in referrals]))
     else:
         await message.answer("У тебя пока нет рефералов.")
 
-
-@dp.message_handler(commands=['all_users'])
-async def show_all_users(message: types.Message):
-    """ Показывает всех пользователей (только для админа) """
+@dp.message(Command('all_users'))
+async def show_all_users(message: Message):
+    """Показывает всех пользователей (только для админа)"""
     if message.from_user.id != ADMIN_ID:
         await message.answer("У вас нет прав доступа к этой команде.")
         return
@@ -248,7 +240,7 @@ async def show_all_users(message: types.Message):
         await message.answer("В базе нет пользователей.")
         return
 
-    # Создаем красивое текстовое представление
+    # Формируем текстовое сообщение
     text = "📊 <b>Список всех пользователей:</b>\n\n"
     for user in users_data:
         referrals_text = ", ".join([f"@{ref}" for ref in user['referrals']]) if user['referrals'] else "нет рефералов"
@@ -259,7 +251,7 @@ async def show_all_users(message: types.Message):
             f"────────────────────\n"
         )
 
-    # Создаем Excel файл с использованием openpyxl
+    # Создаем Excel файл
     df = pd.DataFrame([{
         'ID': user['user_id'],
         'Username': user['username'],
@@ -271,49 +263,52 @@ async def show_all_users(message: types.Message):
     excel_buffer = io.BytesIO()
     with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Users')
-
     excel_buffer.seek(0)
 
-    # Отправляем сообщение и файл
     await message.answer(text, parse_mode='HTML')
     await message.answer_document(
-        types.InputFile(excel_buffer, filename='users_list.xlsx'),
+        types.BufferedInputFile(excel_buffer.read(), filename='users_list.xlsx'),
         caption="📋 Excel файл со списком пользователей"
     )
 
-@dp.message_handler(commands=['admin'])
-async def admin_panel(message: types.Message):
-    """ Показывает админ-панель """
-    if message.from_user.id == ADMIN_ID:
-        keyboard = InlineKeyboardMarkup().add(
-            InlineKeyboardButton("Добавить пост", callback_data="add_post"),
-            InlineKeyboardButton("Список пользователей", callback_data="all_users")
-        )
-        await message.reply("Админ-панель. Выберите действие:", reply_markup=keyboard)
-    else:
-        await message.reply("У вас нет прав доступа к админ-панели.")
+@dp.message(Command('admin'))
+async def admin_panel(message: Message):
+    """Показывает админ-панель"""
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("У вас нет прав доступа к админ-панели.")
+        return
 
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Добавить пост", callback_data="add_post")
+    builder.button(text="Список пользователей", callback_data="all_users")
+    builder.adjust(1)
 
-@dp.callback_query_handler(lambda c: c.data == "add_post")
-async def add_post_command(callback_query: CallbackQuery):
-    await bot.answer_callback_query(callback_query.id)
-    await bot.send_message(callback_query.from_user.id,
-                           "Введите пост в формате:\n/task <title>\n/description <desc>\n/link <link>\n/bonus <bonus>")
+    await message.answer("Админ-панель. Выберите действие:", reply_markup=builder.as_markup())
 
+@dp.callback_query(F.data == "add_post")
+async def add_post_command(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.answer(
+        "Введите пост в формате:\n"
+        "/task <title>\n"
+        "/description <desc>\n"
+        "/link <link>\n"
+        "/bonus <bonus>"
+    )
 
-@dp.callback_query_handler(lambda c: c.data == "all_users")
-async def all_users_callback(callback_query: CallbackQuery):
-    await bot.answer_callback_query(callback_query.id)
-    await show_all_users(types.Message(
-        message_id=callback_query.message.message_id,
-        from_user=callback_query.from_user,
-        chat=callback_query.message.chat,
-        text="/all_users"
-    ))
+@dp.callback_query(F.data == "all_users")
+async def all_users_callback(callback: CallbackQuery):
+    await callback.answer()
+    await show_all_users(
+        Message.model_validate({
+            "from_user": callback.from_user,
+            "chat": callback.message.chat,
+            "text": "/all_users"
+        })
+    )
 
-
-@dp.message_handler(lambda message: message.text.startswith("/task"))
-async def handle_task(message: types.Message):
+@dp.message(F.text.startswith("/task"))
+async def handle_task(message: Message):
     data = message.text.split('\n')
     title, description, link, bonus = None, None, None, 0
 
@@ -331,12 +326,20 @@ async def handle_task(message: types.Message):
                 bonus = 0
 
     if not title or not description:
-        await message.reply("Ошибка: необходимо указать название и описание!")
+        await message.answer("Ошибка: необходимо указать название и описание!")
         return
 
     add_post(title, description, link, bonus)
-    await message.reply("✅ Пост успешно добавлен!")
+    await message.answer("✅ Пост успешно добавлен!")
 
+async def on_startup():
+    """Действия при запуске бота"""
+    create_db()
+    logger.info("Бот успешно запущен")
+
+async def main():
+    await on_startup()
+    await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
+    asyncio.run(main())
