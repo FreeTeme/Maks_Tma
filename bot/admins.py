@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Инициализация бота с новым синтаксисом
 bot = Bot(
-    token="7614037945:AAFrWrjShd62i_QDfqN-5YnfKNcthUXkb4w")
+    token="8071846167:AAH5iIcF8Z_dQ-RrmKEfxYO8mebDZ3T1uTE")
     # default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 
 storage = MemoryStorage()
