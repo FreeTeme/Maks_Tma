@@ -330,7 +330,7 @@
             const chatHistory = document.getElementById('chat-history');
             chatHistory.scrollTop = chatHistory.scrollHeight;
         }
-
+    
         // Make navigation items interactive
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
@@ -338,31 +338,90 @@
                 this.classList.add('active');
             });
         });
-
+    
         // Auto-focus input field
         document.querySelector('.input-field').focus();
-
+    
         // Scroll to bottom on page load
         window.addEventListener('load', scrollToBottom);
-
+    
         // Responsive button text
         function updateButtonText() {
             const buttons = document.querySelectorAll('.submit-btn .btn-text');
-            if (window.innerWidth < 500) {
+            if (window.innerWidth < 2000) {
                 buttons.forEach(btn => btn.style.display = 'none');
             } else {
                 buttons.forEach(btn => btn.style.display = 'inline');
             }
         }
-
+    
         window.addEventListener('resize', updateButtonText);
         updateButtonText();
-
-        // Form submission handling (optional)
+    
+        // Function to fetch and update chat
+        function fetchChat() {
+            fetch('/api/get_chat')
+                .then(response => response.json())
+                .then(data => {
+                    const chatHistory = document.getElementById('chat-history');
+                    chatHistory.innerHTML = ''; // Очищаем текущую историю
+    
+                    data.chat_history.forEach(message => {
+                        // Добавляем сообщение пользователя
+                        const userMessageDiv = document.createElement('div');
+                        userMessageDiv.className = 'message user-message';
+                        userMessageDiv.innerHTML = `
+                            <div class="message-text">${message.question}</div>
+                            <div class="timestamp">${message.created_at}</div>
+                        `;
+                        chatHistory.appendChild(userMessageDiv);
+    
+                        // Добавляем ответ администратора, если он есть
+                        if (message.admin_answer) {
+                            const adminMessageDiv = document.createElement('div');
+                            adminMessageDiv.className = 'message admin-message';
+                            adminMessageDiv.innerHTML = `
+                                <div class="message-text">${message.admin_answer}</div>
+                                <div class="timestamp">${message.created_at}</div>
+                            `;
+                            chatHistory.appendChild(adminMessageDiv);
+                        }
+                    });
+    
+                    scrollToBottom(); // Прокручиваем вниз после обновления
+                })
+                .catch(error => console.error('Error fetching chat:', error));
+        }
+    
+        // Form submission with AJAX
         document.querySelector('form').addEventListener('submit', function(e) {
-            // You can add AJAX submission here if needed
-            // Otherwise, the default form submission will work
+            e.preventDefault(); // Предотвращаем стандартную отправку формы
+            const inputField = document.querySelector('.input-field');
+            const question = inputField.value.trim();
+    
+            if (question) {
+                fetch('/submit_question', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `question=${encodeURIComponent(question)}`
+                })
+                .then(response => {
+                    if (response.ok) {
+                        inputField.value = ''; // Очищаем поле ввода
+                        fetchChat(); // Обновляем чат сразу после отправки
+                    }
+                })
+                .catch(error => console.error('Error submitting question:', error));
+            }
         });
+    
+        // Periodically fetch chat every 5 seconds
+        setInterval(fetchChat, 20000);
+    
+        // Initial fetch on page load
+        fetchChat();
     </script>
 </body>
 </html>

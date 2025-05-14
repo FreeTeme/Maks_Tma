@@ -6,270 +6,390 @@
     <title>Crypto Dashboard</title>
     <link rel="stylesheet" href="../static/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-  
 </head>
 <body>
     <header class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
         <!-- Колокольчик -->
         <i class="fa-solid fa-bell" id="notificationBell" style="font-size: 24px; color: #ffffff; cursor: pointer;"></i>
 
-         <!-- Всплывающее окно для уведомлений -->
-    <div class="notifications-popup" id="notificationsPopup">
-        
-        <div class="popup-content">
-            <i class="fa-solid fa-bell-slash" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
-            <p>You have no notifications</p>
-            <button class="close-popup" id="closePopup">Close</button>
+        <!-- Всплывающее окно для уведомлений -->
+        <div class="notifications-popup" id="notificationsPopup">
+            <div class="popup-content">
+                <i class="fa-solid fa-bell-slash" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
+                <p>You have no notifications</p>
+                <button class="close-popup" id="closePopup">Close</button>
+            </div>
         </div>
-    </div>
-
 
         <!-- Баланс -->
         <div class="balance">
-            <h1 id="balanceText"> ${{ balance }}</h1>
-
+            <h1 id="balanceText">${{ balance }}</h1>
         </div>
-        
-        <!-- Кнопка "гамбургер" -->
-<!-- <div id="hamburgerMenu" class="hamburger-menu" style="display: flex; flex-direction: column; justify-content: space-between; height: 24px; width: 30px; cursor: pointer;">
-    <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
-    <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
-    <span style="display: block; height: 3px; width: 100%; background-color: #ffffff; border-radius: 2px;"></span>
-</div> -->
 
+        <!-- Кнопка меню -->
+        <div class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </div>
     </header>
-    
 
-        <!-- Панель выбора режима торговли -->
-        <div class="trading-mode-panel" id="tradingModePanel">
-            <div style="display: flex; align-items: center;">
-                <span style="justify-content: center;">About me</span>
-            </div>
-            <span class="arrow">▼</span>
+    <!-- Панель выбора режима торговли -->
+    <div class="trading-mode-panel" id="tradingModePanel">
+        <div style="display: flex; align-items: center;">
+            <span style="justify-content: center;">About me</span>
         </div>
+        <span class="arrow">▼</span>
+    </div>
 
-        <!-- Выдвижной блок для выбора режима -->
-        <div class="trading-options-block" id="tradingOptionsBlock">
-            
-            <p id="usernameText">
-                <i class="fa-solid fa-user" style="color: #4c8cff;"></i> My UserName: <span id="username">{{ username }}</span>
-            </p>
-            <p id="userIdText">
-                <i class="fa-solid fa-fingerprint" style="color: #4c8cff;"></i> My ID: <span id="user_id">{{ user_id }}</span>
-            </p>
-            <p id="balanceText">
-                <i class="fa-solid fa-wallet" style="color: #4c8cff;"></i> My Balance: $<span id="balance">{{ balance }}</span>
-            </p>
-            <button class="close-button" id="closeButton" >Close</button>
-        </div>
+    <!-- Выдвижной блок для выбора режима -->
+    <div class="trading-options-block" id="tradingOptionsBlock">
+        <p id="usernameText">
+            <i class="fa-solid fa-user" style="color: #4c8cff;"></i> My UserName: <span id="username">{{ username }}</span>
+        </p>
+        <p id="userIdText">
+            <i class="fa-solid fa-fingerprint" style="color: #4c8cff;"></i> My ID: <span id="user_id">{{ user_id }}</span>
+        </p>
+        <p id="balanceText">
+            <i class="fa-solid fa-wallet" style="color: #4c8cff;"></i> My Balance: $<span id="balance">{{ balance }}</span>
+        </p>
+        <button class="close-button" id="closeButton">Close</button>
+    </div>
 
-        <!-- Tab Navigation -->
-        <div class="tabs">
-            <button class="tab active" data-tab="crypto">TRADING</button>
-            <button class="tab" data-tab="nfts">MINING</button>
-            <button class="tab" data-tab="defi">SOCIAL</button>
-        </div>
+    <!-- Tab Navigation -->
+    <div class="tabs">
+        <button class="tab active" data-tab="crypto">TRADING</button>
+        <button class="tab" data-tab="nfts">MINING</button>
+        <button class="tab" data-tab="defi">SOCIAL</button>
+    </div>
 
-        <div class="tab-content active" id="crypto-content">
-            <div class="center-wrapper"> <!-- Обёрточный контейнер -->
+    <!-- Вкладка TRADING -->
+    <div class="tab-content active" id="crypto-content">
+        <div class="center-wrapper">
             <div class="crypto-buttons">
                 <div class="crypto-btn1" onclick="window.location.href='/staking'">
-                    <div class="crypto-info" onclick="window.location.href='/staking'">
-                        <i class="fa-solid fa-circle-dollar-to-slot"style="font-size: 40px;"></i>
-                        <br>
-                        <br>
+                    <div class="crypto-info">
+                        <i class="fa-solid fa-circle-dollar-to-slot" style="font-size: 40px;"></i>
+                        <br><br>
                         <h3>Staking</h3>
-                      
-                        <!-- <br><i class="fa-solid fa-circle-dollar-to-slot"style="font-size: 40px;"></i> Задаём размер в пикселях -->
                     </div>
                 </div>
                 <div class="crypto-btn2">
                     <div class="crypto-info">
-
                         <i class="fa-regular fa-copy" style="font-size: 40px;"></i>
-                        <br>
-                        <br>
+                        <br><br>
                         <h3>Copy Trading</h3>
-                        
-                        <!-- <br><i class="fa-solid fa-face-frown" style="font-size: 26px;"></i> Задаём размер в пикселях -->
                     </div>
                 </div>
-                
             </div>
         </div>
     </div>
 
+    <!-- Вкладка MINING -->
+    <div class="tab-content" id="nfts-content" style="margin-top: 50%;">
+        <button id="earnButton" class="earn-button">
+            <div class="progress-bar" id="progressBar"></div>
+            <span id="buttonText">Click to Earn</span>
+        </button>
+    </div>
 
-        <!-- Содержимое вкладок "coming soon" -->
-        <div class="tab-content" id="nfts-content" style="margin-top: 50%; ">
-            <!-- Добавляем кнопку Earn в раздел Mining -->
-            <button id="earnButton" class="earn-button">
-                <div class="progress-bar" id="progressBar"></div>
-                <span id="buttonText">Click to Earn</span>
-              </button>
-        </div>
-
-        <div class="tab-content" id="defi-content">
-            <div class="defi-buttons" id="posts-container">
-                {% for post in posts %}
-                <div class="defi-btn social-card" 
-                     data-link="{{ post[2] }}"
-                     onclick="handleSocialCardClick(event)"
-                     style="cursor: pointer;">
-                    <img src="{% if 'https://www.youtube.com' in post[2] %}../static/img/yootube.png {% elif 't.me' in post[2] %}../static/img/yootube.png{% else %}../static/img/m.jpg{% endif %}" 
-                         alt="Defi Icon" 
-                         class="defi-icon">
-                    <div class="defi-info">
-                        <h3>{{ post[0] }}</h3>
-                        <hr />
-                        <p class="description">{{ post[1] }}</p>
-                        <p class="price"><i class="fa-solid fa-coins"></i>{{ post[3] }}</p>
-                    </div>
+    <!-- Вкладка SOCIAL -->
+    <div class="tab-content" id="defi-content">
+        <div class="defi-buttons" id="posts-container">
+            {% for post in posts %}
+            <div class="defi-btn social-card" 
+                 data-link="{{ post[2] }}"
+                 data-bonus="{{ post[3] }}"
+                 data-post-id="{{ post[4] }}"
+                 onclick="handleSocialCardClick(event)"
+                 style="cursor: pointer; position: relative;">
+                <img src="{% if 'https://www.youtube.com' in post[2] %}../static/img/yootube.png {% elif 't.me' in post[2] %}../static/img/tg.webp{% else %}../static/img/m.jpg{% endif %}" 
+                     alt="Defi Icon" 
+                     class="defi-icon">
+                <div class="defi-info">
+                    <h3>{{ post[0] }}</h3>
+                    <hr />
+                    <p class="description">{{ post[1] }}</p>
+                    <p class="price"><i class="fa-solid fa-coins"></i>{{ post[3] }}</p>
                 </div>
-                {% endfor %}
             </div>
+            {% endfor %}
         </div>
+    </div>
 
-        <div class="tab-content" id="defi-content">
-            <div class="defi-buttons" id="posts-container">
-                <!-- Посты загружаются сюда -->
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item"><i class="fa-solid fa-house" id="home-icon"></i></div>
+        <div class="nav-item" id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
+        <div class="nav-item" id="open-search" onclick="location.href='graf'"><i class="fa-solid fa-star"></i></div>
+        <div class="nav-item" id="folow" onclick="location.href='chat'"><i class="fa-regular fa-envelope"></i></div>
+    </nav>
+
+    <!-- Модальное окно -->
+    <div class="modal" id="featureModal">
+        <div class="modal-content">
+            <i class="fa-solid fa-dollar-sign" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
+            <p id="modalText">Only premium user</p>
+            <button class="close-modal" id="closeFeatureModal">close</button>
+        </div>
+    </div>
+
+    <!-- Side Menu -->
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <div class="menu-title">
+                <i class="fas fa-cog"></i>
+                Menu
             </div>
+            <button class="close-menu" id="closeMenu">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
-        
-    </div>
-
-
-<!-- Bottom Navigation -->
-<nav class="bottom-nav">
-    <div class="nav-item"><i class="fa-solid fa-house" id="home-icon"></i></div>
-    <div class="nav-item"  id="open-chart"><i class="fa-solid fa-chart-line"></i></div>
-    <div class="nav-item" id="open-search" onclick="location.href='graf'"><i class="fa-solid fa-star"></i></div>
-    <div class="nav-item" id="folow" onclick="location.href='chat'"><i class="fa-regular fa-envelope"></i></div>
-</nav>
-
-<!-- Модальное окно -->
-<div class="modal" id="featureModal">
-    <div class="modal-content">
-      <i class="fa-solid fa-dollar-sign" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
-      <p id="modalText">Only premium user</p>
-      <button class="close-modal" id="closeFeatureModal">close</button>
-    </div>
-  </div>
-  
-
-    <!-- Боковое меню -->
-    <div class="side-menu" id="side-menu">
-        <div class="menu-content">
-            <p id="settings" onclick="location.href='/graf'">Referal</p>
-            <p id="help" onclick="location.href='/chat'">Help</p>            
-            <p id="bitry-link">BiTry-Studio <i class="fa-solid fa-code"></i></p>
-
+        <div class="menu-item" onclick="location.href='/graf'">
+            <i class="fas fa-users"></i>
+            <span>Referral Program</span>
+        </div>
+        <div class="menu-item" onclick="location.href='/chat'">
+            <i class="fas fa-question-circle"></i>
+            <span>Help Center</span>
+        </div>
+        <div class="menu-item" id="bitryLink">
+            <i class="fas fa-code"></i>
+            <span>BiTry Studio</span>
         </div>
     </div>
 
-
-
+    <!-- Модальное окно для криптовалют -->
     <div id="modalc" class="modalc">
         <div class="modal-contentc" id="modalContentc">
-            <span class="close">&times;</span>
+            <span class="close">×</span>
             <input type="text" id="searchInput" placeholder="Поиск криптовалюты..." style="margin-right: 55%;">
             <div id="cryptoList" class="crypto-list"></div>
             <p id="noResults" style="display: none; color: red;">Монета не найдена</p>
         </div>
-        
     </div>
 
-    
-<script src="../static/script.js"></script>
-
-
- <!-- Menu Toggle Button -->
- <div class="menu-toggle" id="menuToggle">
-    <i class="fas fa-bars"></i>
-  </div>
-
-  <!-- Side Menu -->
-  <div class="side-menu" id="sideMenu">
-    <div class="menu-header">
-      <div class="menu-title">
-        <i class="fas fa-cog"></i>
-        Menu
-      </div>
-      <button class="close-menu" id="closeMenu">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    
-    <div class="menu-item" onclick="location.href='/graf'">
-      <i class="fas fa-users"></i>
-      <span>Referral Program</span>
-    </div>
-    
-    <div class="menu-item" onclick="location.href='/chat'">
-      <i class="fas fa-question-circle"></i>
-      <span>Help Center</span>
-    </div>
-    
-    <div class="menu-item" id="bitryLink">
-      <i class="fas fa-code"></i>
-      <span>BiTry Studio</span>
-    </div>
-  </div>
-
-
-
+    <script src="../static/script.js"></script>
 </body>
 </html>
-
 <script>
+    // Обновление баланса
+function updateBalanceDisplay(amount) {
+    const balanceElement = document.getElementById('balanceText');
+    const balanceElement2 = document.getElementById('balance');
 
-document.addEventListener("DOMContentLoaded", async () => {
+    if (!balanceElement) {
+        console.error('Balance element not found');
+        return;
+    }
+
+    let currentBalance = parseFloat(balanceElement.textContent.replace('$', '').replace(',', '')) || 0;
+    currentBalance += amount;
+
+    balanceElement.classList.add('balance-update');
+    if (balanceElement2) {
+        balanceElement2.classList.add('balance-update');
+    }
+
+    balanceElement.textContent = `$${currentBalance.toFixed(2)}`;
+    if (balanceElement2) {
+        balanceElement2.textContent = currentBalance.toFixed(2);
+    }
+
+    setTimeout(() => {
+        balanceElement.classList.remove('balance-update');
+        if (balanceElement2) {
+            balanceElement2.classList.remove('balance-update');
+        }
+    }, 500);
+}
+
+// Обработчик клика по карточке Social
+async function handleSocialCardClick(event) {
+    event.preventDefault();
+    const card = event.currentTarget;
+    const link = card.dataset.link;
+    const bonus = parseInt(card.dataset.bonus) || 0;
+    const postId = card.dataset.postId;
+
+    if (card.classList.contains('completed-task')) {
+        window.open(link, '_blank');
+        return;
+    }
+
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.innerHTML = '<div class="loading-spinner"></div>';
+    card.appendChild(loadingOverlay);
+    card.style.pointerEvents = 'none';
+
     try {
-        const response = await fetch("/profile_data");
+        window.open(link, '_blank');
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        const response = await fetch('/complete_social_task', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                bonus: bonus,
+                post_id: postId 
+            }),
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
         const data = await response.json();
-
         if (data.success) {
-            document.getElementById("username").textContent = data.username || "Guest";
-            document.getElementById("user_id").textContent = data.user_id || "Unknown";
-            document.getElementById("balance").textContent = `$${data.balance || "0"}`;
+            loadingOverlay.remove();
+            card.classList.add('completed-task');
 
-            // Обработка постов
-            let container = document.getElementById("posts-container");
-            container.innerHTML = "";
-            
-            data.posts.forEach(post => {
-                let { title, description, link, bonus } = post;
-                let imgSrc = "../static/img/m.jpg";
+            const bonusEl = document.createElement('div');
+            bonusEl.className = 'bonus-animation';
+            bonusEl.textContent = `+${bonus}`;
+            card.appendChild(bonusEl);
+            setTimeout(() => bonusEl.remove(), 1000);
 
-                if (link.includes("t.me")) imgSrc = "../static/img/tg.webp";
-                else if (link.includes("https://www.youtube.com")) imgSrc = "../static/img/yootube.png";
+            updateBalanceDisplay(bonus);
 
-                let postElement = document.createElement("div");
-                postElement.className = "defi-btn";
-                postElement.style.cursor = "pointer";
-                postElement.onclick = () => window.open(link, "_blank");
-
-                postElement.innerHTML = `
-                    <img src="${imgSrc}" alt="Defi Icon" class="defi-icon">
-                    <div class="defi-info">
-                        <h3>${title}</h3>
-                        <hr />
-                        <p class="description">${description}</p>
-                        <p class="price"><i class="fa-solid fa-coins"></i>${bonus}</p>
-                    </div>
-                `;
-                container.appendChild(postElement);
-            });
+            setTimeout(() => {
+                card.style.transition = 'opacity 0.3s';
+                card.style.opacity = '0';
+                setTimeout(() => card.remove(), 300);
+            }, 1500);
         } else {
-            console.error("Ошибка получения данных: ", data.message);
+            throw new Error(data.message || 'Failed to complete task');
         }
     } catch (error) {
-        console.error("Ошибка запроса: ", error);
+        console.error('Error:', error);
+        loadingOverlay.remove();
+        card.style.pointerEvents = 'auto';
+        alert('Error: ' + error.message);
     }
+}
+
+// Проверка выполненных заданий
+async function checkCompletedTasks() {
+    try {
+        const response = await fetch('/get_completed_tasks', {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.completed_tasks) {
+                data.completed_tasks.forEach(taskId => {
+                    const card = document.querySelector(`.social-card[data-post-id="${taskId}"]`);
+                    if (card) {
+                        card.remove(); // Удаляем карточку
+                    }
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error checking completed tasks:', error);
+    }
+}
+
+// Инициализация
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll('.social-card').forEach(card => {
+        card.addEventListener('click', handleSocialCardClick);
+    });
+    checkCompletedTasks();
 
     // Инициализация майнинга
     initMiningSection();
+
+    // Уведомления
+    const bellIcon = document.querySelector("#notificationBell");
+    const notificationsPopup = document.getElementById("notificationsPopup");
+    const closePopupButton = document.getElementById("closePopup");
+
+    bellIcon.addEventListener("click", () => {
+        notificationsPopup.style.display = "flex";
+    });
+
+    closePopupButton.addEventListener("click", () => {
+        notificationsPopup.style.display = "none";
+    });
+
+    notificationsPopup.addEventListener("click", (event) => {
+        if (event.target === notificationsPopup) {
+            notificationsPopup.style.display = "none";
+        }
+    });
+
+    // Меню
+    const menuToggle = document.getElementById('menuToggle');
+    const sideMenu = document.getElementById('sideMenu');
+    const closeMenu = document.getElementById('closeMenu');
+
+    menuToggle.addEventListener('click', () => {
+        sideMenu.classList.add('show');
+    });
+
+    closeMenu.addEventListener('click', () => {
+        sideMenu.classList.remove('show');
+    });
+
+    // Модальное окно
+    const featureButtons = document.querySelectorAll('.crypto-btn2');
+    const featureModal = document.getElementById('featureModal');
+    const closeFeatureModal = document.getElementById('closeFeatureModal');
+    const modalText = document.getElementById('modalText');
+    const dollarIcon = featureModal.querySelector('.fa-dollar-sign');
+
+    featureButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const buttonText = button.querySelector('h3').textContent;
+            if (buttonText === "Self Trading") {
+                return;
+            } else {
+                dollarIcon.style.display = 'none';
+                modalText.innerHTML = `
+                    <p style="font-size: 45px;"><i class="fa-solid fa-money-bill-wave"></i></p>
+                    <p style="width: 250px;">Premium account users only</p>
+                `;
+            }
+            featureModal.style.display = 'flex';
+        });
+    });
+
+    closeFeatureModal.addEventListener('click', () => {
+        featureModal.style.display = 'none';
+    });
+
+    window.addEventListener('click', (event) => {
+        if (event.target === featureModal) {
+            featureModal.style.display = 'none';
+        }
+    });
+
+    // Вкладки
+    const tabs = document.querySelectorAll(".tab");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    if (tabs.length > 0 && tabContents.length > 0) {
+        tabs[0].classList.add("active");
+        tabContents[0].classList.add("active");
+    }
+
+    tabs.forEach(tab => {
+        tab.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            tabContents.forEach(content => content.classList.remove("active"));
+
+            tab.classList.add("active");
+            const activeTabContent = document.getElementById(`${tab.dataset.tab}-content`);
+            if (activeTabContent) {
+                activeTabContent.classList.add("active");
+            }
+        });
+    });
+
+    // BiTry Studio
+    document.getElementById('bitryLink').addEventListener('click', function () {
+        window.open('https://t.me/ITtbcstudio', '_blank');
+    });
 });
 
 // Mining Section
@@ -281,7 +401,6 @@ function initMiningSection() {
     let maxClicks;
     let timer;
 
-    // Проверяем активный таймер при загрузке страницы
     checkActiveMiningTimer().then(isActive => {
         if (!isActive) {
             resetButton();
@@ -290,7 +409,7 @@ function initMiningSection() {
 
     function resetButton() {
         clicks = 0;
-        maxClicks = Math.floor(Math.random() * 9) + 10; // 10-18 кликов
+        maxClicks = Math.floor(Math.random() * 9) + 10;
         progressBar.style.width = "0%";
         button.classList.remove("disabled");
         buttonText.textContent = "Click to Earn";
@@ -300,10 +419,10 @@ function initMiningSection() {
 
     button.addEventListener("click", async () => {
         if (button.classList.contains("disabled")) return;
-        
+
         clicks++;
         progressBar.style.width = `${(clicks / maxClicks) * 100}%`;
-        
+
         const messages = ["more", "few", "almost"];
         if (clicks < maxClicks) {
             buttonText.textContent = messages[Math.floor(Math.random() * messages.length)];
@@ -319,56 +438,52 @@ function initMiningSection() {
     });
 
     async function checkActiveMiningTimer() {
-    try {
-        const response = await fetch('/api/get_mining_timer');
-        const data = await response.json();
-        
-        if (data.success && data.end_time) {
-            const endTime = parseInt(data.end_time);
-            const now = Math.floor(Date.now() / 1000);
-            const timeLeft = endTime - now;
-            
-            if (timeLeft > 0) {
-                // Проверяем localStorage на случай, если сервер вернул устаревшие данные
-                const savedEndTime = localStorage.getItem('miningEndTime');
-                if (savedEndTime) {
-                    const savedTimeLeft = parseInt(savedEndTime) - now;
-                    if (savedTimeLeft > 0 && savedTimeLeft > timeLeft) {
-                        // Используем данные из localStorage, если они более актуальны
-                        activateMiningTimer(savedTimeLeft);
-                        return true;
+        try {
+            const response = await fetch('/api/get_mining_timer');
+            const data = await response.json();
+
+            if (data.success && data.end_time) {
+                const endTime = parseInt(data.end_time);
+                const now = Math.floor(Date.now() / 1000);
+                const timeLeft = endTime - now;
+
+                if (timeLeft > 0) {
+                    const savedEndTime = localStorage.getItem('miningEndTime');
+                    if (savedEndTime) {
+                        const savedTimeLeft = parseInt(savedEndTime) - now;
+                        if (savedTimeLeft > 0 && savedTimeLeft > timeLeft) {
+                            activateMiningTimer(savedTimeLeft);
+                            return true;
+                        }
                     }
+                    activateMiningTimer(timeLeft);
+                    return true;
+                } else {
+                    await clearMiningTimerOnServer();
+                    localStorage.removeItem('miningEndTime');
                 }
-                activateMiningTimer(timeLeft);
-                return true;
-            } else {
-                await clearMiningTimerOnServer();
-                localStorage.removeItem('miningEndTime');
             }
-        }
-        
-        // Проверяем localStorage только если сервер не вернул данных
-        const savedEndTime = localStorage.getItem('miningEndTime');
-        if (savedEndTime) {
-            const now = Math.floor(Date.now() / 1000);
-            const timeLeft = parseInt(savedEndTime) - now;
-            
-            if (timeLeft > 0) {
-                // Синхронизируем с сервером
-                await setMiningTimerOnServer(parseInt(savedEndTime));
-                activateMiningTimer(timeLeft);
-                return true;
-            } else {
-                localStorage.removeItem('miningEndTime');
+
+            const savedEndTime = localStorage.getItem('miningEndTime');
+            if (savedEndTime) {
+                const now = Math.floor(Date.now() / 1000);
+                const timeLeft = parseInt(savedEndTime) - now;
+
+                if (timeLeft > 0) {
+                    await setMiningTimerOnServer(parseInt(savedEndTime));
+                    activateMiningTimer(timeLeft);
+                    return true;
+                } else {
+                    localStorage.removeItem('miningEndTime');
+                }
             }
+
+            return false;
+        } catch (error) {
+            console.error('Error checking mining timer:', error);
+            return false;
         }
-        
-        return false;
-    } catch (error) {
-        console.error('Error checking mining timer:', error);
-        return false;
     }
-}
 
     function activateMiningTimer(timeLeft) {
         button.classList.add("disabled");
@@ -377,29 +492,27 @@ function initMiningSection() {
     }
 
     async function startTimer() {
-        const timeLeft = 12 * 60 * 60; // 12 часов в секундах
+        const timeLeft = 12 * 60 * 60;
         const endTime = Math.floor(Date.now() / 1000) + timeLeft;
-        
-        // Сохраняем на сервере и в localStorage
+
         await setMiningTimerOnServer(endTime);
         localStorage.setItem('miningEndTime', endTime.toString());
-        
+
         startTimerWithTimeLeft(timeLeft);
     }
 
     function startTimerWithTimeLeft(timeLeft) {
         clearInterval(timer);
-        
+
         timer = setInterval(() => {
             timeLeft--;
-            
-            // Форматирование времени в HH:MM:SS
+
             const hours = Math.floor(timeLeft / 3600).toString().padStart(2, '0');
             const minutes = Math.floor((timeLeft % 3600) / 60).toString().padStart(2, '0');
             const seconds = (timeLeft % 60).toString().padStart(2, '0');
-            
+
             buttonText.textContent = `${hours}:${minutes}:${seconds}`;
-            
+
             if (timeLeft <= 0) {
                 clearInterval(timer);
                 resetButton();
@@ -473,146 +586,7 @@ function initMiningSection() {
 
         setTimeout(() => bonusText.remove(), 5000);
     }
-
-    function updateBalanceDisplay(amount) {
-        const balanceElement = document.getElementById('balanceText');
-        let currentBalance = parseFloat(balanceElement.textContent.replace('$', '').replace(',', '')) || 0;
-        currentBalance += amount;
-        balanceElement.textContent = `$${currentBalance.toFixed(2)}`;
-    }
 }
-
-// Остальные функции (обработчики событий, модальные окна и т.д.)
-document.getElementById('bitry-link').addEventListener('click', function () {
-    window.open('https://t.me/ITtbcstudio', '_blank');
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-    const bellIcon = document.querySelector("#notificationBell");
-    const notificationsPopup = document.getElementById("notificationsPopup");
-    const closePopupButton = document.getElementById("closePopup");
-
-    bellIcon.addEventListener("click", () => {
-        notificationsPopup.style.display = "flex";
-    });
-
-    closePopupButton.addEventListener("click", () => {
-        notificationsPopup.style.display = "none";
-    });
-
-    notificationsPopup.addEventListener("click", (event) => {
-        if (event.target === notificationsPopup) {
-            notificationsPopup.style.display = "none";
-        }
-    });
-});
-
-async function handleSocialCardClick(event) {
-    event.preventDefault();
-    const card = event.currentTarget;
-    const link = card.dataset.link;
-
-    try {
-        const response = await fetch('/add_social_points', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            credentials: 'include'
-        });
-
-        if (!response.ok) throw new Error('Network error');
-        
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('balance').textContent = data.new_balance.toFixed(2);
-            showBonusAnimation(card);
-        }
-   
-        window.open(link, '_blank');
-    } catch (error) {
-        console.error('Ошибка:', error);
-        alert('Error: ' + error.message);
-    }
-}
-
-function showBonusAnimation(element) {
-    const bonusEl = document.createElement('div');
-    bonusEl.className = 'bonus-animation';
-    bonusEl.textContent = '+20';
-    element.appendChild(bonusEl);
-    setTimeout(() => bonusEl.remove(), 1000);
-}
-
-// Управление модальным окном
-const featureButtons = document.querySelectorAll('.crypto-btn2');
-const featureModal = document.getElementById('featureModal');
-const closeFeatureModal = document.getElementById('closeFeatureModal');
-const modalText = document.getElementById('modalText');
-const dollarIcon = featureModal.querySelector('.fa-dollar-sign');
-
-featureButtons.forEach(button => {
-  button.addEventListener('click', () => {
-    const buttonText = button.querySelector('h3').textContent;
-
-    if (buttonText === "Self Trading") {
-        return;
-    } else {
-      dollarIcon.style.display = 'none';
-      modalText.innerHTML = `
-        <p style="font-size: 45px;"><i class="fa-solid fa-money-bill-wave"></i></p>
-        <p style="width: 250px;">Premium account users only</p>
-      `;
-    }
-
-    featureModal.style.display = 'flex';
-  });
-});
-
-closeFeatureModal.addEventListener('click', () => {
-  featureModal.style.display = 'none';
-});
-
-window.addEventListener('click', (event) => {
-  if (event.target === featureModal) {
-    featureModal.style.display = 'none';
-  }
-});
-
-// Tab Navigation
-document.addEventListener("DOMContentLoaded", () => {
-    const tabs = document.querySelectorAll(".tab");
-    const tabContents = document.querySelectorAll(".tab-content");
-
-    if (tabs.length > 0 && tabContents.length > 0) {
-        tabs[0].classList.add("active");
-        tabContents[0].classList.add("active");
-    }
-
-    tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-            tabs.forEach(t => t.classList.remove("active"));
-            tabContents.forEach(content => content.classList.remove("active"));
-
-            tab.classList.add("active");
-            const activeTabContent = document.getElementById(`${tab.dataset.tab}-content`);
-            if (activeTabContent) {
-                activeTabContent.classList.add("active");
-            }
-        });
-    });
-
-    // Menu Toggle
-    const menuToggle = document.getElementById('menuToggle');
-    const sideMenu = document.getElementById('sideMenu');
-    const closeMenu = document.getElementById('closeMenu');
-
-    menuToggle.addEventListener('click', () => {
-        sideMenu.classList.add('show');
-    });
-
-    closeMenu.addEventListener('click', () => {
-        sideMenu.classList.remove('show');
-    });
-});
 
 // Crypto Modal Functions
 const cryptocurrencies = [
@@ -634,7 +608,7 @@ const exchanges = [
 function resetModal() {
     const modalContent = document.getElementById('modalContentc');
     modalContent.innerHTML = `
-        <span class="close" onclick="closeModal()">&times;</span>
+        <span class="close" onclick="closeModal()">×</span>
         <input type="text" id="searchInput" placeholder="Поиск криптовалюты..." style="margin-right: 55%;">
         <div id="cryptoList" class="crypto-list"></div>
         <p id="noResults" style="display: none; color: red;">Монета не найдена</p>
@@ -676,7 +650,7 @@ function displayCryptocurrencies(cryptoArray) {
 function showCryptoDetails(crypto) {
     const modalContent = document.getElementById('modalContentc');
     modalContent.innerHTML = `
-        <span class="close" onclick="closeModal()">&times;</span>
+        <span class="close" onclick="closeModal()">×</span>
         <h2>${crypto.name}</h2>
         <img src="${crypto.logo}" alt="${crypto.name} logo" width="64">
         <div id="exchangeList" class="exchange-list"></div>
@@ -708,7 +682,7 @@ function selectExchange(exchange) {
     }).toString();
 
     modalContent.innerHTML = `
-        <span class="close" onclick="closeModal()">&times;</span>
+        <span class="close" onclick="closeModal()">×</span>
         <h2>Вы выбрали - ${exchange.name}</h2>
         <p class="staking-rate">Ставка: ${exchange.staking}</p>
         <button class="back-btn" onclick="location.href='instruction.html?${urlParams}'">
@@ -720,10 +694,12 @@ function selectExchange(exchange) {
 const modal = document.getElementById('modalc');
 const openModalBtn = document.getElementById('openModalBtn');
 
-openModalBtn.onclick = function () {
-    modal.style.display = 'block';
-    resetModal();
-};
+if (openModalBtn) {
+    openModalBtn.onclick = function () {
+        modal.style.display = 'block';
+        resetModal();
+    };
+}
 
 function closeModal() {
     modal.style.display = 'none';
@@ -734,13 +710,10 @@ window.onclick = function (event) {
         closeModal();
     }
 };
-
-
 </script>
-
 <style>
-    /* Prevent screen rotation */
-    @media only screen and (orientation: landscape) {
+ /* Prevent screen rotation */
+ @media only screen and (orientation: landscape) {
         body {
             transform: rotate(90deg);
             transform-origin: center center;
@@ -1462,9 +1435,10 @@ body {
 }
 
 .price {
-    font-size: 14px;
+    font-size: 20px;
     color: #4c8cff; /* Голубой цвет для цены */
     margin: 5px 0;
+    margin-left: 80%;
 }
 
 /* Trading Mode Panel */
@@ -1822,5 +1796,86 @@ body {
             border: none;
             border-radius: 5px;
             cursor: pointer;
+        }
+
+
+/* soial */
+
+.loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 30px;
+            z-index: 10;
+        }
+        
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4c8cff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .bonus-animation {
+            position: absolute;
+            top: -15px;
+            right: -10px;
+            background: #4c8cff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            animation: floatUp 0.8s ease-out;
+            z-index: 100;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-25px); opacity: 0; }
+        }
+        
+        .balance-update {
+            animation: balanceBounce 0.5s ease;
+        }
+        
+        @keyframes balanceBounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .completed-task {
+            opacity: 0.5;
+            pointer-events: none;
+            position: relative;
+        }
+        
+        .completed-task::after {
+            content: "✓";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4c8cff;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
         }
 </style>

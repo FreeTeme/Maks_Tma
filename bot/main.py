@@ -11,6 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from urllib.parse import quote
 import io
 from datetime import datetime
+from typing import Union
 
 # Настройка логгера
 logging.basicConfig(level=logging.INFO)
@@ -26,12 +27,14 @@ bot = Bot(token=API_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
+
 ### --- Функции работы с БД --- ###
 
 def get_db():
     """Возвращает соединение и курсор к базе данных"""
     conn = sqlite3.connect("referrals.db")
     return conn, conn.cursor()
+
 
 def create_db():
     """Создание базы данных, если её нет"""
@@ -69,6 +72,7 @@ def create_db():
     conn.commit()
     conn.close()
 
+
 def add_post(title, description, link, bonus):
     """Добавление поста в базу данных"""
     conn, cursor = get_db()
@@ -79,13 +83,23 @@ def add_post(title, description, link, bonus):
     conn.commit()
     conn.close()
 
+
 def get_posts():
     """Получение всех постов"""
     conn, cursor = get_db()
-    cursor.execute("SELECT title, description, link, bonus FROM posts")
+    cursor.execute("SELECT id, title, description, link, bonus FROM posts")
     posts = cursor.fetchall()
     conn.close()
     return posts
+
+
+def delete_post(post_id):
+    """Удаление поста из базы данных"""
+    conn, cursor = get_db()
+    cursor.execute("DELETE FROM posts WHERE id = ?", (post_id,))
+    conn.commit()
+    conn.close()
+
 
 def add_user(user_id, username, referrer_id=None):
     """Добавление нового пользователя"""
@@ -118,15 +132,17 @@ def add_user(user_id, username, referrer_id=None):
 
     conn.close()
 
+
 def update_balance(user_id, points):
     """Обновление баланса пользователя"""
     conn, cursor = get_db()
     cursor.execute(
-        "UPDATE users SET balance = balance + ? WHERE user_id = ?", 
+        "UPDATE users SET balance = balance + ? WHERE user_id = ?",
         (points, user_id)
     )
     conn.commit()
     conn.close()
+
 
 def get_balance(user_id):
     """Получение баланса пользователя"""
@@ -136,12 +152,14 @@ def get_balance(user_id):
     conn.close()
     return result[0] if result else 0
 
+
 async def notify_referrer(referrer_id, new_username, points):
     """Уведомление реферера о новом пользователе"""
     await bot.send_message(
-        referrer_id, 
+        referrer_id,
         f"Ваш реферал @{new_username} принес вам {points} баллов!"
     )
+
 
 def get_referrals(user_id):
     """Получение списка рефералов"""
@@ -150,6 +168,7 @@ def get_referrals(user_id):
     referrals = cursor.fetchall()
     conn.close()
     return [ref[0] for ref in referrals]
+
 
 def get_all_users():
     """Получение всех пользователей с их рефералами"""
@@ -173,6 +192,7 @@ def get_all_users():
     conn.close()
     return users_data
 
+
 ### --- Обработчики команд --- ###
 
 @dp.message(CommandStart())
@@ -195,28 +215,28 @@ async def send_welcome(message: Message):
 
     # Формируем URL с данными
     posts = get_posts()
-    posts_param = "|".join([f"{p[0]}~{p[1]}~{p[2]}~{p[3]}" for p in posts])
+    posts_param = "|".join([f"{p[1]}~{p[2]}~{p[3]}~{p[4]}" for p in posts])
     posts_param = quote(posts_param)
     url_with_data = f"{WEB_APP_URL}?user_id={user_id}"
 
     # Создаем клавиатуру
     builder = InlineKeyboardBuilder()
-    builder.button(text="Перейти на сайт", url=url_with_data)
+    builder.button(text="Перейти в HistoBit", url=url_with_data)
 
     referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
     message_text = (
-        f"Привет, {message.from_user.first_name}!\n"
-        f"Твой баланс: {balance} баллов\n\n"
-        f"Приглашай друзей по этой ссылке и зарабатывай баллы:\n{referral_link}"
+        f"👋 Привет, {message.from_user.first_name}!\n"
+        f"🏆 Твой баланс: {balance} баллов\n\n"
+        "Нажмите кнопку ниже, чтобы перейти в наше приложение:"
     )
 
-    await message.answer("Нажмите кнопку ниже, чтобы перейти на сайт:", reply_markup=builder.as_markup())
-    await message.answer(message_text)
+    await message.answer(message_text, reply_markup=builder.as_markup())
 
 @dp.message(Command('points'))
 async def show_points(message: Message):
     """Показывает баланс пользователя"""
     await message.answer(f"Ваш баланс: {get_balance(message.from_user.id)} баллов")
+
 
 @dp.message(Command('ref'))
 async def show_referrals(message: Message):
@@ -227,10 +247,17 @@ async def show_referrals(message: Message):
     else:
         await message.answer("У тебя пока нет рефералов.")
 
-@dp.message(Command('all_users'))
-async def show_all_users(message: Message):
+
+async def show_all_users(source: Union[Message, CallbackQuery]):
     """Показывает всех пользователей (только для админа)"""
-    if message.from_user.id != ADMIN_ID:
+    if isinstance(source, CallbackQuery):
+        user_id = source.from_user.id
+        message = source.message
+    else:
+        user_id = source.from_user.id
+        message = source
+
+    if user_id != ADMIN_ID:
         await message.answer("У вас нет прав доступа к этой команде.")
         return
 
@@ -271,6 +298,7 @@ async def show_all_users(message: Message):
         caption="📋 Excel файл со списком пользователей"
     )
 
+
 @dp.message(Command('admin'))
 async def admin_panel(message: Message):
     """Показывает админ-панель"""
@@ -281,9 +309,11 @@ async def admin_panel(message: Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="Добавить пост", callback_data="add_post")
     builder.button(text="Список пользователей", callback_data="all_users")
+    builder.button(text="Просмотр и удаление постов", callback_data="view_posts")
     builder.adjust(1)
 
-    await message.answer("Админ-панель. Выберите действие:", reply_markup=builder.as_markup())
+    await message.answer("Админ-панель. Выберите действие:\n\n Перейти в тех поддержку t.me/histobit_chat_bot", reply_markup=builder.as_markup())
+
 
 @dp.callback_query(F.data == "add_post")
 async def add_post_command(callback: CallbackQuery):
@@ -296,16 +326,68 @@ async def add_post_command(callback: CallbackQuery):
         "/bonus <bonus>"
     )
 
+
 @dp.callback_query(F.data == "all_users")
 async def all_users_callback(callback: CallbackQuery):
     await callback.answer()
-    await show_all_users(
-        Message.model_validate({
-            "from_user": callback.from_user,
-            "chat": callback.message.chat,
-            "text": "/all_users"
-        })
-    )
+    await show_all_users(callback)
+
+
+@dp.callback_query(F.data == "view_posts")
+async def view_posts(callback: CallbackQuery):
+    """Показывает список постов с кнопками удаления"""
+    await callback.answer()
+
+    if callback.from_user.id != ADMIN_ID:
+        await callback.message.answer("У вас нет прав доступа к этой команде.")
+        return
+
+    posts = get_posts()
+    if not posts:
+        await callback.message.answer("Нет доступных постов.")
+        return
+
+    for post_id, title, description, link, bonus in posts:
+        # Создаем инлайн-кнопку для удаления
+        builder = InlineKeyboardBuilder()
+        builder.button(text="Удалить пост", callback_data=f"delete_post_{post_id}")
+
+        # Формируем текст поста
+        text = (
+            f"📝 <b>Название:</b> {title}\n"
+            f"📖 <b>Описание:</b> {description}\n"
+            f"🔗 <b>Ссылка:</b> {link or 'Нет ссылки'}\n"
+            f"🎁 <b>Бонус:</b> {bonus} баллов"
+        )
+
+        await callback.message.answer(text, parse_mode='HTML', reply_markup=builder.as_markup())
+
+
+@dp.callback_query(F.data.startswith("delete_post_"))
+async def delete_post_callback(callback: CallbackQuery):
+    """Обработка удаления поста"""
+    await callback.answer()
+
+    if callback.from_user.id != ADMIN_ID:
+        await callback.message.answer("У вас нет прав доступа к этой команде.")
+        return
+
+    # Извлекаем ID поста из callback_data
+    post_id = int(callback.data.replace("delete_post_", ""))
+
+    # Удаляем пост
+    delete_post(post_id)
+
+    # Показываем админ-панель
+    builder = InlineKeyboardBuilder()
+    builder.button(text="Добавить пост", callback_data="add_post")
+    builder.button(text="Список пользователей", callback_data="all_users")
+    builder.button(text="Просмотр и удаление постов", callback_data="view_posts")
+    builder.adjust(1)
+
+    await callback.message.answer("✅ Пост успешно удален!\nАдмин-панель. Выберите действие: \n\n Перейти в тех поддержку t.me/histobit_chat_bot",
+                                  reply_markup=builder.as_markup())
+
 
 @dp.message(F.text.startswith("/task"))
 async def handle_task(message: Message):
@@ -332,14 +414,17 @@ async def handle_task(message: Message):
     add_post(title, description, link, bonus)
     await message.answer("✅ Пост успешно добавлен!")
 
+
 async def on_startup():
     """Действия при запуске бота"""
     create_db()
     logger.info("Бот успешно запущен")
 
+
 async def main():
     await on_startup()
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     asyncio.run(main())
