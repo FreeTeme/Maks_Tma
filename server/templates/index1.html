@@ -447,6 +447,9 @@ function initMiningSection() {
                 const now = Math.floor(Date.now() / 1000);
                 const timeLeft = endTime - now;
 
+                // Умножаем timeLeft на 2, чтобы получить 24 часа вместо 12
+            timeLeft = timeLeft * 2;
+
                 if (timeLeft > 0) {
                     const savedEndTime = localStorage.getItem('miningEndTime');
                     if (savedEndTime) {

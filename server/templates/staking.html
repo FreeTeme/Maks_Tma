@@ -367,209 +367,248 @@
     </div>
 
     <script>
-        let currentCoin = '';
-        let currentBalance = 0;
+    let currentCoin = '';
+    let currentBalance = 0;
 
-        // Load user balance when page loads
-        document.addEventListener('DOMContentLoaded', async function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Проверяем, возвращаемся ли мы из инструкции (с bitget.html)
+        if (localStorage.getItem('returningFromInstruction') === 'true') {
             try {
-                const response = await fetch('/api/get-balance');
+                const response = await fetch('/api/get_last_search');
                 if (response.ok) {
                     const data = await response.json();
-                    currentBalance = data.balance || 0;
-                    document.getElementById('currentBalance').textContent = currentBalance;
-                } else {
-                    const errorData = await response.json();
-                    console.error('Error fetching balance:', errorData.error || response.status);
-                    currentBalance = 0;
-                    alert('Error loading your balance. Please refresh the page.');
+                    if (data.success && data.last_search) {
+                        document.getElementById('coinInput').value = data.last_search;
+                        currentCoin = data.last_search;
+                        // Автоматически загружаем результаты стейкинга
+                        loadStakingInfo();
+                    }
                 }
+                // Удаляем флаг возврата
+                localStorage.removeItem('returningFromInstruction');
             } catch (error) {
-                console.error('Network error:', error);
+                console.error('Ошибка получения последнего поиска:', error);
+                localStorage.removeItem('returningFromInstruction');
+            }
+        }
+
+        // Загружаем баланс пользователя
+        try {
+            const response = await fetch('/api/get-balance');
+            if (response.ok) {
+                const data = await response.json();
+                currentBalance = data.balance || 0;
+                document.getElementById('currentBalance').textContent = currentBalance;
+            } else {
+                const errorData = await response.json();
+                console.error('Ошибка получения баланса:', errorData.error || response.status);
                 currentBalance = 0;
-                alert('Network error. Please check your connection.');
             }
-        });
+        } catch (error) {
+            console.error('Сетевая ошибка:', error);
+            currentBalance = 0;
+        }
+    });
 
-        function checkBalanceBeforeSearch() {
-            currentCoin = document.getElementById('coinInput').value.trim().toUpperCase();
-            if (!currentCoin) {
-                alert('Please enter a coin name');
-                return;
-            }
+    function checkBalanceBeforeSearch() {
+        currentCoin = document.getElementById('coinInput').value.trim().toUpperCase();
+        if (!currentCoin) {
+            alert('Пожалуйста, введите название монеты');
+            return;
+        }
+
+        // Сохраняем поисковый запрос в localStorage (как резерв)
+        localStorage.setItem('lastCoinSearch', currentCoin);
+        
+        // Показываем модальное окно подтверждения
+        document.getElementById('confirmationModal').style.display = 'block';
+        document.getElementById('modalOverlay').style.display = 'block';
+    }
+
+    async function confirmPurchase() {
+        if (currentBalance < 40) {
+            alert('Недостаточно баллов! Для просмотра результатов стейкинга нужно 40 баллов.');
+            closeConfirmationModal();
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/deduct-points', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ points: 40 })
+            });
+
+            const responseData = await response.json();
             
-            // Show confirmation modal
-            document.getElementById('confirmationModal').style.display = 'block';
-            document.getElementById('modalOverlay').style.display = 'block';
-        }
-
-        async function confirmPurchase() {
-            if (currentBalance < 40) {
-                alert('Not enough points! You need 40 points to view staking results.');
+            if (response.ok) {
+                currentBalance = responseData.newBalance;
+                document.getElementById('currentBalance').textContent = currentBalance;
                 closeConfirmationModal();
-                return;
-            }
-
-            try {
-                // Deduct points from user's balance
-                const response = await fetch('/api/deduct-points', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ points: 40 })
-                });
-
-                const responseData = await response.json();
-                
-                if (response.ok) {
-                    // Update local balance
-                    currentBalance = responseData.newBalance;
-                    document.getElementById('currentBalance').textContent = currentBalance;
-                    
-                    // Proceed with search
-                    closeConfirmationModal();
-                    loadStakingInfo();
-                } else {
-                    alert('Error: ' + (responseData.message || 'Failed to deduct points'));
-                    closeConfirmationModal();
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while processing your request');
+                loadStakingInfo();
+            } else {
+                alert('Ошибка: ' + (responseData.message || 'Не удалось списать баллы'));
                 closeConfirmationModal();
             }
-        }
-
-        function cancelPurchase() {
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Произошла ошибка при обработке запроса');
             closeConfirmationModal();
         }
+    }
 
-        function closeConfirmationModal() {
-            document.getElementById('confirmationModal').style.display = 'none';
-            document.getElementById('modalOverlay').style.display = 'none';
-        }
+    function cancelPurchase() {
+        closeConfirmationModal();
+    }
 
-        async function loadStakingInfo() {
-            // Show loader, hide other elements
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('notFound').style.display = 'none';
-            document.getElementById('exchangesList').innerHTML = '';
+    function closeConfirmationModal() {
+        document.getElementById('confirmationModal').style.display = 'none';
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    async function loadStakingInfo() {
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('notFound').style.display = 'none';
+        document.getElementById('exchangesList').innerHTML = '';
+
+        try {
+            // Сохраняем поисковый запрос в сессии
+            await fetch('/api/save_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ search_query: currentCoin })
+            });
+
+            // Получаем данные о стейкинге с вашего API
+            const response = await fetch(`/api/staking-info?coin=${encodeURIComponent(currentCoin)}`);
             
-            try {
-                const response = await fetch(`/api/staking-info?coin=${encodeURIComponent(currentCoin)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.exchanges && data.exchanges.length === 0) {
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('notFound').style.display = 'block';
-                    return;
-                }
-
-                renderExchanges(data.exchanges);
-                document.getElementById('loader').style.display = 'none';
-            } catch (error) {
-                console.error('Error:', error);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.exchanges && data.exchanges.length === 0) {
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('notFound').style.display = 'block';
-                alert('Error fetching data: ' + error.message);
+                return;
             }
+
+            renderExchanges(data.exchanges);
+            document.getElementById('loader').style.display = 'none';
+        } catch (error) {
+            console.error('Ошибка:', error);
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('notFound').style.display = 'block';
+            alert('Ошибка получения данных: ' + error.message);
         }
+    }
 
-        function renderExchanges(exchanges) {
-            const list = document.getElementById('exchangesList');
-            list.innerHTML = '';
+    function renderExchanges(exchanges) {
+        const list = document.getElementById('exchangesList');
+        list.innerHTML = '';
 
-            exchanges.forEach(exchange => {
-                const li = document.createElement('li');
-                li.className = 'exchange-item';
-                li.innerHTML = `
-                    <div class="exchange-name">${exchange.exchange}</div>
-                    <div class="exchange-cost">Cost: ${exchange.cost}</div>
-                `;
-                li.onclick = () => showExchangeDetails(exchange);
-                list.appendChild(li);
-            });
-        }
+        exchanges.forEach(exchange => {
+            const li = document.createElement('li');
+            li.className = 'exchange-item';
+            li.innerHTML = `
+                <div class="exchange-name">${exchange.exchange}</div>
+                <div class="exchange-cost">${exchange.cost}</div>
+            `;
+            li.onclick = () => showExchangeDetails(exchange);
+            list.appendChild(li);
+        });
+    }
 
-        function showExchangeDetails(exchange) {
-            document.getElementById('modalExchangeName').textContent = exchange.exchange;
-            document.getElementById('modalCost').textContent = exchange.cost;
+    function showExchangeDetails(exchange) {
+        document.getElementById('modalExchangeName').textContent = exchange.exchange;
+        document.getElementById('modalCost').textContent = exchange.cost;
+
+        const instructionBtn = document.getElementById('instructionBtn');
+        instructionBtn.onclick = () => {
+            // Устанавливаем флаг, что мы переходим на страницу биржи
+            localStorage.setItem('goingToBitget', 'true');
             
-
-            const instructionBtn = document.getElementById('instructionBtn');
-    instructionBtn.onclick = () => {
-        const exchangeName = exchange.exchange
-            .toLowerCase()
-            .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
-            .replace(/[^a-z0-9-]/g, ''); // Удаляем спецсимволы
-        window.location.href = `/${exchangeName}`;
-    };
-
-
-
-
-            // Render Flexible Staking
-            const holdPosList = document.getElementById('holdPosList');
-            holdPosList.innerHTML = '';
-            if (exchange.holdPosList && exchange.holdPosList.length > 0) {
-                exchange.holdPosList.forEach(pos => {
-                    const div = document.createElement('div');
-                    div.className = 'apy-item';
-                    div.innerHTML = `
-                        <span>Flexible</span>
-                        <span class="apy-value">${pos.apy}% APY</span>
-                    `;
-                    holdPosList.appendChild(div);
-                });
-                document.getElementById('holdPosSection').style.display = 'block';
-            } else {
-                document.getElementById('holdPosSection').style.display = 'none';
-            }
-
-            // Render Locked Staking
-            const lockPosList = document.getElementById('lockPosList');
-            lockPosList.innerHTML = '';
-            if (exchange.lockPosList && exchange.lockPosList.length > 0) {
-                exchange.lockPosList.forEach(pos => {
-                    const div = document.createElement('div');
-                    div.className = 'apy-item';
-                    div.innerHTML = `
-                        <span>${pos.days} Days</span>
-                        <span class="apy-value">${pos.apy}% APY</span>
-                    `;
-                    lockPosList.appendChild(div);
-                });
-                document.getElementById('lockPosSection').style.display = 'block';
-            } else {
-                document.getElementById('lockPosSection').style.display = 'none';
-            }
-
-            document.getElementById('exchangeModal').style.display = 'block';
-            document.getElementById('modalOverlay').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('exchangeModal').style.display = 'none';
-            document.getElementById('modalOverlay').style.display = 'none';
-            document.getElementById('instructionBtn').onclick = null;
-        }
-
-        // Close modal when clicking outside
-        document.getElementById('modalOverlay').onclick = function(event) {
-            if (event.target === document.getElementById('modalOverlay')) {
-                if (document.getElementById('confirmationModal').style.display === 'block') {
-                    closeConfirmationModal();
-                } else {
-                    closeModal();
-                }
-            }
+            // Сохраняем поисковый запрос в сессии
+            fetch('/api/save_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ search_query: currentCoin })
+            }).then(response => response.json())
+              .then(data => {
+                  if (!data.success) {
+                      console.error('Ошибка сохранения поиска:', data.message);
+                  }
+                  // Переходим на страницу биржи
+                  const exchangeName = exchange.exchange
+                      .toLowerCase()
+                      .replace(/\s+/g, '-')
+                      .replace(/[^a-z0-9-]/g, '');
+                  window.location.href = `/${exchangeName}`;
+              })
+              .catch(error => {
+                  console.error('Ошибка сохранения поиска:', error);
+                  const exchangeName = exchange.exchange
+                      .toLowerCase()
+                      .replace(/\s+/g, '-')
+                      .replace(/[^a-z0-9-]/g, '');
+                  window.location.href = `/${exchangeName}`;
+              });
         };
-    </script>
+
+        const holdPosList = document.getElementById('holdPosList');
+        holdPosList.innerHTML = '';
+        if (exchange.holdPosList && exchange.holdPosList.length > 0) {
+            exchange.holdPosList.forEach(pos => {
+                const div = document.createElement('div');
+                div.className = 'apy-item';
+                div.innerHTML = `
+                    <span>Гибкий</span>
+                    <span class="apy-value">${pos.apy}% APY</span>
+                `;
+                holdPosList.appendChild(div);
+            });
+            document.getElementById('holdPosSection').style.display = 'block';
+        } else {
+            document.getElementById('holdPosSection').style.display = 'none';
+        }
+
+        const lockPosList = document.getElementById('lockPosList');
+        lockPosList.innerHTML = '';
+        if (exchange.lockPosList && exchange.lockPosList.length > 0) {
+            exchange.lockPosList.forEach(pos => {
+                const div = document.createElement('div');
+                div.className = 'apy-item';
+                div.innerHTML = `
+                    <span>${pos.days} дней</span>
+                    <span class="apy-value">${pos.apy}% APY</span>
+                `;
+                lockPosList.appendChild(div);
+            });
+            document.getElementById('lockPosSection').style.display = 'block';
+        } else {
+            document.getElementById('lockPosSection').style.display = 'none';
+        }
+
+        document.getElementById('exchangeModal').style.display = 'block';
+        document.getElementById('modalOverlay').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('exchangeModal').style.display = 'none';
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('instructionBtn').onclick = null;
+    }
+
+    document.getElementById('modalOverlay').onclick = function(event) {
+        if (event.target === document.getElementById('modalOverlay')) {
+            if (document.getElementById('confirmationModal').style.display === 'block') {
+                closeConfirmationModal();
+            } else {
+                closeModal();
+            }
+        }
+    };
+</script>
 </body>
 </html>

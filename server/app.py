@@ -315,6 +315,34 @@ def submit_question():
     save_question(user_id, question)
     return redirect(url_for('chat'))
 
+
+@app.route('/api/save_search', methods=['POST'])
+def save_search():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+    data = request.get_json()
+    search_query = data.get('search_query')
+    if not search_query:
+        return jsonify({'success': False, 'message': 'No search query provided'}), 400
+
+    session['last_staking_search'] = search_query
+    return jsonify({'success': True, 'message': 'Search query saved'})
+
+@app.route('/api/get_last_search', methods=['GET'])
+def get_last_search():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'success': False, 'message': 'User not authenticated'}), 401
+
+    last_search = session.get('last_staking_search')
+    if last_search:
+        return jsonify({'success': True, 'last_search': last_search})
+    return jsonify({'success': False, 'message': 'No previous search found'})
+
+
+
 @app.route('/chart')
 def chart_route():
     return render_template('Chart.html')
@@ -350,6 +378,24 @@ def okx_route():
 @app.route('/xtcoin')
 def xtcoin_route():
     return render_template('xtcoin.html')
+
+
+@app.route('/mexc')
+def mexc_route():
+    return render_template('mexc.html')
+
+
+@app.route('/gateio')
+def gateio_route():
+    return render_template('gateio.html')
+
+@app.route('/htx')
+def htx_route():
+    return render_template('htx.html')
+
+@app.route('/bitmart')
+def bitmart_route():
+    return render_template('bitmart.html')
 
 @app.route('/graf')
 def graf():

@@ -156,7 +156,7 @@
 </head>
 <body>
     <div class="container">
-        <button class="back-btn" onclick="window.location.href='/profile'">← Назад</button>
+        <button class="back-btn" onclick="goBackToStaking()">← Назад</button>
 
         <div class="coin-cards" style="margin-top: 20%;">
             <div class="coin-card">
@@ -213,6 +213,22 @@
             </ol>
         `
     };
+
+    
+        function goBackToStaking() {
+    // Проверяем, был ли переход с staking.html
+    if (localStorage.getItem('goingToBitget') === 'true') {
+        // Устанавливаем флаг возврата из инструкции
+        localStorage.setItem('returningFromInstruction', 'true');
+        // Удаляем флаг перехода на bitget
+        localStorage.removeItem('goingToBitget');
+        // Перенаправляем на staking
+        window.location.href = '/staking';
+    } else {
+        // В других случаях просто возвращаемся
+        window.location.href = '/staking';
+    }
+}
 
     function updateInstructions(type) {
         const instructions = document.getElementById('instructions');
