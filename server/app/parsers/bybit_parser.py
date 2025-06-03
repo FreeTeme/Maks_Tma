@@ -1,160 +1,124 @@
 from .base_parser import BaseParser
 import requests
-import logging
 
 class BybitParser(BaseParser):
     def get_staking_info(self, coin: str) -> dict:
         try:
-            normalized_coin = self.normalize_coin_name(coin)
-            self.logger.debug(f"Normalized coin: {normalized_coin}")
+            normalized_coin = self.normalize_coin_name(coin).upper()
 
-            result = {
-                "exchange": "Bybit",
-                "coin": normalized_coin,
-                "holdPosList": [],
-                "lockPosList": [],
-                "cost": "0%"
-            }
-            all_apy = []
+            response = self._make_api_request(normalized_coin)
+            if not response:
+                return self._empty_response(normalized_coin)
 
-            # Парсим стандартный стейкинг
-            staking_data = self._make_staking_request(normalized_coin)
-            if staking_data:
-                self.logger.debug(f"Parsing staking data for {normalized_coin}")
-                staking_result, staking_apy = self.parse_staking(staking_data, normalized_coin)
-                result["holdPosList"].extend(staking_result["holdPosList"])
-                result["lockPosList"].extend(staking_result["lockPosList"])
-                all_apy.extend(staking_apy)
-
-            # Парсим Launchpool
-            launchpool_data = self._make_launchpool_request()
-            if launchpool_data:
-                self.logger.debug(f"Parsing launchpool data for {normalized_coin}")
-                launchpool_result, launchpool_apy = self.parse_launchpool(launchpool_data, normalized_coin)
-                result["holdPosList"].extend(launchpool_result["holdPosList"])
-                all_apy.extend(launchpool_apy)
-
-            # Парсим Flexible Savings
-            flexible_data = self._make_flexible_request(normalized_coin)
-            if flexible_data:
-                self.logger.debug(f"Parsing flexible savings data for {normalized_coin}")
-                flexible_result, flexible_apy = self.parse_flexible(flexible_data, normalized_coin)
-                result["holdPosList"].extend(flexible_result["holdPosList"])
-                all_apy.extend(flexible_apy)
-
-            # Выставляем итоговый cost
-            if all_apy:
-                min_apy = round(min(all_apy), 2)
-                max_apy = round(max(all_apy), 2)
-                result["cost"] = f"{min_apy}%-{max_apy}%" if min_apy != max_apy else f"{min_apy}%"
-
-            return result
+            return self.parse_response(response.json(), normalized_coin)
 
         except Exception as e:
             self.logger.error(f"Bybit parser error: {str(e)}")
-            return {}
+            return self._empty_response(normalized_coin)
 
-    def _make_staking_request(self, coin: str):
-        url = 'https://api.bybit.com/asset/v3/public/staking/product/union'
-        params = {
-            'coin': coin,
-            'status': 'ALL'
+    def _make_api_request(self, coin: str):
+        """Выполняет запрос к API Bybit"""
+        headers = {
+            'accept': '*/*',
+            'content-type': 'application/json',
+            'user-agent': 'Mozilla/5.0',
+            'origin': 'https://www.bybit.com',
+            'referer': 'https://www.bybit.com/',
+            'platform': 'pc',
+            'lang': 'en',
         }
-        headers = {'accept': 'application/json'}
-        response = requests.get(url, params=params, headers=headers)
-        self.logger.debug(f"Staking request status: {response.status_code}")
-        if response.ok:
-            return response.json().get('result', [])
-        return None
 
-    def _make_launchpool_request(self):
-        url = 'https://api.bybit.com/spot/v3/public/launchpad'
-        headers = {'accept': 'application/json'}
-        response = requests.get(url, headers=headers)
-        self.logger.debug(f"Launchpool request status: {response.status_code}")
-        if response.ok:
-            return response.json().get('result', {}).get('list', [])
-        return None
-
-    def _make_flexible_request(self, coin: str):
-        url = 'https://api.bybit.com/asset/v3/public/deposit-savings/product/list'
-        params = {'coin': coin}
-        headers = {'accept': 'application/json'}
-        response = requests.get(url, params=params, headers=headers)
-        self.logger.debug(f"Flexible savings request status: {response.status_code}")
-        if response.ok:
-            return response.json().get('result', [])
-        return None
-
-    def parse_staking(self, data: list, coin: str):
-        result = {
-            "holdPosList": [],
-            "lockPosList": [],
+        json_data = {
+            'product_area': [0],
+            'page': 1,
+            'limit': 10,
+            'product_type': 0,
+            'coin_name': coin,
+            'sort_apr': 0,
+            'show_available': False,
+            'fixed_saving_version': 1,
         }
-        apys = []
 
-        for item in data:
-            if item.get("coin") != coin:
-                continue
+        response = requests.post(
+            'https://api2.bybit.com/s1/byfi/get-saving-homepage-product-cards',
+            headers=headers,
+            json=json_data,
+            
+        )
 
-            apy = float(item.get("apy", 0))
-            period = int(item.get("period", 0))
+        if not response.ok:
+            self.logger.error(f"Bybit API error: {response.status_code}")
+            return None
 
-            if period == 0:
-                result["holdPosList"].append({
-                    "days": 0,
-                    "apy": round(apy, 2),
-                    "min_amount": 0,
-                    "max_amount": 0
-                })
-            else:
-                result["lockPosList"].append({
-                    "days": period,
-                    "apy": round(apy, 2),
-                    "min_amount": 0,
-                    "max_amount": 0
-                })
+        return response
 
-            apys.append(apy)
+    def parse_response(self, data: dict, coin: str) -> dict:
+        """Парсит сырой ответ API в структурированный формат"""
+        result = self._empty_response(coin)
 
-        return result, apys
+        apy_values = []
+        products = self._extract_products(data)
 
-    def parse_launchpool(self, data: list, coin: str):
-        result = {
-            "holdPosList": [],
-        }
-        apys = []
+        for product in products:
+            self._process_product(product, result, apy_values, coin)
 
-        for item in data:
-            if item.get("launchpoolTokenInfo", {}).get("tokenName") == coin:
-                apy = float(item.get("launchpoolTokenInfo", {}).get("apy", 0))
-                result["holdPosList"].append({
-                    "days": 0,
-                    "apy": round(apy, 2),
-                    "min_amount": 0,
-                    "max_amount": 0
-                })
-                apys.append(apy)
+        self._calculate_apy_range(result, apy_values)
+        return result
 
-        return result, apys
+    def _extract_products(self, data: dict) -> list:
+        """Извлекает все продукты из структуры ответа"""
+        products = []
+        for coin_product in data.get("result", {}).get("coin_products", []):
+            products.extend(coin_product.get("saving_products", []))
+        return products
 
-    def parse_flexible(self, data: list, coin: str):
-        result = {
-            "holdPosList": [],
-        }
-        apys = []
+    def _process_product(self, product: dict, result: dict, apy_values: list, coin: str):
+        """Обрабатывает отдельный продукт"""
+        try:
+            apy = self._parse_apy(product.get("apy", "0%"))
+            is_fixed = product.get("is_fixed_term_loan_coin_product", False)
+            days = int(product.get("staking_term", 0)) if is_fixed else 0
 
-        for item in data:
-            if item.get("coin") != coin:
-                continue
-
-            apy = float(item.get("estApy", 0))
-            result["holdPosList"].append({
-                "days": 0,
+            pos = {
+                "days": days,
                 "apy": round(apy, 2),
                 "min_amount": 0,
                 "max_amount": 0
-            })
-            apys.append(apy)
+            }
 
-        return result, apys
+            if is_fixed:
+                result["lockPosList"].append(pos)
+                self.logger.debug(f"[Bybit:{coin}] Locked product: {pos}")
+            else:
+                result["holdPosList"].append(pos)
+                self.logger.debug(f"[Bybit:{coin}] Flexible product: {pos}")
+
+            apy_values.append(apy)
+
+        except Exception as e:
+            self.logger.warning(f"[Bybit:{coin}] Product error: {str(e)}")
+
+    def _parse_apy(self, apy_str: str) -> float:
+        """Конвертирует строку APY в число"""
+        return float(apy_str.replace("%", "").strip() or "0")
+
+    def _calculate_apy_range(self, result: dict, apy_values: list):
+        """Рассчитывает диапазон APY"""
+        if apy_values:
+            min_apy = min(apy_values)
+            max_apy = max(apy_values)
+            result["cost"] = (
+                f"{min_apy:.2f}%–{max_apy:.2f}%" 
+                if min_apy != max_apy 
+                else f"{max_apy:.2f}%"
+            )
+
+    def _empty_response(self, coin: str) -> dict:
+        """Возвращает пустой ответ для монеты"""
+        return {
+            'exchange': 'Bybit',
+            'coin': coin,
+            'holdPosList': [],
+            'lockPosList': [],
+            'cost': '0%'
+        }
