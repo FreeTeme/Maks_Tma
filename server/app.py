@@ -375,9 +375,9 @@ def kucoin_route():
 def okx_route():
     return render_template('okx.html')
 
-@app.route('/xtcoin')
+@app.route('/xtcom')
 def xtcoin_route():
-    return render_template('xtcoin.html')
+    return render_template('xtcom.html')
 
 
 @app.route('/mexc')
@@ -396,6 +396,11 @@ def htx_route():
 @app.route('/bitmart')
 def bitmart_route():
     return render_template('bitmart.html')
+
+
+@app.route('/wallet')
+def wallet_route():
+    return render_template('wallet.html')
 
 @app.route('/graf')
 def graf():
