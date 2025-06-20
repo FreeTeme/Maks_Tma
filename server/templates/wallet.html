@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Premium Coins | Crypto App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Базовые стили */
+        :root {
+            --primary: #4c8cff;
+            --primary-dark: #5649C0;
+            --secondary: #00CEFF;
+            --dark: #1A1A2E;
+            --darker: #16213E;
+            --light: #F1F1F1;
+            --gold: #FFD700;
+            --success: #2ECC71;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Гладкий скролл */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Шапка */
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.2rem 2rem;
+            background: linear-gradient(135deg, var(--darker), var(--dark));
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .logo-icon {
+            font-size: 1.8rem;
+            color: var(--secondary);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .user-balance {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.6rem 1.2rem;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .user-balance:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 206, 255, 0.2);
+        }
+
+        .balance-icon {
+            font-size: 1.2rem;
+            color: var(--gold);
+        }
+
+        .balance-amount {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        /* Основной контент */
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* Карточка покупки */
+        .purchase-card {
+            background: linear-gradient(145deg, var(--darker), var(--dark));
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(108, 92, 231, 0.3);
+            transition: transform 0.4s, box-shadow 0.4s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .purchase-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(108, 92, 231, 0.4);
+        }
+
+        .purchase-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(108, 92, 231, 0.1) 0%, transparent 70%);
+            animation: rotate 15s linear infinite;
+            z-index: -1;
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .card-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .coin-icon {
+            font-size: 4rem;
+            color: var(--gold);
+            margin-bottom: 1.5rem;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.5));
+        }
+
+        .card-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, var(--light), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .card-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        /* Форма ввода */
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 0.8rem;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .input-field {
+            width: 100%;
+            padding: 1.2rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(108, 92, 231, 0.3);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(0, 206, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .input-currency {
+            position: absolute;
+            right: 1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Ползунок */
+        .range-slider {
+            width: 100%;
+            margin: 2rem 0;
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--secondary);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 206, 255, 0.5);
+            transition: all 0.2s;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(0, 206, 255, 0.8);
+        }
+
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        /* Блок результата */
+        .result-card {
+            background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(0, 206, 255, 0.1));
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(108, 92, 231, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .result-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .result-value {
+            font-weight: 600;
+        }
+
+        .coin-amount {
+            color: var(--gold);
+        }
+
+        .total-cost {
+            font-size: 1.2rem;
+            color: var(--secondary);
+        }
+
+        /* Кнопка покупки */
+        .buy-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            margin-top: 1rem;
+            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .buy-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .buy-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(108, 92, 231, 0.6);
+        }
+
+        .buy-btn:hover::before {
+            left: 100%;
+        }
+
+        .buy-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Блок преимуществ */
+        .benefits-card {
+            background: linear-gradient(145deg, var(--darker), var(--dark));
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 206, 255, 0.3);
+        }
+
+        .benefits-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .benefits-list {
+            list-style: none;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .benefit-item:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .benefit-icon {
+            font-size: 1.2rem;
+            color: var(--secondary);
+            margin-top: 0.2rem;
+            flex-shrink: 0;
+        }
+
+        .benefit-content h4 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--light);
+        }
+
+        .benefit-content p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Модальное окно успеха */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, var(--darker), var(--dark));
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(108, 92, 231, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+        }
+
+        .success-icon {
+            font-size: 5rem;
+            color: var(--success);
+            margin-bottom: 1.5rem;
+            animation: bounce 0.6s;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-30px); }
+            60% { transform: translateY(-15px); }
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--light);
+        }
+
+        .modal-text {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .modal-close {
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 1.5rem;
+            }
+
+            .app-header {
+                padding: 1rem 1.5rem;
+            }
+
+            .logo-text {
+                font-size: 1.3rem;
+            }
+
+            .user-balance {
+                padding: 0.5rem 1rem;
+            }
+
+            .purchase-card, .benefits-card {
+                padding: 1.5rem;
+            }
+
+            .card-title {
+                font-size: 1.5rem;
+            }
+
+            .modal-content {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        /* Анимация падающих монет */
+        .coin-animation {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, var(--gold), #daa520);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--gold);
+            animation: fall linear;
+            z-index: -1;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+
+        .back-button-container {
+    display: flex;
+    align-items: center;
+}
+
+.back-button {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #fff;
+    padding: 8px 15px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.back-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(-3px);
+}
+
+.back-button i {
+    font-size: 14px;
+}
+    </style>
+</head>
+<body>
+    <!-- Шапка приложения -->
+    <header class="app-header">
+       <div class="back-button-container">
+    <button class="back-button" onclick="window.history.back()">
+        <i class="fas fa-arrow-left"></i>
+        Back
+    </button>
+</div>
+        <div class="user-balance">
+            <i class="fas fa-wallet balance-icon"></i>
+            <span class="balance-amount" id="balanceText">$2,450.00</span>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="main-container">
+        <!-- Карточка покупки -->
+        <section class="purchase-card">
+            <div class="card-header">
+                <i class="fas fa-coins coin-icon"></i>
+                <h1 class="card-title">Premium Coins</h1>
+                <p class="card-subtitle">Get exclusive benefits with our premium cryptocurrency</p>
+            </div>
+
+            <div class="input-group">
+                <label class="input-label">Amount to purchase</label>
+                <div class="input-container">
+                    <input type="number" id="coinAmount" class="input-field" value="100" min="10" step="10">
+                    <span class="input-currency">COINS</span>
+                </div>
+            </div>
+
+            <div class="range-slider">
+                <input type="range" min="10" max="1000" value="100" class="slider" id="coinRange">
+                <div class="slider-labels">
+                    <span>10</span>
+                    <span>1000</span>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <div class="result-row">
+                    <span class="result-label">You get:</span>
+                    <span class="result-value coin-amount" id="displayCoins">100 COINS</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Price per coin:</span>
+                    <span class="result-value">$1.30</span>
+                </div>
+                <div class="result-row">
+                    <span class="result-label">Total cost:</span>
+                    <span class="result-value total-cost" id="displayCost">$130.00</span>
+                </div>
+            </div>
+
+            <button class="buy-btn" id="buyButton">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </section>
+
+        <!-- Блок преимуществ -->
+        <section class="benefits-card">
+            <h2 class="benefits-title">
+                <i class="fas fa-crown"></i> how to buy coins?
+            </h2>
+            <ul class="benefits-list">
+                <li class="benefit-item">
+                    <i class="fas fa-bolt benefit-icon"></i>
+                    <div class="benefit-content">
+                        <h4>Connect your wallet</h4>
+                        <p>Choose any method convenient for you.</p>
+                    </div>
+                </li>
+                <li class="benefit-item">
+                    <i class="fas fa-percentage benefit-icon"></i>
+                    <div class="benefit-content">
+                        <h4>Enter the amount</h4>
+                        <p>Enter or select using the slider.</p>
+                    </div>
+                </li>
+                <li class="benefit-item">
+                    <i class="fas fa-shield-alt benefit-icon"></i>
+                    <div class="benefit-content">
+                        <h4>Click on the buy button</h4>
+                        <p>Wait for the time and transaction verification.</p>
+                    </div>
+                </li>
+                <li class="benefit-item">
+                    <i class="fas fa-gem benefit-icon"></i>
+                    <div class="benefit-content">
+                        <h4>Get coins</h4>
+                        <p>Access premium-only features like advanced trading tools.</p>
+                    </div>
+                </li>
+            </ul>
+        </section>
+    </main>
+
+    <!-- Модальное окно успеха -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal-content">
+            <i class="fas fa-check-circle success-icon"></i>
+            <h2 class="modal-title">Purchase Successful!</h2>
+            <p class="modal-text" id="successMessage">You have successfully purchased <span class="coin-amount">100 COINS</span> for <span class="total-cost">$130.00</span>. Your new balance will be updated shortly.</p>
+            <button class="modal-close" id="modalClose">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // Элементы DOM
+        const coinAmountInput = document.getElementById('coinAmount');
+        const coinRangeSlider = document.getElementById('coinRange');
+        const displayCoins = document.getElementById('displayCoins');
+        const displayCost = document.getElementById('displayCost');
+        const buyButton = document.getElementById('buyButton');
+        const balanceText = document.getElementById('balanceText');
+        const successModal = document.getElementById('successModal');
+        const successMessage = document.getElementById('successMessage');
+        const modalClose = document.getElementById('modalClose');
+
+        // Текущий баланс (можно заменить на реальные данные)
+        let userBalance = 2450.00;
+        const pricePerCoin = 1.30;
+
+        // Синхронизация ползунка и поля ввода
+        function syncInputs() {
+            const coins = parseInt(coinAmountInput.value);
+            
+            // Проверка минимального и максимального значения
+            if (coins < 10) coinAmountInput.value = 10;
+            if (coins > 1000) coinAmountInput.value = 1000;
+            
+            const validCoins = parseInt(coinAmountInput.value);
+            coinRangeSlider.value = validCoins;
+            
+            // Расчет стоимости
+            const cost = (validCoins * pricePerCoin).toFixed(2);
+            
+            // Обновление отображения
+            displayCoins.textContent = `${validCoins} COINS`;
+            displayCost.textContent = `$${cost}`;
+        }
+
+        // Обработчики событий
+        coinAmountInput.addEventListener('input', syncInputs);
+        coinRangeSlider.addEventListener('input', function() {
+            coinAmountInput.value = this.value;
+            syncInputs();
+        });
+
+        // Инициализация
+        syncInputs();
+
+        // Покупка монет
+        buyButton.addEventListener('click', function() {
+            const coins = parseInt(coinAmountInput.value);
+            const cost = coins * pricePerCoin;
+            
+            if (cost > userBalance) {
+                alert("Insufficient funds! Please reduce the amount.");
+                return;
+            }
+            
+            // Анимация падающих монет
+            createCoinAnimation();
+            
+            // Обновление баланса
+            userBalance -= cost;
+            balanceText.textContent = `$${userBalance.toFixed(2)}`;
+            
+            // Показать сообщение об успехе
+            successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost">$${cost.toFixed(2)}</span>. Your new balance is <span class="total-cost">$${userBalance.toFixed(2)}</span>.`;
+            successModal.classList.add('active');
+            
+            // Здесь можно добавить запрос к серверу:
+            /*
+            fetch('/api/buy-coins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ coins: coins })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    userBalance = data.newBalance;
+                    balanceText.textContent = `$${userBalance.toFixed(2)}`;
+                    successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost">$${cost.toFixed(2)}</span>.`;
+                    successModal.classList.add('active');
+                }
+            });
+            */
+        });
+
+        // Закрытие модального окна
+        modalClose.addEventListener('click', function() {
+            successModal.classList.remove('active');
+        });
+
+        // Анимация падающих монет
+        function createCoinAnimation() {
+            const colors = ['#FFD700', '#FFDF00', '#F5D000'];
+            
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const coin = document.createElement('div');
+                    coin.className = 'coin-animation';
+                    
+                    // Случайная позиция в верхней части экрана
+                    const startPosition = Math.random() * window.innerWidth;
+                    coin.style.left = `${startPosition}px`;
+                    coin.style.top = '-20px';
+                    
+                    // Случайный размер
+                    const size = 10 + Math.random() * 10;
+                    coin.style.width = `${size}px`;
+                    coin.style.height = `${size}px`;
+                    
+                    // Случайная продолжительность анимации
+                    const duration = 2 + Math.random() * 3;
+                    coin.style.animation = `fall ${duration}s linear`;
+                    
+                    document.body.appendChild(coin);
+                    
+                    // Удаление монеты после анимации
+                    setTimeout(() => {
+                        coin.remove();
+                    }, duration * 1000);
+                }, i * 150);
+            }
+        }
+    </script>
+</body>
+</html>

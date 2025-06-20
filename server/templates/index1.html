@@ -8,16 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <header class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;">
+    <header class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px;" onclick="window.href.location='/wallet'">
         <!-- Колокольчик -->
-        <i class="fa-solid fa-bell" id="notificationBell" style="font-size: 24px; color: #ffffff; cursor: pointer;"></i>
+        <i class="fa-solid fa-wallet wallet-icon" id="notificationBell" style="font-size: 24px; color: #ffffff; cursor: pointer;"></i>
 
         <!-- Всплывающее окно для уведомлений -->
         <div class="notifications-popup" id="notificationsPopup">
             <div class="popup-content">
-                <i class="fa-solid fa-bell-slash" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i>
-                <p>You have no notifications</p>
-                <button class="close-popup" id="closePopup">Close</button>
+                <!-- <i class="fa-solid fa-bell-slash" style="font-size: 36px; color: #4c8cff; margin-bottom: 10px;"></i> -->
+                <p>Click on the button to proceed to purchase</p>
+                <button class="close-popup" id="closePopup" onclick="window.location.href='/wallet'">Go to buy</button>
             </div>
         </div>
 
@@ -58,7 +58,7 @@
 
     <!-- Tab Navigation -->
     <div class="tabs">
-        <button class="tab active" data-tab="crypto">TRADING</button>
+        <button class="tab active" data-tab="crypto">PATTERNS</button>
         <button class="tab" data-tab="nfts">MINING</button>
         <button class="tab" data-tab="defi">SOCIAL</button>
     </div>
@@ -100,8 +100,7 @@
             <div class="defi-btn social-card" 
                  data-link="{{ post[2] }}"
                  data-bonus="{{ post[3] }}"
-                 data-post-id="{{ post[4] }}"
-                 onclick="handleSocialCardClick(event)"
+                 data-post-id="{{ post[4] }}"      
                  style="cursor: pointer; position: relative;">
                 <img src="{% if 'https://www.youtube.com' in post[2] %}../static/img/yootube.png {% elif 't.me' in post[2] %}../static/img/tg.webp{% else %}../static/img/m.jpg{% endif %}" 
                      alt="Defi Icon" 
@@ -543,7 +542,7 @@ function initMiningSection() {
     }
 
     async function startTimer() {
-        const timeLeft = 12 * 60 * 60;
+        const timeLeft = 24 * 60 * 60;
         const endTime = Math.floor(Date.now() / 1000) + timeLeft;
 
         await setMiningTimerOnServer(endTime);
