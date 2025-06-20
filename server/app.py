@@ -60,11 +60,25 @@ def init_db():
     if 'mining_end_time' not in columns:
         cursor.execute("ALTER TABLE users ADD COLUMN mining_end_time INTEGER")
 
+    # Проверка и добавление столбца wallet_address
+    cursor.execute("PRAGMA table_info(users)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'wallet_address' not in columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN wallet_address TEXT")
+    
     conn.commit()
     conn.close()
 
+
 # Initialize database at startup
 init_db()
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
@@ -219,6 +233,53 @@ def index():
         session['user_id'] = user_id
         return redirect(url_for('profile'))
     return "Пожалуйста, укажите user_id в параметрах URL (?user_id=...)"
+
+@app.route('/tonconnect-manifest.json')
+def tonconnect_manifest():
+    base_url = request.host_url.rstrip('/')
+    return jsonify({
+        "name": "Crypto Dashboard",
+        "url": base_url,
+        "iconUrl": f"{base_url}/static/ton-connect-icon.png",
+        "termsOfUseUrl": f"{base_url}/terms",
+        "privacyPolicyUrl": f"{base_url}/privacy",
+        "manifestUrl": f"{base_url}/tonconnect-manifest.json"
+    }), 200, {'Content-Type': 'application/json'}
+
+@app.route('/save_wallet', methods=['POST'])
+def save_wallet():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify(success=False, message="User not logged in")
+    
+    data = request.get_json()
+    wallet_address = data.get('wallet_address')
+    
+    if not wallet_address:
+        return jsonify(success=False, message="No wallet address provided")
+    
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем наличие столбца wallet_address
+        cursor.execute("PRAGMA table_info(users)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'wallet_address' not in columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN wallet_address TEXT")
+            conn.commit()
+        
+        # Обновляем адрес кошелька
+        cursor.execute(
+            "UPDATE users SET wallet_address = ? WHERE user_id = ?",
+            (wallet_address, user_id)
+        )
+        conn.commit()
+        conn.close()
+        
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, message=str(e))
 
 @app.route('/profile')
 def profile():
@@ -507,4 +568,4 @@ def get_chat():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host="0.0.0.0", port=50100, debug=True, ssl_context="adhoc")

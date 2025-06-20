@@ -24,8 +24,10 @@
         <!-- Баланс -->
         <div class="balance">
             <h1 id="balanceText">${{ balance }}</h1>
+            <!-- Добавьте этот код в header после баланса -->
+            
         </div>
-
+        <div id="ton-connect-button" class="wallet-connect"></div>
         <!-- Кнопка меню -->
         <div class="menu-toggle" id="menuToggle">
             <i class="fas fa-bars"></i>
@@ -168,6 +170,52 @@
     </div>
 
     <script src="../static/script.js"></script>
+<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Используем относительный путь к манифесту
+        const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+        
+        // Инициализация TonConnect
+        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: manifestUrl,
+            buttonRootId: 'ton-connect-button',
+            language: 'en'
+        });
+        
+        // Обработка подключения кошелька
+        tonConnectUI.onStatusChange(wallet => {
+            if (wallet) {
+                // Скрываем кнопку после подключения
+                const connectButton = document.getElementById('ton-connect-button');
+                if (connectButton) connectButton.style.display = 'none';
+                
+                // Отправляем адрес на сервер
+                fetch('/save_wallet', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        wallet_address: wallet.account.address
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Wallet address saved');
+                        // Дополнительные действия после сохранения
+                    } else {
+                        console.error('Failed to save wallet:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving wallet:', error);
+                });
+            }
+        });
+    });
+</script>
 </body>
 </html>
 <script>
@@ -714,6 +762,7 @@ window.onclick = function (event) {
     }
 };
 </script>
+
 <style>
  /* Prevent screen rotation */
  @media only screen and (orientation: landscape) {
