@@ -54,6 +54,31 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS purchases (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            wallet_address TEXT NOT NULL,
+            coins INTEGER NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL,
+            tx_hash TEXT NOT NULL UNIQUE,
+            purchase_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(user_id)
+        )
+    ''')
+    
+    # Добавляем индекс для быстрого поиска по пользователю
+    cursor.execute('''
+        CREATE INDEX IF NOT EXISTS idx_purchases_user_id 
+        ON purchases(user_id)
+    ''')
+    
+    # Добавляем индекс для предотвращения дублирования транзакций
+    cursor.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_tx_hash 
+        ON purchases(tx_hash)
+    ''')
     # Проверка и добавление столбца mining_end_time
     cursor.execute("PRAGMA table_info(users)")
     columns = [column[1] for column in cursor.fetchall()]
@@ -173,6 +198,95 @@ def update_user_balance(user_id, amount):
     cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
     conn.commit()
     conn.close()
+
+
+@app.route('/disconnect_wallet', methods=['POST'])
+def disconnect_wallet():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify(success=False, message="User not logged in")
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Удаляем кошелек из профиля пользователя
+        cursor.execute("UPDATE users SET wallet_address = NULL WHERE user_id = ?", (user_id,))
+        
+        # Также можно удалить связанные данные, если нужно
+        # cursor.execute("DELETE FROM wallet_sessions WHERE user_id = ?", (user_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        # Очищаем сессию, если нужно
+        # session.pop('wallet_address', None)
+        
+        return jsonify(success=True, message="Wallet disconnected")
+    
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@app.route('/save_purchase', methods=['POST'])
+def save_purchase():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify(success=False, message="User not logged in")
+
+    try:
+        data = request.get_json()
+        required_fields = ['user_id', 'wallet_address', 'coins', 'amount', 'currency', 'tx_hash']
+        
+        # Проверяем наличие всех обязательных полей
+        if not all(field in data for field in required_fields):
+            return jsonify(success=False, message="Missing required fields"), 400
+        
+        # Проверяем типы данных
+        try:
+            coins = int(data['coins'])
+            amount = float(data['amount'])
+        except (ValueError, TypeError):
+            return jsonify(success=False, message="Invalid data types"), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем, не существует ли уже такая транзакция
+        cursor.execute("SELECT id FROM purchases WHERE tx_hash = ?", (data['tx_hash'],))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify(success=False, message="Transaction already processed"), 409
+        
+        # Сохраняем покупку
+        cursor.execute('''
+            INSERT INTO purchases 
+            (user_id, wallet_address, coins, amount, currency, tx_hash) 
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            data['user_id'],
+            data['wallet_address'],
+            coins,
+            amount,
+            data['currency'],
+            data['tx_hash']
+        ))
+        
+        # Обновляем баланс пользователя
+        cursor.execute('''
+            UPDATE users SET balance = balance + ? 
+            WHERE user_id = ?
+        ''', (coins, data['user_id']))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify(success=True, message="Purchase saved successfully")
+        
+    except sqlite3.Error as e:
+        conn.rollback()
+        return jsonify(success=False, message=f"Database error: {str(e)}"), 500
+    except Exception as e:
+        return jsonify(success=False, message=f"Server error: {str(e)}"), 500
 
 @app.route('/api/get-balance')
 def get_balance():
@@ -309,7 +423,7 @@ def add_bonus():
 
     user = get_user_by_id(user_id)
     if user:
-        update_user_balance(user_id, 20)
+        update_user_balance(user_id, 10000)
         return jsonify(success=True, message="Bonus added!")
     return jsonify(success=False, message="User not found.")
 

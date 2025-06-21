@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buy Premium Coins | Crypto App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <style>
-        /* Базовые стили */
         :root {
             --primary: #4c8cff;
             --primary-dark: #5649C0;
@@ -16,6 +16,7 @@
             --light: #F1F1F1;
             --gold: #FFD700;
             --success: #2ECC71;
+            --ton-color: #0088CC;
         }
 
         * {
@@ -30,14 +31,15 @@
             color: var(--light);
             min-height: 100vh;
             overflow-x: hidden;
+            background-image: radial-gradient(circle at 10% 20%, rgba(108, 92, 231, 0.1) 0%, transparent 20%),
+                              radial-gradient(circle at 90% 80%, rgba(0, 206, 255, 0.1) 0%, transparent 20%);
         }
 
-        /* Гладкий скролл */
         html {
             scroll-behavior: smooth;
         }
 
-        /* Шапка */
+        /* Header */
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -47,32 +49,34 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             position: relative;
             z-index: 10;
+            backdrop-filter: blur(5px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .logo {
+        .back-button-container {
             display: flex;
             align-items: center;
-            gap: 0.8rem;
         }
 
-        .logo-icon {
-            font-size: 1.8rem;
-            color: var(--secondary);
-            animation: pulse 2s infinite;
+        .back-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-
-        .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(to right, var(--secondary), var(--primary));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-3px);
         }
 
         .user-balance {
@@ -102,7 +106,7 @@
             font-size: 1.1rem;
         }
 
-        /* Основной контент */
+        /* Main Content */
         .main-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -118,7 +122,7 @@
             }
         }
 
-        /* Карточка покупки */
+        /* Purchase Card */
         .purchase-card {
             background: linear-gradient(145deg, var(--darker), var(--dark));
             border-radius: 20px;
@@ -128,6 +132,7 @@
             transition: transform 0.4s, box-shadow 0.4s;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(5px);
         }
 
         .purchase-card:hover {
@@ -183,7 +188,65 @@
             max-width: 80%;
         }
 
-        /* Форма ввода */
+        /* Wallet Connection */
+        .wallet-container {
+            margin: 1.5rem 0;
+        }
+
+        .wallet-connect {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--ton-color), #0066a0);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
+        }
+
+        .wallet-connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.6);
+        }
+
+        .wallet-connected {
+            background: linear-gradient(135deg, #00cc66, #00aa55);
+            padding: 1rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .wallet-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            text-align: center;
+            display: none;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        /* Input Group */
         .input-group {
             margin-bottom: 1.5rem;
         }
@@ -228,7 +291,7 @@
             font-weight: 600;
         }
 
-        /* Ползунок */
+        /* Slider */
         .range-slider {
             width: 100%;
             margin: 2rem 0;
@@ -268,7 +331,7 @@
             font-size: 0.9rem;
         }
 
-        /* Блок результата */
+        /* Result Card */
         .result-card {
             background: linear-gradient(135deg, rgba(108, 92, 231, 0.1), rgba(0, 206, 255, 0.1));
             border-radius: 15px;
@@ -300,16 +363,19 @@
             color: var(--gold);
         }
 
-        .total-cost {
-            font-size: 1.2rem;
-            color: var(--secondary);
+        .ton-cost {
+            color: var(--ton-color);
         }
 
-        /* Кнопка покупки */
+        .total-cost {
+            font-size: 1.2rem;
+        }
+
+        /* Buy Button */
         .buy-btn {
             width: 100%;
             padding: 1.2rem;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, var(--ton-color), #0066a0);
             color: white;
             border: none;
             border-radius: 12px;
@@ -322,7 +388,7 @@
             justify-content: center;
             gap: 0.8rem;
             margin-top: 1rem;
-            box-shadow: 0 4px 15px rgba(108, 92, 231, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
             position: relative;
             overflow: hidden;
         }
@@ -340,24 +406,28 @@
 
         .buy-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 7px 20px rgba(108, 92, 231, 0.6);
+            box-shadow: 0 7px 20px rgba(0, 136, 204, 0.6);
         }
 
         .buy-btn:hover::before {
             left: 100%;
         }
 
-        .buy-btn:active {
-            transform: translateY(0);
+        .buy-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
-        /* Блок преимуществ */
+        /* Benefits Card */
         .benefits-card {
             background: linear-gradient(145deg, var(--darker), var(--dark));
             border-radius: 20px;
             padding: 2rem;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(0, 206, 255, 0.3);
+            backdrop-filter: blur(5px);
         }
 
         .benefits-title {
@@ -409,7 +479,7 @@
             line-height: 1.5;
         }
 
-        /* Модальное окно успеха */
+        /* Success Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -445,6 +515,7 @@
             transition: transform 0.4s ease;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
         }
 
         .modal-overlay.active .modal-content {
@@ -489,7 +560,7 @@
 
         .modal-close {
             padding: 0.8rem 2rem;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, var(--ton-color), #0066a0);
             color: white;
             border: none;
             border-radius: 10px;
@@ -501,10 +572,38 @@
 
         .modal-close:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.4);
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.4);
         }
 
-        /* Адаптивность */
+        /* Transaction Status */
+        .transaction-status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+            text-align: center;
+        }
+
+        .status-loading {
+            background: rgba(0, 136, 204, 0.2);
+            color: var(--ton-color);
+        }
+
+        .status-success {
+            background: rgba(46, 204, 113, 0.2);
+            color: var(--success);
+        }
+
+        .status-error {
+            background: rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+        }
+
+        .status-icon {
+            margin-right: 0.5rem;
+        }
+
+        /* Responsive */
         @media (max-width: 768px) {
             .main-container {
                 grid-template-columns: 1fr;
@@ -513,14 +612,6 @@
 
             .app-header {
                 padding: 1rem 1.5rem;
-            }
-
-            .logo-text {
-                font-size: 1.3rem;
-            }
-
-            .user-balance {
-                padding: 0.5rem 1rem;
             }
 
             .purchase-card, .benefits-card {
@@ -536,73 +627,70 @@
             }
         }
 
-        /* Анимация падающих монет */
-        .coin-animation {
-            position: absolute;
+        /* Новые стили для кнопки отключения */
+        .disconnect-btn {
+            margin-top: 10px;
+            padding: 8px 15px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: block;
+            width: 100%;
+            max-width: 200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .disconnect-btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.4);
+        }
+
+        /* Статус загрузки */
+        .status-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .spinner {
             width: 20px;
             height: 20px;
-            background: radial-gradient(circle at 30% 30%, var(--gold), #daa520);
+            border: 3px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
-            box-shadow: 0 0 10px var(--gold);
-            animation: fall linear;
-            z-index: -1;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
         }
 
-        @keyframes fall {
-            to {
-                transform: translateY(100vh);
-            }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-
-        .back-button-container {
-    display: flex;
-    align-items: center;
-}
-
-.back-button {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: #fff;
-    padding: 8px 15px;
-    border-radius: 20px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 16px;
-    backdrop-filter: blur(5px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.back-button:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateX(-3px);
-}
-
-.back-button i {
-    font-size: 14px;
-}
     </style>
 </head>
 <body>
-    <!-- Шапка приложения -->
+    <!-- App Header -->
     <header class="app-header">
-       <div class="back-button-container">
-    <button class="back-button" onclick="window.history.back()">
-        <i class="fas fa-arrow-left"></i>
-        Back
-    </button>
-</div>
+        <div class="back-button-container">
+            <button class="back-button" onclick="window.history.back()">
+                <i class="fas fa-arrow-left"></i>
+                Back
+            </button>
+        </div>
         <div class="user-balance">
             <i class="fas fa-wallet balance-icon"></i>
             <span class="balance-amount" id="balanceText">$2,450.00</span>
         </div>
     </header>
 
-    <!-- Основной контент -->
+    <!-- Main Content -->
     <main class="main-container">
-        <!-- Карточка покупки -->
+        <!-- Purchase Card -->
         <section class="purchase-card">
             <div class="card-header">
                 <i class="fas fa-coins coin-icon"></i>
@@ -610,6 +698,34 @@
                 <p class="card-subtitle">Get exclusive benefits with our premium cryptocurrency</p>
             </div>
 
+            <!-- Payment Currency Info -->
+            <!-- <div class="currency-info">
+                <div class="payment-method">
+                    <i class="fab fa-bitcoin currency-icon ton-icon"></i>
+                    <div class="currency-name">TON</div>
+                    <p class="payment-description">Pay with TON cryptocurrency</p>
+                </div>
+            </div> -->
+
+            <!-- Wallet Connection -->
+            <div class="wallet-container" id="walletConnectContainer">
+                <button class="wallet-connect" id="ton-connect-button">
+                    <i class="fab fa-bitcoin"></i> Connect TON Wallet
+                </button>
+            </div>
+            
+            <div class="wallet-info" id="walletInfo">
+                <h3>Connected Wallet</h3>
+                <div class="wallet-address" id="walletAddress"></div>
+                <p>You can now buy coins with TON</p>
+                <button class="disconnect-btn" id="disconnectWallet">
+                    <i class="fas fa-unlink"></i> Disconnect Wallet
+                </button>
+            </div>
+            
+            <div class="transaction-status" id="transactionStatus"></div>
+
+            <!-- Coin Amount Input -->
             <div class="input-group">
                 <label class="input-label">Amount to purchase</label>
                 <div class="input-container">
@@ -618,6 +734,7 @@
                 </div>
             </div>
 
+            <!-- Slider -->
             <div class="range-slider">
                 <input type="range" min="10" max="1000" value="100" class="slider" id="coinRange">
                 <div class="slider-labels">
@@ -626,6 +743,7 @@
                 </div>
             </div>
 
+            <!-- Result Card -->
             <div class="result-card">
                 <div class="result-row">
                     <span class="result-label">You get:</span>
@@ -633,189 +751,329 @@
                 </div>
                 <div class="result-row">
                     <span class="result-label">Price per coin:</span>
-                    <span class="result-value">$1.30</span>
+                    <span class="result-value" id="pricePerCoin">1 TON</span>
                 </div>
                 <div class="result-row">
                     <span class="result-label">Total cost:</span>
-                    <span class="result-value total-cost" id="displayCost">$130.00</span>
+                    <span class="result-value total-cost ton-cost" id="displayCost">100 TON</span>
                 </div>
             </div>
 
-            <button class="buy-btn" id="buyButton">
-                <i class="fas fa-shopping-cart"></i> Buy Now
+            <!-- Buy Button -->
+            <button class="buy-btn" id="buyButton" disabled>
+                <i class="fas fa-shopping-cart"></i> Buy with TON
             </button>
         </section>
 
-        <!-- Блок преимуществ -->
+        <!-- Benefits Card -->
         <section class="benefits-card">
             <h2 class="benefits-title">
-                <i class="fas fa-crown"></i> how to buy coins?
+                <i class="fas fa-crown"></i> Premium Benefits
             </h2>
             <ul class="benefits-list">
                 <li class="benefit-item">
-                    <i class="fas fa-bolt benefit-icon"></i>
+                    <i class="fas fa-rocket benefit-icon"></i>
                     <div class="benefit-content">
-                        <h4>Connect your wallet</h4>
-                        <p>Choose any method convenient for you.</p>
+                        <h4>Priority Access</h4>
+                        <p>Get early access to new features and services</p>
                     </div>
                 </li>
                 <li class="benefit-item">
-                    <i class="fas fa-percentage benefit-icon"></i>
+                    <i class="fas fa-chart-line benefit-icon"></i>
                     <div class="benefit-content">
-                        <h4>Enter the amount</h4>
-                        <p>Enter or select using the slider.</p>
+                        <h4>Advanced Analytics</h4>
+                        <p>Access premium trading tools and market insights</p>
                     </div>
                 </li>
                 <li class="benefit-item">
                     <i class="fas fa-shield-alt benefit-icon"></i>
                     <div class="benefit-content">
-                        <h4>Click on the buy button</h4>
-                        <p>Wait for the time and transaction verification.</p>
+                        <h4>Enhanced Security</h4>
+                        <p>Advanced protection for your transactions</p>
                     </div>
                 </li>
                 <li class="benefit-item">
                     <i class="fas fa-gem benefit-icon"></i>
                     <div class="benefit-content">
-                        <h4>Get coins</h4>
-                        <p>Access premium-only features like advanced trading tools.</p>
+                        <h4>Exclusive Rewards</h4>
+                        <p>Special bonuses and rewards for premium members</p>
                     </div>
                 </li>
             </ul>
         </section>
     </main>
 
-    <!-- Модальное окно успеха -->
+    <!-- Success Modal -->
     <div class="modal-overlay" id="successModal">
         <div class="modal-content">
             <i class="fas fa-check-circle success-icon"></i>
             <h2 class="modal-title">Purchase Successful!</h2>
-            <p class="modal-text" id="successMessage">You have successfully purchased <span class="coin-amount">100 COINS</span> for <span class="total-cost">$130.00</span>. Your new balance will be updated shortly.</p>
+            <p class="modal-text" id="successMessage">You have successfully purchased <span class="coin-amount">100 COINS</span> for <span class="total-cost ton-cost">100 TON</span>. Your new balance will be updated shortly.</p>
             <button class="modal-close" id="modalClose">Continue</button>
         </div>
     </div>
 
     <script>
-        // Элементы DOM
+        // DOM Elements
         const coinAmountInput = document.getElementById('coinAmount');
         const coinRangeSlider = document.getElementById('coinRange');
         const displayCoins = document.getElementById('displayCoins');
         const displayCost = document.getElementById('displayCost');
+        const pricePerCoin = document.getElementById('pricePerCoin');
         const buyButton = document.getElementById('buyButton');
         const balanceText = document.getElementById('balanceText');
         const successModal = document.getElementById('successModal');
         const successMessage = document.getElementById('successMessage');
         const modalClose = document.getElementById('modalClose');
+        const walletInfo = document.getElementById('walletInfo');
+        const walletAddress = document.getElementById('walletAddress');
+        const transactionStatus = document.getElementById('transactionStatus');
+        const disconnectButton = document.getElementById('disconnectWallet');
+        const walletConnectContainer = document.getElementById('walletConnectContainer');
 
-        // Текущий баланс (можно заменить на реальные данные)
+        // State
         let userBalance = 2450.00;
-        const pricePerCoin = 1.30;
+        let tonConnectUI = null;
+        let connectedWallet = null;
+        const TON_PRICE_PER_COIN = 1;
+        const RECEIVER_ADDRESS = "EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N";
 
-        // Синхронизация ползунка и поля ввода
+        // Initialize TonConnect
+        function initTonConnect() {
+            const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
+            
+            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                manifestUrl: manifestUrl,
+                buttonRootId: 'ton-connect-button',
+                language: 'en',
+                uiPreferences: {
+                    theme: 'DARK',
+                    borderRadius: 's'
+                }
+            });
+
+            // Handle wallet status changes
+            tonConnectUI.onStatusChange(wallet => {
+                if (wallet) {
+                    handleWalletConnected(wallet);
+                } else {
+                    handleWalletDisconnected();
+                }
+            });
+        }
+
+        function handleWalletConnected(wallet) {
+            connectedWallet = wallet;
+            walletAddress.textContent = wallet.account.address;
+            walletInfo.style.display = 'block';
+            
+            // Enable buy button
+            buyButton.disabled = false;
+            
+            // Save wallet to server
+            saveWalletToServer(wallet.account.address);
+        }
+
+        function handleWalletDisconnected() {
+            connectedWallet = null;
+            walletInfo.style.display = 'none';
+            buyButton.disabled = true;
+            removeWalletFromServer();
+        }
+
+        // Save wallet to server
+        async function saveWalletToServer(address) {
+            try {
+                const response = await fetch('/save_wallet', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ wallet_address: address })
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Failed to save wallet:', data.message);
+                }
+            } catch (error) {
+                console.error('Error saving wallet:', error);
+            }
+        }
+
+        // Remove wallet from server
+        async function removeWalletFromServer() {
+            try {
+                const response = await fetch('/disconnect_wallet', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Failed to remove wallet:', data.message);
+                }
+            } catch (error) {
+                console.error('Error removing wallet:', error);
+            }
+        }
+
+        // Sync inputs and calculate costs
         function syncInputs() {
             const coins = parseInt(coinAmountInput.value);
             
-            // Проверка минимального и максимального значения
+            // Validate input
             if (coins < 10) coinAmountInput.value = 10;
             if (coins > 1000) coinAmountInput.value = 1000;
             
             const validCoins = parseInt(coinAmountInput.value);
             coinRangeSlider.value = validCoins;
             
-            // Расчет стоимости
-            const cost = (validCoins * pricePerCoin).toFixed(2);
+            // Calculate cost
+            const cost = (validCoins * TON_PRICE_PER_COIN).toFixed(2);
             
-            // Обновление отображения
+            // Update display
             displayCoins.textContent = `${validCoins} COINS`;
-            displayCost.textContent = `$${cost}`;
+            displayCost.textContent = `${cost} TON`;
+            pricePerCoin.textContent = `${TON_PRICE_PER_COIN} TON`;
         }
 
-        // Обработчики событий
-        coinAmountInput.addEventListener('input', syncInputs);
-        coinRangeSlider.addEventListener('input', function() {
-            coinAmountInput.value = this.value;
-            syncInputs();
-        });
+        // Show transaction status
+        function showTransactionStatus(message, type) {
+            transactionStatus.innerHTML = `
+                <div class="status-${type} status-loading">
+                    <div class="spinner"></div>
+                    ${message}
+                </div>
+            `;
+            transactionStatus.style.display = 'block';
+        }
 
-        // Инициализация
-        syncInputs();
+        // Hide transaction status
+        function hideTransactionStatus() {
+            transactionStatus.style.display = 'none';
+        }
 
-        // Покупка монет
-        buyButton.addEventListener('click', function() {
-            const coins = parseInt(coinAmountInput.value);
-            const cost = coins * pricePerCoin;
-            
-            if (cost > userBalance) {
-                alert("Insufficient funds! Please reduce the amount.");
+        // Process payment
+        async function processPayment() {
+            if (!connectedWallet) {
+                alert('Please connect your TON wallet first');
                 return;
             }
+
+            const coins = parseInt(coinAmountInput.value);
+            const amount = coins * TON_PRICE_PER_COIN;
             
-            // Анимация падающих монет
-            createCoinAnimation();
-            
-            // Обновление баланса
-            userBalance -= cost;
-            balanceText.textContent = `$${userBalance.toFixed(2)}`;
-            
-            // Показать сообщение об успехе
-            successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost">$${cost.toFixed(2)}</span>. Your new balance is <span class="total-cost">$${userBalance.toFixed(2)}</span>.`;
-            successModal.classList.add('active');
-            
-            // Здесь можно добавить запрос к серверу:
-            /*
-            fetch('/api/buy-coins', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ coins: coins })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    userBalance = data.newBalance;
-                    balanceText.textContent = `$${userBalance.toFixed(2)}`;
-                    successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost">$${cost.toFixed(2)}</span>.`;
+            try {
+                showTransactionStatus('Processing transaction... Please confirm in your wallet', 'loading');
+                
+                // TON payment
+                const amountInNanoTON = amount * 1000000000; // 1 TON = 10^9 nanoTON
+                
+                const transaction = {
+                    validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+                    messages: [
+                        {
+                            address: RECEIVER_ADDRESS,
+                            amount: amountInNanoTON.toString(),
+                            payload: "Coins purchase"
+                        }
+                    ]
+                };
+
+                // Send transaction
+                const result = await tonConnectUI.sendTransaction(transaction);
+                
+                // Handle success
+                if (result) {
+                    hideTransactionStatus();
+                    
+                    // Show success message
+                    successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost ton-cost">${amount} TON</span>.`;
                     successModal.classList.add('active');
+                    
+                    // Update balance
+                    userBalance += coins;
+                    balanceText.textContent = `$${userBalance.toFixed(2)}`;
+                    
+                    // Save purchase to server
+                    try {
+                        const response = await fetch('/save_purchase', {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                user_id: getUserId(),
+                                wallet_address: connectedWallet.account.address,
+                                coins: coins,
+                                amount: amount,
+                                currency: 'ton',
+                                tx_hash: result.boc
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        if (!data.success) {
+                            console.error('Failed to save purchase:', data.message);
+                        }
+                    } catch (error) {
+                        console.error('Error saving purchase:', error);
+                    }
                 }
-            });
-            */
-        });
-
-        // Закрытие модального окна
-        modalClose.addEventListener('click', function() {
-            successModal.classList.remove('active');
-        });
-
-        // Анимация падающих монет
-        function createCoinAnimation() {
-            const colors = ['#FFD700', '#FFDF00', '#F5D000'];
-            
-            for (let i = 0; i < 20; i++) {
+            } catch (error) {
+                hideTransactionStatus();
+                console.error('Transaction error:', error);
+                showTransactionStatus(`Transaction failed: ${error.message || 'Unknown error'}`, 'error');
                 setTimeout(() => {
-                    const coin = document.createElement('div');
-                    coin.className = 'coin-animation';
-                    
-                    // Случайная позиция в верхней части экрана
-                    const startPosition = Math.random() * window.innerWidth;
-                    coin.style.left = `${startPosition}px`;
-                    coin.style.top = '-20px';
-                    
-                    // Случайный размер
-                    const size = 10 + Math.random() * 10;
-                    coin.style.width = `${size}px`;
-                    coin.style.height = `${size}px`;
-                    
-                    // Случайная продолжительность анимации
-                    const duration = 2 + Math.random() * 3;
-                    coin.style.animation = `fall ${duration}s linear`;
-                    
-                    document.body.appendChild(coin);
-                    
-                    // Удаление монеты после анимации
-                    setTimeout(() => {
-                        coin.remove();
-                    }, duration * 1000);
-                }, i * 150);
+                    hideTransactionStatus();
+                }, 5000);
             }
         }
+
+        // Disconnect wallet
+        async function disconnectWallet() {
+            if (tonConnectUI) {
+                await tonConnectUI.disconnect();
+            }
+            removeWalletFromServer();
+        }
+
+        // Get user ID from URL
+        function getUserId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('user_id') || 'default_user';
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize TonConnect
+            initTonConnect();
+            
+            // Set up input synchronization
+            syncInputs();
+            coinAmountInput.addEventListener('input', syncInputs);
+            coinRangeSlider.addEventListener('input', function() {
+                coinAmountInput.value = this.value;
+                syncInputs();
+            });
+
+            // Set up buy button
+            buyButton.addEventListener('click', processPayment);
+
+            // Set up modal close button
+            modalClose.addEventListener('click', function() {
+                successModal.classList.remove('active');
+            });
+            
+            // Set up disconnect button
+            disconnectButton.addEventListener('click', disconnectWallet);
+        });
     </script>
 </body>
 </html>
