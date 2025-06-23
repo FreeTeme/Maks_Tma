@@ -423,7 +423,7 @@ def add_bonus():
 
     user = get_user_by_id(user_id)
     if user:
-        update_user_balance(user_id, 10000)
+        update_user_balance(user_id, 20)
         return jsonify(success=True, message="Bonus added!")
     return jsonify(success=False, message="User not found.")
 
