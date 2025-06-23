@@ -438,55 +438,50 @@ function initMiningSection() {
     });
 
     async function checkActiveMiningTimer() {
-        try {
-            const response = await fetch('/api/get_mining_timer');
-            const data = await response.json();
+    try {
+        const response = await fetch('/api/get_mining_timer');
+        const data = await response.json();
 
-            if (data.success && data.end_time) {
-                const endTime = parseInt(data.end_time);
-                const now = Math.floor(Date.now() / 1000);
-                const timeLeft = endTime - now;
+        if (data.success && data.end_time) {
+            const endTime = parseInt(data.end_time);
+            const now = Math.floor(Date.now() / 1000);
+            let timeLeft = endTime - now;
 
-                // Умножаем timeLeft на 2, чтобы получить 24 часа вместо 12
-            timeLeft = timeLeft * 2;
+            // УБЕРИТЕ умножение на 2, оно некорректно
+            // timeLeft = timeLeft * 2; // <- ЭТУ СТРОКУ НУЖНО УДАЛИТЬ
 
-                if (timeLeft > 0) {
-                    const savedEndTime = localStorage.getItem('miningEndTime');
-                    if (savedEndTime) {
-                        const savedTimeLeft = parseInt(savedEndTime) - now;
-                        if (savedTimeLeft > 0 && savedTimeLeft > timeLeft) {
-                            activateMiningTimer(savedTimeLeft);
-                            return true;
-                        }
-                    }
-                    activateMiningTimer(timeLeft);
-                    return true;
-                } else {
-                    await clearMiningTimerOnServer();
-                    localStorage.removeItem('miningEndTime');
-                }
+            if (timeLeft > 0) {
+                localStorage.setItem('miningEndTime', endTime.toString());
+                activateMiningTimer(timeLeft);
+                return true;
+            } else {
+                await clearMiningTimerOnServer();
+                localStorage.removeItem('miningEndTime');
             }
-
-            const savedEndTime = localStorage.getItem('miningEndTime');
-            if (savedEndTime) {
-                const now = Math.floor(Date.now() / 1000);
-                const timeLeft = parseInt(savedEndTime) - now;
-
-                if (timeLeft > 0) {
-                    await setMiningTimerOnServer(parseInt(savedEndTime));
-                    activateMiningTimer(timeLeft);
-                    return true;
-                } else {
-                    localStorage.removeItem('miningEndTime');
-                }
-            }
-
-            return false;
-        } catch (error) {
-            console.error('Error checking mining timer:', error);
-            return false;
         }
+
+        // Проверяем localStorage только если на сервере нет активного таймера
+        const savedEndTime = localStorage.getItem('miningEndTime');
+        if (savedEndTime) {
+            const now = Math.floor(Date.now() / 1000);
+            const timeLeft = parseInt(savedEndTime) - now;
+
+            if (timeLeft > 0) {
+                // Если в localStorage есть валидное время, синхронизируем с сервером
+                await setMiningTimerOnServer(parseInt(savedEndTime));
+                activateMiningTimer(timeLeft);
+                return true;
+            } else {
+                localStorage.removeItem('miningEndTime');
+            }
+        }
+
+        return false;
+    } catch (error) {
+        console.error('Error checking mining timer:', error);
+        return false;
     }
+}
 
     function activateMiningTimer(timeLeft) {
         button.classList.add("disabled");
