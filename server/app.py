@@ -235,7 +235,7 @@ def save_purchase():
 
     try:
         data = request.get_json()
-        required_fields = ['user_id', 'wallet_address', 'coins', 'amount', 'currency', 'tx_hash']
+        required_fields = [ 'wallet_address', 'coins', 'amount', 'currency', 'tx_hash']
         
         # Проверяем наличие всех обязательных полей
         if not all(field in data for field in required_fields):
@@ -263,7 +263,7 @@ def save_purchase():
             (user_id, wallet_address, coins, amount, currency, tx_hash) 
             VALUES (?, ?, ?, ?, ?, ?)
         ''', (
-            data['user_id'],
+            user_id,
             data['wallet_address'],
             coins,
             amount,
@@ -275,7 +275,7 @@ def save_purchase():
         cursor.execute('''
             UPDATE users SET balance = balance + ? 
             WHERE user_id = ?
-        ''', (coins, data['user_id']))
+        ''', (coins, user_id))
         
         conn.commit()
         conn.close()
@@ -687,4 +687,4 @@ def get_chat():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=50100, debug=True, ssl_context="adhoc")
+    app.run(host="0.0.0.0", port=5010, debug=True, ssl_context="adhoc")

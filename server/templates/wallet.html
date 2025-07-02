@@ -682,10 +682,6 @@
                 Back
             </button>
         </div>
-        <!-- <div class="user-balance">
-            <i class="fas fa-wallet balance-icon"></i>
-            <span class="balance-amount" id="balanceText">$2,450.00</span>
-        </div> -->
     </header>
 
     <!-- Main Content -->
@@ -698,30 +694,21 @@
                 <p class="card-subtitle">Get exclusive benefits with our premium cryptocurrency</p>
             </div>
 
-            <!-- Payment Currency Info -->
-            <!-- <div class="currency-info">
-                <div class="payment-method">
-                    <i class="fab fa-bitcoin currency-icon ton-icon"></i>
-                    <div class="currency-name">TON</div>
-                    <p class="payment-description">Pay with TON cryptocurrency</p>
-                </div>
-            </div> -->
-
             <!-- Wallet Connection -->
             <div class="wallet-container" id="walletConnectContainer">
-                <button class="wallet-connect" id="ton-connect-button">
+                <!-- <button class="wallet-connect" id="ton-connect-button">
                     <i class="fab fa-bitcoin"></i> Connect TON Wallet
-                </button>
+                </button> -->
             </div>
-            
-            <div class="wallet-info" id="walletInfo">
+
+            <!-- <div class="wallet-info hidden" id="walletInfo">
                 <h3>Connected Wallet</h3>
                 <div class="wallet-address" id="walletAddress"></div>
                 <p>You can now buy coins with TON</p>
                 <button class="disconnect-btn" id="disconnectWallet">
                     <i class="fas fa-unlink"></i> Disconnect Wallet
                 </button>
-            </div>
+            </div> -->
             
             <div class="transaction-status" id="transactionStatus"></div>
 
@@ -729,16 +716,16 @@
             <div class="input-group">
                 <label class="input-label">Amount to purchase</label>
                 <div class="input-container">
-                    <input type="number" id="coinAmount" class="input-field" value="100" min="10" step="10">
+                    <input type="number" id="coinAmount" class="input-field" value="100" min="1" max="1000" step="1">
                     <span class="input-currency">COINS</span>
                 </div>
             </div>
 
             <!-- Slider -->
             <div class="range-slider">
-                <input type="range" min="10" max="1000" value="100" class="slider" id="coinRange">
+                <input type="range" min="1" max="1000" value="100" class="slider" id="coinRange">
                 <div class="slider-labels">
-                    <span>10</span>
+                    <span>1</span>
                     <span>1000</span>
                 </div>
             </div>
@@ -751,11 +738,11 @@
                 </div>
                 <div class="result-row">
                     <span class="result-label">Price per coin:</span>
-                    <span class="result-value" id="pricePerCoin">1 TON</span>
+                    <span class="result-value" id="pricePerCoin">0.1 TON</span>
                 </div>
                 <div class="result-row">
                     <span class="result-label">Total cost:</span>
-                    <span class="result-value total-cost ton-cost" id="displayCost">100 TON</span>
+                    <span class="result-value total-cost ton-cost" id="displayCost">10 TON</span>
                 </div>
             </div>
 
@@ -808,12 +795,11 @@
         <div class="modal-content">
             <i class="fas fa-check-circle success-icon"></i>
             <h2 class="modal-title">Purchase Successful!</h2>
-            <p class="modal-text" id="successMessage">You have successfully purchased <span class="coin-amount">100 COINS</span> for <span class="total-cost ton-cost">100 TON</span>. Your new balance will be updated shortly.</p>
+            <p class="modal-text" id="successMessage">You have successfully purchased <span class="coin-amount">100 COINS</span> for <span class="total-cost ton-cost">10 TON</span>. Your new balance will be updated shortly.</p>
             <button class="modal-close" id="modalClose">Continue</button>
         </div>
     </div>
-
-    <script>
+        <script>
         // DOM Elements
         const coinAmountInput = document.getElementById('coinAmount');
         const coinRangeSlider = document.getElementById('coinRange');
@@ -821,7 +807,6 @@
         const displayCost = document.getElementById('displayCost');
         const pricePerCoin = document.getElementById('pricePerCoin');
         const buyButton = document.getElementById('buyButton');
-        const balanceText = document.getElementById('balanceText');
         const successModal = document.getElementById('successModal');
         const successMessage = document.getElementById('successMessage');
         const modalClose = document.getElementById('modalClose');
@@ -829,45 +814,46 @@
         const walletAddress = document.getElementById('walletAddress');
         const transactionStatus = document.getElementById('transactionStatus');
         const disconnectButton = document.getElementById('disconnectWallet');
-        const walletConnectContainer = document.getElementById('walletConnectContainer');
+        
+        // Configuration
+        const TON_PRICE_PER_COIN = 0.1; // 1 COIN = 0.1 TON
+        const RECEIVER_ADDRESS = "UQC2UZZEkkiUzTSpE2GO_rsmonPf4eJMlETi4Z4yaStfk7XN"; // ЗАМЕНИТЕ НА ВАШ АДРЕС
+        const MANIFEST_URL = window.location.origin + '/tonconnect-manifest.json';
 
         // State
-        let userBalance = 2450.00;
         let tonConnectUI = null;
         let connectedWallet = null;
-        const TON_PRICE_PER_COIN = 1;
-        const RECEIVER_ADDRESS = "EQCD39VS5jcptHL8vMjEXrzGaRcCVYto7HUn4bpAOg8xqB2N";
 
         // Initialize TonConnect
         function initTonConnect() {
-            const manifestUrl = window.location.origin + '/tonconnect-manifest.json';
-            
-            tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-                manifestUrl: manifestUrl,
-                buttonRootId: 'ton-connect-button',
-                language: 'en',
-                uiPreferences: {
-                    theme: 'DARK',
-                    borderRadius: 's'
-                }
-            });
+            try {
+                tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+                    manifestUrl: MANIFEST_URL,
+                    buttonRootId: 'walletConnectContainer',
+                    language: 'en',
+                    uiPreferences: {
+                        theme: 'DARK',
+                        borderRadius: 's'
+                    }
+                });
 
-            // Handle wallet status changes
-            tonConnectUI.onStatusChange(wallet => {
-                if (wallet) {
-                    handleWalletConnected(wallet);
-                } else {
-                    handleWalletDisconnected();
-                }
-            });
+                tonConnectUI.onStatusChange(wallet => {
+                    if (wallet) {
+                        handleWalletConnected(wallet);
+                    } else {
+                        handleWalletDisconnected();
+                    }
+                });
+            } catch (error) {
+                console.error('TonConnect initialization error:', error);
+                showTransactionStatus('Failed to initialize wallet connection', 'error');
+            }
         }
 
         function handleWalletConnected(wallet) {
             connectedWallet = wallet;
             walletAddress.textContent = wallet.account.address;
             walletInfo.style.display = 'block';
-            
-            // Enable buy button
             buyButton.disabled = false;
             
             // Save wallet to server
@@ -881,53 +867,12 @@
             removeWalletFromServer();
         }
 
-        // Save wallet to server
-        async function saveWalletToServer(address) {
-            try {
-                const response = await fetch('/save_wallet', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: JSON.stringify({ wallet_address: address })
-                });
-                
-                const data = await response.json();
-                if (!data.success) {
-                    console.error('Failed to save wallet:', data.message);
-                }
-            } catch (error) {
-                console.error('Error saving wallet:', error);
-            }
-        }
-
-        // Remove wallet from server
-        async function removeWalletFromServer() {
-            try {
-                const response = await fetch('/disconnect_wallet', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
-                
-                const data = await response.json();
-                if (!data.success) {
-                    console.error('Failed to remove wallet:', data.message);
-                }
-            } catch (error) {
-                console.error('Error removing wallet:', error);
-            }
-        }
-
         // Sync inputs and calculate costs
         function syncInputs() {
             const coins = parseInt(coinAmountInput.value);
             
             // Validate input
-            if (coins < 10) coinAmountInput.value = 10;
+            if (coins < 1) coinAmountInput.value = 1;
             if (coins > 1000) coinAmountInput.value = 1000;
             
             const validCoins = parseInt(coinAmountInput.value);
@@ -945,8 +890,8 @@
         // Show transaction status
         function showTransactionStatus(message, type) {
             transactionStatus.innerHTML = `
-                <div class="status-${type} status-loading">
-                    <div class="spinner"></div>
+                <div class="status-${type}">
+                    ${type === 'loading' ? '<div class="spinner"></div>' : ''}
                     ${message}
                 </div>
             `;
@@ -958,10 +903,10 @@
             transactionStatus.style.display = 'none';
         }
 
-        // Process payment
+        // Process payment - ПОЛНОСТЬЮ ПЕРЕРАБОТАННЫЙ МЕТОД
         async function processPayment() {
             if (!connectedWallet) {
-                alert('Please connect your TON wallet first');
+                showTransactionStatus('Please connect your TON wallet first', 'error');
                 return;
             }
 
@@ -969,79 +914,120 @@
             const amount = coins * TON_PRICE_PER_COIN;
             
             try {
-                showTransactionStatus('Processing transaction... Please confirm in your wallet', 'loading');
+                showTransactionStatus('Preparing transaction...', 'loading');
                 
-                // TON payment
-                const amountInNanoTON = amount * 1000000000; // 1 TON = 10^9 nanoTON
+                // TON payment - использование BigInt и правильное преобразование
+                const amountInNanoTON = BigInt(Math.floor(amount * 1000000000));
                 
-                const transaction = {
-                    validUntil: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+                // Создаем payload в правильном формате
+                const payload = {
+                    validUntil: Math.floor(Date.now() / 1000) + 900, // 15 minutes
                     messages: [
                         {
                             address: RECEIVER_ADDRESS,
                             amount: amountInNanoTON.toString(),
-                            payload: "Coins purchase"
+                            payload: null // Убираем текстовый payload
                         }
                     ]
                 };
 
-                // Send transaction
-                const result = await tonConnectUI.sendTransaction(transaction);
+                // Добавляем задержку перед отправкой
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Handle success
-                if (result) {
+                showTransactionStatus('Please confirm in your wallet...', 'loading');
+                
+                // Отправляем транзакцию
+                const result = await tonConnectUI.sendTransaction(payload);
+                
+                // Проверяем результат
+                if (result && result.boc) {
                     hideTransactionStatus();
                     
-                    // Show success message
-                    successMessage.innerHTML = `You have successfully purchased <span class="coin-amount">${coins} COINS</span> for <span class="total-cost ton-cost">${amount} TON</span>.`;
+                    // Показываем успешное сообщение
+                    successMessage.innerHTML = `
+                        You have successfully purchased 
+                        <span class="coin-amount">${coins} COINS</span> 
+                        for <span class="total-cost ton-cost">${amount} TON</span>.
+                    `;
                     successModal.classList.add('active');
                     
-                    // Update balance
-                    userBalance += coins;
-                    balanceText.textContent = `$${userBalance.toFixed(2)}`;
-                    
-                    // Save purchase to server
-                    try {
-                        const response = await fetch('/save_purchase', {
-                            method: 'POST',
-                            headers: { 
-                                'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: JSON.stringify({
-                                user_id: getUserId(),
-                                wallet_address: connectedWallet.account.address,
-                                coins: coins,
-                                amount: amount,
-                                currency: 'ton',
-                                tx_hash: result.boc
-                            })
-                        });
-                        
-                        const data = await response.json();
-                        if (!data.success) {
-                            console.error('Failed to save purchase:', data.message);
-                        }
-                    } catch (error) {
-                        console.error('Error saving purchase:', error);
-                    }
+                    // Сохраняем покупку на сервер
+                    await savePurchaseToServer(coins, amount, result.boc);
+                } else {
+                    throw new Error('Transaction was not confirmed');
                 }
             } catch (error) {
-                hideTransactionStatus();
                 console.error('Transaction error:', error);
-                showTransactionStatus(`Transaction failed: ${error.message || 'Unknown error'}`, 'error');
+                
+                // Определяем тип ошибки
+                let errorMessage = 'Transaction failed';
+                if (error.message.includes('User rejected')) {
+                    errorMessage = 'You cancelled the transaction';
+                } else if (error.message.includes('Not enough balance')) {
+                    errorMessage = 'Insufficient balance';
+                } else if (error.message.includes('429')) {
+                    errorMessage = 'Too many requests, please wait';
+                }
+                
+                showTransactionStatus(`${errorMessage}`, 'error');
                 setTimeout(() => {
                     hideTransactionStatus();
                 }, 5000);
             }
         }
 
-        // Disconnect wallet
-        async function disconnectWallet() {
-            if (tonConnectUI) {
-                await tonConnectUI.disconnect();
+        // Save wallet to server
+        async function saveWalletToServer(address) {
+            try {
+                await fetch('/save_wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet_address: address })
+                });
+            } catch (error) {
+                console.error('Error saving wallet:', error);
             }
-            removeWalletFromServer();
+        }
+
+        // Save purchase to server
+        async function savePurchaseToServer(coins, amount, txHash) {
+            try {
+                const response = await fetch('/save_purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet_address: connectedWallet.account.address,
+                        coins: coins,
+                        amount: amount,
+                        currency: 'ton',
+                        tx_hash: txHash
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log('Purchase saved:', result.message);
+                    updateBalanceOnPage(); // <-- здесь вызов обновления баланса
+                } else {
+                    console.error('Server failed:', result.message);
+                    showTransactionStatus(`Server error: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving purchase:', error);
+            }
+        }
+
+
+        // Remove wallet from server
+        async function removeWalletFromServer() {
+            try {
+                await fetch('/disconnect_wallet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            } catch (error) {
+                console.error('Error removing wallet:', error);
+            }
         }
 
         // Get user ID from URL
@@ -1072,8 +1058,13 @@
             });
             
             // Set up disconnect button
-            disconnectButton.addEventListener('click', disconnectWallet);
+            disconnectButton.addEventListener('click', function() {
+                if (tonConnectUI) {
+                    tonConnectUI.disconnect();
+                }
+            });
         });
     </script>
+
 </body>
 </html>
