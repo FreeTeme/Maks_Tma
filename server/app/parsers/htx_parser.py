@@ -4,6 +4,10 @@ import logging
 
 class HTXParser(BaseParser):
     def get_staking_info(self, coin: str) -> dict:
+        """
+        Получает информацию о стейкинге для указанной монеты.
+        Возвращает данные в формате, аналогичном Gate.io.
+        """
         try:
             normalized_coin = self.normalize_coin_name(coin)
             self.logger.debug(f"Normalized coin: {normalized_coin}")
@@ -27,6 +31,7 @@ class HTXParser(BaseParser):
             return {}
 
     def _make_api_request(self):
+        """Выполняет API-запрос с обработкой исключений"""
         try:
             cookies = {
                 'HB-VULCAN-UUID': 'fef51c8f-faf4-48fe-b866-28eea4b81d2d',
@@ -72,22 +77,24 @@ class HTXParser(BaseParser):
                 params=params,
                 cookies=cookies,
                 headers=headers,
-                timeout=10  # Добавляем таймаут для безопасности
+                timeout=10
             )
         except Exception as e:
             self.logger.error(f"HTX API request failed: {str(e)}")
             return None
 
     def _parse_htx_data(self, data: dict, coin: str) -> dict:
+        """Основной метод парсинга данных HTX."""
         result = {
             "exchange": "HTX",
             "coin": coin,
-            "holdPosList": [],
-            "lockPosList": [],
+            "holdPosList": [],  # Гибкий стейкинг
+            "lockPosList": [],  # Фиксированный стейкинг
             "cost": "0%"
         }
         all_apy = []
 
+        # Обработка всех возможных секций с проектами
         sections = [
             data.get("recommendProject", []),
             [data.get("projectNewRecommend", {})],
@@ -102,6 +109,7 @@ class HTXParser(BaseParser):
                 if project and project.get("currency") == coin:
                     self._process_project(project, result, all_apy)
 
+        # Формируем строку cost
         if all_apy:
             min_apy = round(min(all_apy), 2)
             max_apy = round(max(all_apy), 2)
@@ -110,60 +118,61 @@ class HTXParser(BaseParser):
         return result
 
     def _process_project(self, project: dict, result: dict, all_apy: list):
-        # Обрабатываем только фиксированный (2) и гибкий (5) стейкинг
+        """Обрабатывает отдельный проект, собирая все ставки для нужных типов стейкинга."""
+        # Определяем тип стейкинга
         project_type = project.get("projectEnumType")
+        term = project.get("term", 0)
         
-        # Фиксированный стейкинг (100%)
-        if project_type == 2:
-            rate = project.get("viewYearRate")
-            if rate is not None:
-                try:
-                    apy = float(rate) * 100
-                    term = project.get("term", 30)
-                    self._add_fixed_staking(term, apy, result, all_apy)
-                except (TypeError, ValueError) as e:
-                    self.logger.warning(f"Failed to parse fixed staking rate: {e}")
-        
-        # Гибкий стейкинг (10%)
-        elif project_type == 5:
-            rate = project.get("viewYearRate")
-            if rate is not None:
-                try:
-                    apy = float(rate) * 100
-                    self._add_flexible_staking(apy, result, all_apy)
-                except (TypeError, ValueError) as e:
-                    self.logger.warning(f"Failed to parse flexible staking rate: {e}")
+        # Обрабатываем только фиксированный (2) и гибкий (5) стейкинг
+        if project_type not in [2, 5]:
+            # Пропускаем SharkFin и другие нежелательные типы
+            self.logger.debug(f"Skipping project type: {project_type}")
+            return
 
-        # Обрабатываем вложенные проекты
+        # Собираем все доступные ставки
+        rates = []
+        for key in ["viewYearRate", "maxViewYearRate", "minViewYearRate"]:
+            rate = project.get(key)
+            if rate is not None:
+                try:
+                    rates.append(float(rate))
+                except (TypeError, ValueError):
+                    pass
+        
+        # Если ставки не найдены, пропускаем проект
+        if not rates:
+            return
+
+        # Добавляем все найденные ставки
+        for rate in rates:
+            apy = rate * 100
+            
+            # Для гибкого стейкинга (project_type=5)
+            if project_type == 5:
+                result["holdPosList"].append({
+                    "days": 0,
+                    "apy": round(apy, 2),
+                    "min_amount": 0,
+                    "max_amount": 0
+                })
+                all_apy.append(apy)
+            
+            # Для фиксированного стейкинга (project_type=2)
+            elif project_type == 2:
+                result["lockPosList"].append({
+                    "days": int(term) if term else 30,
+                    "apy": round(apy, 2),
+                    "min_amount": 0,
+                    "max_amount": 0
+                })
+                all_apy.append(apy)
+
+        # Рекурсивно обрабатываем вложенные проекты
         sub_projects = project.get("projectList", [])
         if isinstance(sub_projects, list):
             for sub_project in sub_projects:
                 self._process_project(sub_project, result, all_apy)
 
-    def _add_flexible_staking(self, apy: float, result: dict, all_apy: list):
-        """Добавляет гибкий стейкинг (~10%)"""
-        # Проверяем, соответствует ли APY ожидаемому диапазону
-        if 5 <= apy <= 20:  # Диапазон 5-20% для гибкого стейкинга
-            result["holdPosList"].append({
-                "days": 0,
-                "apy": round(apy, 2),
-                "min_amount": 0,
-                "max_amount": 0
-            })
-            all_apy.append(apy)
-        else:
-            self.logger.debug(f"Skipping flexible staking with APY: {apy}%")
-
-    def _add_fixed_staking(self, term: int, apy: float, result: dict, all_apy: list):
-        """Добавляет фиксированный стейкинг (~100%)"""
-        # Проверяем, соответствует ли APY ожидаемому диапазону
-        if 50 <= apy <= 150:  # Диапазон 50-150% для фиксированного стейкинга
-            result["lockPosList"].append({
-                "days": int(term),
-                "apy": round(apy, 2),
-                "min_amount": 0,
-                "max_amount": 0
-            })
-            all_apy.append(apy)
-        else:
-            self.logger.debug(f"Skipping fixed staking with APY: {apy}%")
+    def normalize_coin_name(self, coin: str) -> str:
+        """Нормализует название монеты для поиска в API."""
+        return coin.upper()
