@@ -313,7 +313,7 @@ def deduct_points():
         points = int(data.get('points', 0))
 
         if points <= 0:
-            return jsonify({'success': False, 'message': 'Invalid points value'}), 400
+            return jupytext({'success': False, 'message': 'Invalid points value'}), 400
 
         conn = get_db_connection()
         user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
@@ -517,7 +517,6 @@ def get_last_search():
     return jsonify({'success': False, 'message': 'No previous search found'})
 
 
-
 @app.route('/chart')
 def chart_route():
     return render_template('Chart.html')
@@ -690,6 +689,45 @@ def get_chat():
     return jsonify({'chat_history': chat_data})
 
 
+@app.route('/analyze_pattern', methods=['POST'])
+def analyze_pattern():
+    try:
+        data = request.get_json()
+        
+        # Проверяем наличие обязательных полей
+        required_fields = ['num_candles', 'candles']
+        if not all(field in data for field in required_fields):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+        num_candles = data['num_candles']
+        candles = data['candles']
+        
+        # Проверяем, что num_candles соответствует длине списка свечей
+        if not isinstance(candles, list) or len(candles) != num_candles:
+            return jsonify({'success': False, 'message': 'Invalid number of candles'}), 400
+        
+        # Проверяем каждую свечу на наличие требуемых полей
+        candle_fields = [
+            'open_time', 'close_time', 'open_price', 'close_price',
+            'volume', 'low', 'high'
+        ]
+        for candle in candles:
+            if not all(field in candle for field in candle_fields):
+                return jsonify({'success': False, 'message': 'Invalid candle data'}), 400
+        
+        # Пока просто возвращаем подтверждение приема данных
+        # Позже здесь добавим логику анализа на основе исторических данных и формул из ТЗ
+        return jsonify({
+            'success': True,
+            'message': 'Pattern data received',
+            'received_data': {
+                'num_candles': num_candles,
+                'candles': candles
+            }
+        })
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5010, debug=True, ssl_context="adhoc")
+    app.run(host="0.0.0.0", port=5010, debug=True)
