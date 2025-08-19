@@ -904,44 +904,42 @@
             }
         }
 
-        function analyzeSelectedCandles() {
+        async function analyzeSelectedCandles() {
             if (selectedCandles.length === 0) {
-                console.log('Нет выбранных свечей для анализа.');
                 alert('Пожалуйста, выберите хотя бы одну свечу для анализа.');
                 return;
             }
 
-            const dataframe = selectedCandles.map((candle, index) => {
-                const closingTime = new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toLocaleString('ru-RU');
-                return {
-                    Candle: index + 1,
-                    Time: new Date(candle.time * 1000).toLocaleString('ru-RU'),
-                    CloseTime: closingTime,
-                    Open: parseFloat(candle.open).toFixed(2),
-                    Close: parseFloat(candle.close).toFixed(2),
-                    High: parseFloat(candle.high).toFixed(2),
-                    Low: parseFloat(candle.low).toFixed(2),
-                    Volume: parseFloat(candle.volume).toFixed(2)
-                };
-            });
+            if (selectedCandles.length < 3) {
+                alert('Пожалуйста, выберите от 3 до 6 свечей для анализа.');
+                return;
+            }
 
-            console.log(`\nАнализ выбранных свечей: ${selectedCandles.length} свечей`);
-            console.table(dataframe);
+            showLoading();
 
-            console.log('\nПодробная информация о свечах:');
-            selectedCandles.forEach((candle, index) => {
-                const closingTime = new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toLocaleString('ru-RU');
-                console.log(`Свеча ${index + 1}:`);
-                console.log(`  Время открытия: ${new Date(candle.time * 1000).toLocaleString('ru-RU')}`);
-                console.log(`  Время закрытия: ${closingTime}`);
-                console.log(`  Цена открытия: $${parseFloat(candle.open).toFixed(2)}`);
-                console.log(`  Цена закрытия: $${parseFloat(candle.close).toFixed(2)}`);
-                console.log(`  Максимальная цена: $${parseFloat(candle.high).toFixed(2)}`);
-                console.log(`  Минимальная цена: $${parseFloat(candle.low).toFixed(2)}`);
-                console.log(`  Объем торгов: ${parseFloat(candle.volume).toFixed(2)}`);
-            });
+            const payload = {
+                num_candles: selectedCandles.length,
+                candles: selectedCandles.map(candle => ({
+                    open_time: new Date(candle.time * 1000).toISOString(),
+                    close_time: new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toISOString(),
+                    open_price: parseFloat(candle.open).toFixed(2),
+                    close_price: parseFloat(candle.close).toFixed(2),
+                    high: parseFloat(candle.high).toFixed(2),
+                    low: parseFloat(candle.low).toFixed(2),
+                    volume: parseFloat(candle.volume).toFixed(2)
+                }))
+            };
 
-            alert(`Выбрано ${selectedCandles.length} свечей. Результаты анализа выведены в консоль.`);
+            try {
+                const response = await axios.post('/analyze_pattern', payload);
+                console.log('Server response:', response.data);
+                alert(`Данные успешно отправлены на сервер. Ответ: ${response.data.message}`);
+            } catch (error) {
+                console.error('Error sending data to server:', error);
+                alert('Ошибка при отправке данных на сервер. Проверьте соединение или сервер.');
+            } finally {
+                hideLoading();
+            }
         }
 
         function getIntervalSeconds(interval) {
