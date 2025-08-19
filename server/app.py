@@ -542,6 +542,11 @@ def bitget_route():
 def bybit_route():
     return render_template('bybit.html')
 
+# Аналитка паттернов , роутинг для нее
+@app.route('/pattern')
+def analysis():
+    return render_template('pattern.html')
+
 @app.route('/kucoin')
 def kucoin_route():
     return render_template('kucoin.html')

@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BTC/USDT График | CryptoAnalyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0a0e1a;
+            --secondary-bg: #141a2e;
+            --accent-color: #f0b90b;
+            --positive-color: #00e676;
+            --negative-color: #ff5252;
+            --text-primary: #f0f4f8;
+            --text-secondary: #b0bec5;
+            --border-color: #1e2740;
+            --tooltip-bg: rgba(20, 26, 46, 0.95);
+            --gradient-bg: linear-gradient(135deg, #0a0e1a 0%, #141a2e 100%);
+            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.25);
+            --shadow-accent: 0 2px 8px rgba(240, 185, 11, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--gradient-bg);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            touch-action: pan-y;
+            min-height: 100vh;
+        }
+
+        header {
+            background: var(--secondary-bg);
+            padding: 12px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .pair-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pair-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #f7931a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: var(--shadow-accent);
+        }
+
+        .pair-name {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .timeframe-selector {
+            display: flex;
+            gap: 6px;
+            background-color: rgba(20, 26, 46, 0.8);
+            border-radius: 10px;
+            padding: 5px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .timeframe-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .timeframe-btn:hover {
+            background-color: rgba(240, 185, 11, 0.1);
+            color: var(--text-primary);
+        }
+
+        .timeframe-btn.active {
+            background-color: var(--accent-color);
+            color: #121826;
+            font-weight: 600;
+            box-shadow: var(--shadow-accent);
+        }
+
+        .container {
+            margin-top: 80px;
+            padding: 0 15px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .price-info {
+            background: var(--secondary-bg);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 16px;
+            margin: 15px;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(5px);
+        }
+
+        .price-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .price {
+            font-size: 28px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .price-change {
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .price-change.positive {
+            color: var(--positive-color);
+        }
+
+        .price-change.negative {
+            color: var(--negative-color);
+        }
+
+        .additional-info {
+            display: flex;
+            gap: 30px;
+            text-align: right;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .chart-wrapper {
+            position: fixed;
+            top: 160px;
+            left: 0;
+            right: 0;
+            bottom: 100px;
+            overflow: hidden;
+            padding: 0 15px;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 100%;
+            background: var(--secondary-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--secondary-bg);
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+            box-shadow: var(--shadow-soft);
+        }
+
+        .controls-container {
+            display: flex;
+            gap: 12px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .btn {
+            background: var(--accent-color);
+            color: #121826;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            flex: 1;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-accent);
+        }
+
+        .btn:hover {
+            background: #f8c747;
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #2a324d;
+            color: var(--text-primary);
+            box-shadow: none;
+        }
+
+        .btn-secondary:hover {
+            background: #333d5d;
+        }
+
+        .candle-selection-info {
+            position: fixed;
+            top: 80px;
+            left: 0;
+            right: 0;
+            background: var(--tooltip-bg);
+            padding: 15px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+            font-size: 14px;
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .candle-selection-info.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .selected-count {
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .exit-selection-btn {
+            background: var(--negative-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-left: 20px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .exit-selection-btn:hover {
+            background: #ff6e6e;
+        }
+
+        .selection-tooltip {
+            background: var(--tooltip-bg);
+            color: var(--text-primary);
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1001;
+            display: none;
+            text-align: center;
+            max-width: 80%;
+            box-shadow: var(--shadow-soft);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+        }
+
+        .selection-tooltip.active {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .tooltip-icon {
+            color: var(--accent-color);
+            margin-right: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            background: var(--secondary-bg);
+            padding: 30px;
+            border-radius: 16px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow-soft);
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+        }
+
+        .modal ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .modal li {
+            margin-bottom: 15px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .modal li i {
+            color: var(--accent-color);
+            margin-right: 10px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 26, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            color: var(--text-primary);
+            font-size: 18px;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(240, 185, 11, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 600px) {
+            .price-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .additional-info {
+                width: 100%;
+                justify-content: space-between;
+                text-align: left;
+            }
+
+            .pair-name {
+                font-size: 18px;
+            }
+
+            .price {
+                font-size: 24px;
+            }
+
+            .controls-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                padding: 10px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="pair-info">
+                <div class="pair-icon">B</div>
+                <div class="pair-name">BTC/USDT</div>
+            </div>
+            <div class="timeframe-selector">
+                <button class="timeframe-btn" data-interval="1h">1H</button>
+                <button class="timeframe-btn" data-interval="4h">4H</button>
+                <button class="timeframe-btn active" data-interval="1d">1D</button>
+                <button class="timeframe-btn" data-interval="1w">1W</button>
+                <button class="timeframe-btn" data-interval="1M">1M</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="price-info">
+            <div class="price-container">
+                <div class="price" id="currentPrice">$--,--</div>
+                <div class="price-change" id="priceChange">
+                    <span id="changeValue">+--.--%</span>
+                    <span id="changeTime">(24ч)</span>
+                </div>
+            </div>
+            <div class="additional-info">
+                <div class="info-item">
+                    <span class="info-label">Капитализация</span>
+                    <span class="info-value" id="marketCap">$--.--B</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Объем (24ч)</span>
+                    <span class="info-value" id="volume24h">$--.--B</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Дн. диапазон</span>
+                    <span class="info-value" id="dailyRange">$--.-- - $--.--</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="candle-selection-info" id="candleSelectionInfo">
+            <div>
+                Выбрано: <span class="selected-count" id="selectedCount">0</span>/6 свечей
+                <button class="exit-selection-btn" id="exitSelectionBtn">
+                    <i class="fas fa-check"></i> Готово
+                </button>
+                <button class="btn btn-secondary" id="tipsBtn">
+                    <i class="fas fa-lightbulb"></i> Подсказки
+                </button>
+            </div>
+            <div style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);">
+                Выберите от 3 до 6 свечей для анализа
+            </div>
+        </div>
+
+        <div class="selection-tooltip" id="selectionTooltip">
+            <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
+            <div style="margin-top: 5px;">Выбирайте несколько свечей и прокручивайте график влево-вправо для анализа</div>
+        </div>
+
+        <div class="chart-wrapper">
+            <div class="chart-container" id="chartContainer"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="controls-container">
+            <button class="btn" id="selectCandlesBtn">
+                <i class="fas fa-magic"></i> Анализ свечей
+            </button>
+            <button class="btn btn-secondary" id="intervalBtn">
+                <i class="fas fa-chart-line"></i> Интервал: 1Д
+            </button>
+        </div>
+    </div>
+
+    <div class="modal" id="tipsModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModalBtn">&times;</button>
+            <h2>Советы по анализу свечей</h2>
+            <ul id="tipsList">
+                <li><i class="fas fa-lightbulb"></i> Выбирайте свечи, формирующие паттерны (например, "Молот" или "Поглощение").</li>
+                <li><i class="fas fa-lightbulb"></i> Анализируйте объем торгов: рост объема подтверждает силу движения.</li>
+                <li><i class="fas fa-lightbulb"></i> Обращайте внимание на длинные тени свечей — они указывают на развороты.</li>
+                <li><i class="fas fa-lightbulb"></i> Используйте таймфреймы 1H и 4H для краткосрочных сделок.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div>Загрузка данных...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        let isSelectingCandles = false;
+        let selectedCandles = [];
+        let chart = null;
+        let candleSeries = null;
+        let allCandles = [];
+        let currentMarkers = [];
+        let originalCandleStyles = {};
+        let originalTimeScaleOptions = {};
+        let currentInterval = '1d';
+        let priceUpdateInterval = null;
+
+        const selectCandlesBtn = document.getElementById('selectCandlesBtn');
+        const candleSelectionInfo = document.getElementById('candleSelectionInfo');
+        const exitSelectionBtn = document.getElementById('exitSelectionBtn');
+        const chartContainer = document.getElementById('chartContainer');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const selectionTooltip = document.getElementById('selectionTooltip');
+        const intervalBtn = document.getElementById('intervalBtn');
+        const timeframeBtns = document.querySelectorAll('.timeframe-btn');
+        const tipsBtn = document.getElementById('tipsBtn');
+        const tipsModal = document.getElementById('tipsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        function isLightweightChartsLoaded() {
+            return typeof LightweightCharts !== 'undefined' && LightweightCharts.createChart;
+        }
+
+        async function initChart() {
+            if (!isLightweightChartsLoaded()) {
+                console.error('Lightweight Charts library failed to load');
+                chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка загрузки графика.</div>';
+                return;
+            }
+
+            try {
+                showLoading();
+
+                chart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight,
+                    layout: {
+                        backgroundColor: '#141a2e',
+                        textColor: '#f0f4f8',
+                        fontSize: 13,
+                    },
+                    grid: {
+                        vertLines: { color: '#1e2740', style: 1 },
+                        horzLines: { color: '#1e2740', style: 1 },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                        vertLine: { color: '#3a4466', labelBackgroundColor: '#f0b90b' },
+                        horzLine: { color: '#3a4466' },
+                    },
+                    rightPriceScale: {
+                        borderVisible: false,
+                        scaleMargins: { top: 0.1, bottom: 0.2 },
+                    },
+                    timeScale: {
+                        borderVisible: false,
+                        timeVisible: true,
+                        rightOffset: 15,
+                        barSpacing: 15,
+                        fixLeftEdge: false,
+                        fixRightEdge: false,
+                        secondsVisible: false,
+                        tickMarkFormatter: (time, tickMarkType, locale) => {
+                            const date = new Date(time * 1000);
+                            if (['1d', '1w', '1M'].includes(currentInterval)) {
+                                return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+                            }
+                            return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+                        },
+                    },
+                    localization: {
+                        locale: 'ru-RU',
+                        dateFormat: 'dd MMM yyyy',
+                    },
+                    handleScroll: {
+                        horzTouchDrag: true,
+                        vertTouchDrag: true,
+                        mouseWheel: true,
+                        pressedMouseMove: true
+                    },
+                    handleScale: {
+                        axisPressedMouseMove: true,
+                        mouseWheel: true,
+                        pinch: true
+                    }
+                });
+
+                originalTimeScaleOptions = chart.timeScale().options();
+                candleSeries = chart.addCandlestickSeries({
+                    upColor: '#00e676',
+                    downColor: '#ff5252',
+                    borderUpColor: '#00e676',
+                    borderDownColor: '#ff5252',
+                    wickUpColor: '#00e676',
+                    wickDownColor: '#ff5252',
+                });
+
+                await loadChartData(currentInterval);
+                chart.subscribeClick(handleChartClick);
+                window.addEventListener('resize', handleResize);
+                await fetchCurrentPrice();
+                setupPriceUpdates();
+                hideLoading();
+
+            } catch (error) {
+                console.error('Error initializing chart:', error);
+                chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка инициализации графика.</div>';
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        function handleResize() {
+            if (chart) {
+                chart.applyOptions({
+                    width: chartContainer.clientWidth,
+                    height: chartContainer.clientHeight
+                });
+            }
+        }
+
+        async function loadChartData(interval) {
+            try {
+                showLoading();
+                const response = await axios.get(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=200`);
+                const data = response.data.map(item => ({
+                    time: item[0] / 1000,
+                    open: parseFloat(item[1]),
+                    high: parseFloat(item[2]),
+                    low: parseFloat(item[3]),
+                    close: parseFloat(item[4]),
+                    volume: parseFloat(item[5])
+                }));
+
+                candleSeries.setData(data);
+                allCandles = data;
+
+                allCandles.forEach(candle => {
+                    originalCandleStyles[candle.time] = {
+                        borderColor: candle.close >= candle.open ? '#00e676' : '#ff5252',
+                        wickColor: candle.close >= candle.open ? '#00e676' : '#ff5252'
+                    };
+                });
+
+                chart.timeScale().fitContent();
+                hideLoading();
+
+            } catch (error) {
+                console.error('Error loading chart data:', error);
+                hideLoading();
+                alert('Ошибка загрузки данных. Проверьте соединение.');
+            }
+        }
+
+        function startCandleSelection() {
+            isSelectingCandles = true;
+            candleSelectionInfo.classList.add('active');
+            selectCandlesBtn.style.display = 'none';
+            chartContainer.classList.add('chart-dimmed');
+            zoomToSelectionMode();
+            chart.applyOptions({ handleScale: false });
+
+            selectionTooltip.innerHTML = `
+                <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
+                <div style="margin-top: 5px;">Выбирайте несколько свечей и прокручивайте график влево-вправо для анализа. Нажмите на выбранную свечу повторно для отмены.</div>
+            `;
+            selectionTooltip.classList.add('active');
+            setTimeout(() => {
+                selectionTooltip.classList.remove('active');
+            }, 5000);
+        }
+
+        function stopCandleSelection() {
+            isSelectingCandles = false;
+            candleSelectionInfo.classList.remove('active');
+            selectCandlesBtn.style.display = 'flex';
+            chartContainer.classList.remove('chart-dimmed');
+            selectionTooltip.classList.remove('active');
+            chart.applyOptions({ handleScale: true });
+            resetZoom();
+            if (selectedCandles.length > 0) {
+                analyzeSelectedCandles();
+            }
+            resetCandleSelection();
+        }
+
+        function zoomToSelectionMode() {
+            if (!allCandles.length) return;
+            const lastCandles = allCandles.slice(-12);
+            const firstTime = lastCandles[0].time;
+            const lastTime = lastCandles[lastCandles.length - 1].time;
+
+            chart.timeScale().setVisibleRange({
+                from: firstTime - 1800,
+                to: lastTime + 1800
+            });
+
+            chart.timeScale().applyOptions({
+                barSpacing: 30,
+                rightOffset: 10,
+                fixLeftEdge: false,
+                fixRightEdge: false
+            });
+
+            chart.timeScale().scrollToRealTime(1000);
+        }
+
+        function resetZoom() {
+            chart.timeScale().applyOptions(originalTimeScaleOptions);
+            chart.timeScale().fitContent();
+        }
+
+        function handleChartClick(param) {
+            if (!isSelectingCandles) return;
+            const time = param.time;
+            if (!time) return;
+
+            const candle = findCandleAtTime(time);
+            if (!candle) return;
+
+            const candleIndex = selectedCandles.findIndex(c => c.time === candle.time);
+            if (candleIndex !== -1) {
+                // Unselect candle if already selected
+                unselectCandle(candle, candleIndex);
+            } else if (selectedCandles.length < 6) {
+                // Select new candle if under limit
+                selectedCandles.push(candle);
+                highlightCandle(candle);
+            }
+
+            updateSelectionInfo();
+            updateTooltip();
+        }
+
+        function unselectCandle(candle, index) {
+            selectedCandles.splice(index, 1);
+            currentMarkers = currentMarkers.filter(marker => marker.time !== candle.time);
+            candleSeries.setMarkers(currentMarkers);
+
+            // Restore original style
+            const originalStyle = originalCandleStyles[candle.time];
+            if (originalStyle) {
+                candleSeries.update({
+                    ...candle,
+                    borderColor: originalStyle.borderColor,
+                    wickColor: originalStyle.wickColor,
+                    borderUpColor: originalStyle.borderColor,
+                    borderDownColor: originalStyle.borderColor,
+                    wickUpColor: originalStyle.wickColor,
+                    wickDownColor: originalStyle.wickColor
+                });
+            }
+
+            // Update marker numbers for remaining selected candles
+            currentMarkers = currentMarkers.map((marker, i) => ({
+                ...marker,
+                text: `${i + 1}`
+            }));
+            candleSeries.setMarkers(currentMarkers);
+        }
+
+        function findCandleAtTime(time) {
+            return allCandles.find(c => Math.abs(c.time - time) < 1800);
+        }
+
+        function highlightCandle(candle) {
+            const newMarker = {
+                time: candle.time,
+                position: 'aboveBar',
+                color: '#f0b90b',
+                shape: 'circle',
+                text: `${selectedCandles.length}`,
+                size: 2
+            };
+            currentMarkers.push(newMarker);
+            candleSeries.setMarkers(currentMarkers);
+
+            candleSeries.update({
+                ...candle,
+                borderColor: '#f0b90b',
+                wickColor: '#f0b90b',
+                borderUpColor: '#f0b90b',
+                borderDownColor: '#f0b90b',
+                wickUpColor: '#f0b90b',
+                wickDownColor: '#f0b90b'
+            });
+        }
+
+        function resetCandleSelection() {
+            if (candleSeries) {
+                allCandles.forEach(candle => {
+                    const originalStyle = originalCandleStyles[candle.time];
+                    if (originalStyle) {
+                        candleSeries.update({
+                            ...candle,
+                            borderColor: originalStyle.borderColor,
+                            wickColor: originalStyle.wickColor,
+                            borderUpColor: originalStyle.borderColor,
+                            borderDownColor: originalStyle.borderColor,
+                            wickUpColor: originalStyle.wickColor,
+                            wickDownColor: originalStyle.wickColor
+                        });
+                    }
+                });
+                candleSeries.setMarkers([]);
+                currentMarkers = [];
+            }
+            selectedCandles = [];
+            updateSelectionInfo();
+        }
+
+        function updateSelectionInfo() {
+            document.getElementById('selectedCount').textContent = selectedCandles.length;
+        }
+
+        function updateTooltip() {
+            if (selectedCandles.length <= 2 && selectedCandles.length > 0) {
+                selectionTooltip.innerHTML = `
+                    <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
+                    <div style="margin-top: 5px;">Выберите еще ${3 - selectedCandles.length} свечи для более точного анализа. Прокрутите график для выбора или нажмите на свечу для отмены.</div>
+                `;
+                selectionTooltip.classList.add('active');
+                setTimeout(() => {
+                    selectionTooltip.classList.remove('active');
+                }, 3000);
+            }
+        }
+
+        function analyzeSelectedCandles() {
+            if (selectedCandles.length === 0) {
+                console.log('Нет выбранных свечей для анализа.');
+                alert('Пожалуйста, выберите хотя бы одну свечу для анализа.');
+                return;
+            }
+
+            const dataframe = selectedCandles.map((candle, index) => {
+                const closingTime = new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toLocaleString('ru-RU');
+                return {
+                    Candle: index + 1,
+                    Time: new Date(candle.time * 1000).toLocaleString('ru-RU'),
+                    CloseTime: closingTime,
+                    Open: parseFloat(candle.open).toFixed(2),
+                    Close: parseFloat(candle.close).toFixed(2),
+                    High: parseFloat(candle.high).toFixed(2),
+                    Low: parseFloat(candle.low).toFixed(2),
+                    Volume: parseFloat(candle.volume).toFixed(2)
+                };
+            });
+
+            console.log(`\nАнализ выбранных свечей: ${selectedCandles.length} свечей`);
+            console.table(dataframe);
+
+            console.log('\nПодробная информация о свечах:');
+            selectedCandles.forEach((candle, index) => {
+                const closingTime = new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toLocaleString('ru-RU');
+                console.log(`Свеча ${index + 1}:`);
+                console.log(`  Время открытия: ${new Date(candle.time * 1000).toLocaleString('ru-RU')}`);
+                console.log(`  Время закрытия: ${closingTime}`);
+                console.log(`  Цена открытия: $${parseFloat(candle.open).toFixed(2)}`);
+                console.log(`  Цена закрытия: $${parseFloat(candle.close).toFixed(2)}`);
+                console.log(`  Максимальная цена: $${parseFloat(candle.high).toFixed(2)}`);
+                console.log(`  Минимальная цена: $${parseFloat(candle.low).toFixed(2)}`);
+                console.log(`  Объем торгов: ${parseFloat(candle.volume).toFixed(2)}`);
+            });
+
+            alert(`Выбрано ${selectedCandles.length} свечей. Результаты анализа выведены в консоль.`);
+        }
+
+        function getIntervalSeconds(interval) {
+            switch (interval) {
+                case '1h': return 3600;
+                case '4h': return 14400;
+                case '1d': return 86400;
+                case '1w': return 604800;
+                case '1M': return 2592000;
+                default: return 86400;
+            }
+        }
+
+        async function fetchCurrentPrice() {
+            try {
+                const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+                const data = response.data;
+                updatePriceDisplay(data);
+            } catch (error) {
+                console.error('Error fetching price:', error);
+            }
+        }
+
+        function setupPriceUpdates() {
+            if (priceUpdateInterval) {
+                clearInterval(priceUpdateInterval);
+            }
+            priceUpdateInterval = setInterval(fetchCurrentPrice, 3000);
+        }
+
+        function updatePriceDisplay(data) {
+            const priceElement = document.getElementById('currentPrice');
+            const changeElement = document.getElementById('priceChange');
+            const changeValueElement = document.getElementById('changeValue');
+            const marketCapElement = document.getElementById('marketCap');
+            const volumeElement = document.getElementById('volume24h');
+            const rangeElement = document.getElementById('dailyRange');
+
+            const isPositive = parseFloat(data.priceChangePercent) >= 0;
+            const priceChange = parseFloat(data.priceChangePercent);
+
+            priceElement.textContent = `$${parseFloat(data.lastPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            changeValueElement.textContent = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`;
+            changeElement.className = `price-change ${isPositive ? 'positive' : 'negative'}`;
+            marketCapElement.textContent = `$${(parseFloat(data.lastPrice) * 19700000 / 1e9).toFixed(2)}B`;
+            volumeElement.textContent = `$${(parseFloat(data.volume) * parseFloat(data.lastPrice) / 1e9).toFixed(2)}B`;
+            rangeElement.textContent = `$${parseFloat(data.lowPrice).toFixed(2)} - $${parseFloat(data.highPrice).toFixed(2)}`;
+        }
+
+        async function changeTimeframe(interval) {
+            if (interval === currentInterval) return;
+            currentInterval = interval;
+            timeframeBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.interval === interval);
+            });
+            intervalBtn.innerHTML = `<i class="fas fa-chart-line"></i> Интервал: ${getIntervalName(interval)}`;
+            await loadChartData(interval);
+        }
+
+        function getIntervalName(interval) {
+            switch (interval) {
+                case '1h': return '1Ч';
+                case '4h': return '4Ч';
+                case '1d': return '1Д';
+                case '1w': return '1Н';
+                case '1M': return '1М';
+                default: return interval;
+            }
+        }
+
+        function showModal() {
+            tipsModal.style.display = 'flex';
+        }
+
+        function hideModal() {
+            tipsModal.style.display = 'none';
+        }
+
+        selectCandlesBtn.addEventListener('click', startCandleSelection);
+        exitSelectionBtn.addEventListener('click', stopCandleSelection);
+        tipsBtn.addEventListener('click', showModal);
+        closeModalBtn.addEventListener('click', hideModal);
+
+        timeframeBtns.forEach(btn => {
+            btn.addEventListener('click', () => changeTimeframe(btn.dataset.interval));
+        });
+
+        intervalBtn.addEventListener('click', () => {
+            const intervals = ['1h', '4h', '1d', '1w', '1M'];
+            const currentIndex = intervals.indexOf(currentInterval);
+            const nextIndex = (currentIndex + 1) % intervals.length;
+            changeTimeframe(intervals[nextIndex]);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkLibrary = setInterval(() => {
+                if (isLightweightChartsLoaded()) {
+                    clearInterval(checkLibrary);
+                    initChart();
+                }
+            }, 100);
+
+            setTimeout(() => {
+                if (!chart) {
+                    console.error('Lightweight Charts library loading timeout');
+                    chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка загрузки библиотеки графиков.</div>';
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
