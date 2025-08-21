@@ -3,7 +3,9 @@ import sqlite3
 import os
 import sys
 from flask_cors import CORS
+from ai.main import find_similar_patterns
 from app.parser import staking_bp
+import pandas as pd
 
 # Add the server directory to Python path
 server_dir = os.path.dirname(os.path.abspath(__file__))
@@ -694,38 +696,32 @@ def analyze_pattern():
     try:
         data = request.get_json()
         
-        # Проверяем наличие обязательных полей
         required_fields = ['num_candles', 'candles']
         if not all(field in data for field in required_fields):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
-        num_candles = data['num_candles']
         candles = data['candles']
-        
-        # Проверяем, что num_candles соответствует длине списка свечей
-        if not isinstance(candles, list) or len(candles) != num_candles:
-            return jsonify({'success': False, 'message': 'Invalid number of candles'}), 400
-        
-        # Проверяем каждую свечу на наличие требуемых полей
-        candle_fields = [
-            'open_time', 'close_time', 'open_price', 'close_price',
-            'volume', 'low', 'high'
-        ]
-        for candle in candles:
-            if not all(field in candle for field in candle_fields):
-                return jsonify({'success': False, 'message': 'Invalid candle data'}), 400
-        
-        # Пока просто возвращаем подтверждение приема данных
-        # Позже здесь добавим логику анализа на основе исторических данных и формул из ТЗ
+        start_date = candles[0]['open_time']
+        end_date = candles[-1]['close_time']
+
+        # Запуск анализа
+        result = find_similar_patterns(start_date, end_date)
+
         return jsonify({
             'success': True,
-            'message': 'Pattern data received',
-            'received_data': {
-                'num_candles': num_candles,
-                'candles': candles
-            }
+            'pattern_info': {
+                'pattern_start': result['pattern_start'],
+                'pattern_end': result['pattern_end'],
+                'pattern_len': result['pattern_len']
+            },
+            'statistics': {
+                'matches_found': result['matches_found'],
+                'distribution_counts': result['distribution_counts'],
+                'distribution_percents': result['distribution_percents']
+            },
+            'matched_patterns': result['matched_patterns']
         })
-    
+
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
