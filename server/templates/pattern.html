@@ -2,1053 +2,605 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BTC/USDT График | CryptoAnalyzer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>BTC/USDT — Поиск паттернов</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {
-            --primary-bg: #0a0e1a;
-            --secondary-bg: #141a2e;
-            --accent-color: #f0b90b;
-            --positive-color: #00e676;
-            --negative-color: #ff5252;
-            --text-primary: #f0f4f8;
-            --text-secondary: #b0bec5;
-            --border-color: #1e2740;
-            --tooltip-bg: rgba(20, 26, 46, 0.95);
-            --gradient-bg: linear-gradient(135deg, #0a0e1a 0%, #141a2e 100%);
-            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.25);
-            --shadow-accent: 0 2px 8px rgba(240, 185, 11, 0.3);
-        }
+			--bg-0: #0f1419;
+			--bg-1: #11161c;
+			--bg-2: #131a21;
+			--bg-3: #0b1015;
+			--panel: #0f151b;
+			--border: #1c2631;
+			--muted: #8b99a8;
+			--text: #e5edf5;
+			--accent: #f7931a;
+			--green: #22c55e;
+			--red: #ef4444;
+		}
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        }
-
+		html, body { height: 100%; }
         body {
-            background: var(--gradient-bg);
-            color: var(--text-primary);
-            overflow-x: hidden;
-            touch-action: pan-y;
-            min-height: 100vh;
-        }
+            margin: 0;
+			font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+			background: radial-gradient(1200px 600px at 20% -10%, #0b1117 0%, #0a0f14 45%, #070b0f 100%);
+			color: var(--text);
+		}
 
-        header {
-            background: var(--secondary-bg);
-            padding: 12px 0;
-            position: fixed;
-            width: 100%;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: var(--shadow-soft);
-            backdrop-filter: blur(10px);
-        }
+		.app {
+			display: grid;
+			grid-template-rows: auto 1fr;
+			min-height: 100vh;
+		}
 
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .pair-info {
+		.topbar {
             display: flex;
             align-items: center;
-            gap: 12px;
-        }
+			justify-content: space-between;
+			padding: 16px 20px;
+			border-bottom: 1px solid var(--border);
+			background: linear-gradient(180deg, rgba(17,22,28,0.85), rgba(17,22,28,0.65));
+			backdrop-filter: blur(6px);
+		}
+		.brand { display: flex; align-items: center; gap: 12px; }
+		.brand .logo {
+			width: 28px; height: 28px; border-radius: 8px;
+			background: linear-gradient(135deg, #ffb547, #f7931a);
+			box-shadow: 0 2px 10px rgba(247,147,26,0.35);
+		}
+		.brand .title { font-weight: 700; letter-spacing: 0.2px; }
+		.kpis { display: flex; gap: 16px; align-items: center; }
+		.kpi { font-size: 13px; color: var(--muted); }
+		.kpi strong { color: var(--text); margin-left: 6px; }
 
-        .pair-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background-color: #f7931a;
+		.main {
+			display: grid;
+			grid-template-columns: 1fr 360px;
+			gap: 16px;
+			padding: 16px;
+		}
+
+		.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+
+		.toolbar {
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            font-weight: bold;
-            box-shadow: var(--shadow-accent);
-        }
-
-        .pair-name {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .timeframe-selector {
-            display: flex;
-            gap: 6px;
-            background-color: rgba(20, 26, 46, 0.8);
-            border-radius: 10px;
-            padding: 5px;
-            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
-        }
-
-        .timeframe-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            padding: 8px 14px;
+			justify-content: space-between;
+			padding: 10px 12px;
+			border-bottom: 1px solid var(--border);
+			background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
+		}
+		.left-tools, .right-tools { display: flex; gap: 8px; align-items: center; }
+		.btn {
+			background: #1a222c;
+			border: 1px solid var(--border);
+			color: var(--text);
+			padding: 8px 10px;
             border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+			font-size: 13px;
+			cursor: pointer;
+			transition: 0.15s ease;
+		}
+		.btn:hover { background: #212a34; }
+		.btn.primary { background: var(--accent); border-color: #ffb547; color: #0c0f12; font-weight: 600; }
+		.btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+		.tf { display: flex; gap: 6px; }
+		.tf .btn.active { background: #2a3542; border-color: #334153; }
+		.sep { width: 1px; height: 26px; background: var(--border); }
+		.counter { font-size: 13px; color: var(--muted); }
+		.counter strong { color: var(--text); }
 
-        .timeframe-btn:hover {
-            background-color: rgba(240, 185, 11, 0.1);
-            color: var(--text-primary);
-        }
+		.chart-wrap { height: 74vh; min-height: 520px; }
+		#chart { width: 100%; height: 100%; }
 
-        .timeframe-btn.active {
-            background-color: var(--accent-color);
-            color: #121826;
-            font-weight: 600;
-            box-shadow: var(--shadow-accent);
-        }
+		.side {
+			display: grid;
+			grid-template-rows: auto auto 1fr;
+			gap: 12px;
+		}
+		.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+		.card h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
+		.stat-list { display: grid; gap: 8px; }
+		.stat { display: flex; justify-content: space-between; font-size: 13px; }
+		.stat .val { color: var(--text); font-weight: 600; }
 
-        .container {
-            margin-top: 80px;
-            padding: 0 15px;
-            max-width: 1400px;
-            margin-left: auto;
-            margin-right: auto;
-        }
+		.matches { display: grid; gap: 10px; }
+		.match {
+			border: 1px solid var(--border);
+			border-radius: 10px; padding: 10px;
+			background: #0f151b;
+			cursor: pointer;
+			transition: 0.15s ease;
+		}
+		.match:hover { background: #131a21; border-color: #2a3847; }
+		.match .hdr { display: flex; justify-content: space-between; align-items: center; }
+		.match .range { font-size: 12px; color: var(--muted); }
+		.badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+		.badge.up { background: rgba(34,197,94,0.15); color: var(--green); }
+		.badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
 
-        .price-info {
-            background: var(--secondary-bg);
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 16px;
-            margin: 15px;
-            box-shadow: var(--shadow-soft);
-            backdrop-filter: blur(5px);
-        }
+		.footer-note { font-size: 12px; color: var(--muted); text-align: center; padding-top: 6px; }
 
-        .price-container {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .price {
-            font-size: 28px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            letter-spacing: 0.5px;
-        }
-
-        .price-change {
-            font-size: 16px;
-            font-weight: 500;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .price-change.positive {
-            color: var(--positive-color);
-        }
-
-        .price-change.negative {
-            color: var(--negative-color);
-        }
-
-        .additional-info {
-            display: flex;
-            gap: 30px;
-            text-align: right;
-        }
-
-        .info-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .info-label {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .info-value {
-            font-size: 15px;
-            font-weight: 600;
-        }
-
-        .chart-wrapper {
-            position: fixed;
-            top: 160px;
-            left: 0;
-            right: 0;
-            bottom: 100px;
-            overflow: hidden;
-            padding: 0 15px;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 100%;
-            background: var(--secondary-bg);
-            border-radius: 16px;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .controls {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: var(--secondary-bg);
-            padding: 15px;
-            display: flex;
-            justify-content: center;
-            border-top: 1px solid var(--border-color);
-            z-index: 100;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .controls-container {
-            display: flex;
-            gap: 12px;
-            max-width: 1400px;
-            width: 100%;
-        }
-
-        .btn {
-            background: var(--accent-color);
-            color: #121826;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            flex: 1;
-            justify-content: center;
-            transition: all 0.3s ease;
-            box-shadow: var(--shadow-accent);
-        }
-
-        .btn:hover {
-            background: #f8c747;
-            transform: translateY(-2px);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .btn-secondary {
-            background: #2a324d;
-            color: var(--text-primary);
-            box-shadow: none;
-        }
-
-        .btn-secondary:hover {
-            background: #333d5d;
-        }
-
-        .candle-selection-info {
-            position: fixed;
-            top: 80px;
-            left: 0;
-            right: 0;
-            background: var(--tooltip-bg);
-            padding: 15px;
-            text-align: center;
-            z-index: 1000;
-            display: none;
-            font-size: 14px;
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: var(--shadow-soft);
-        }
-
-        .candle-selection-info.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .selected-count {
-            color: var(--accent-color);
-            font-weight: bold;
-        }
-
-        .exit-selection-btn {
-            background: var(--negative-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-left: 20px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-
-        .exit-selection-btn:hover {
-            background: #ff6e6e;
-        }
-
-        .selection-tooltip {
-            background: var(--tooltip-bg);
-            color: var(--text-primary);
-            padding: 10px 15px;
-            border-radius: 10px;
-            font-size: 13px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1001;
-            display: none;
-            text-align: center;
-            max-width: 80%;
-            box-shadow: var(--shadow-soft);
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border-color);
-        }
-
-        .selection-tooltip.active {
-            display: block;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .tooltip-icon {
-            color: var(--accent-color);
-            margin-right: 8px;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 2000;
-            align-items: center;
-            justify-content: center;
-            animation: fadeIn 0.3s ease-out;
-        }
-
-        .modal-content {
-            background: var(--secondary-bg);
-            padding: 30px;
-            border-radius: 16px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: var(--shadow-soft);
-            position: relative;
-            backdrop-filter: blur(10px);
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 20px;
-            cursor: pointer;
-        }
-
-        .modal-close:hover {
-            color: var(--text-primary);
-        }
-
-        .modal h2 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: var(--accent-color);
-        }
-
-        .modal ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .modal li {
-            margin-bottom: 15px;
-            font-size: 15px;
-            line-height: 1.5;
-        }
-
-        .modal li i {
-            color: var(--accent-color);
-            margin-right: 10px;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(10, 14, 26, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            color: var(--text-primary);
-            font-size: 18px;
-            gap: 20px;
-        }
-
-        .spinner {
-            width: 60px;
-            height: 60px;
-            border: 6px solid rgba(240, 185, 11, 0.2);
-            border-radius: 50%;
-            border-top-color: var(--accent-color);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 600px) {
-            .price-info {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-
-            .additional-info {
-                width: 100%;
-                justify-content: space-between;
-                text-align: left;
-            }
-
-            .pair-name {
-                font-size: 18px;
-            }
-
-            .price {
-                font-size: 24px;
-            }
-
-            .controls-container {
-                flex-direction: column;
-            }
-
-            .btn {
-                padding: 10px;
-                font-size: 13px;
-            }
-        }
+		/* Overlay + toast */
+        .loading {
+			position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+			background: rgba(3,6,9,0.55); backdrop-filter: blur(2px); z-index: 50;
+		}
+		.spinner { width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.12); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+		@keyframes spin { to { transform: rotate(360deg); } }
+		.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #111821; border: 1px solid #223041; color: #e3edf7; padding: 10px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 60; }
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="pair-info">
-                <div class="pair-icon">B</div>
-                <div class="pair-name">BTC/USDT</div>
+	<div class="app">
+		<div class="topbar">
+			<div class="brand">
+				<div class="logo"></div>
+				<div class="title">BTC/USDT — Поиск паттернов</div>
             </div>
-            <div class="timeframe-selector">
-                <button class="timeframe-btn" data-interval="1h">1H</button>
-                <button class="timeframe-btn" data-interval="4h">4H</button>
-                <button class="timeframe-btn active" data-interval="1d">1D</button>
-                <button class="timeframe-btn" data-interval="1w">1W</button>
-                <button class="timeframe-btn" data-interval="1M">1M</button>
-            </div>
-        </div>
-    </header>
-
-    <div class="container">
-        <div class="price-info">
-            <div class="price-container">
-                <div class="price" id="currentPrice">$--,--</div>
-                <div class="price-change" id="priceChange">
-                    <span id="changeValue">+--.--%</span>
-                    <span id="changeTime">(24ч)</span>
-                </div>
-            </div>
-            <div class="additional-info">
-                <div class="info-item">
-                    <span class="info-label">Капитализация</span>
-                    <span class="info-value" id="marketCap">$--.--B</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Объем (24ч)</span>
-                    <span class="info-value" id="volume24h">$--.--B</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Дн. диапазон</span>
-                    <span class="info-value" id="dailyRange">$--.-- - $--.--</span>
-                </div>
+			<div class="kpis">
+				<div class="kpi">Таймфрейм:<strong> 1D</strong></div>
+				<div class="kpi">Данные:<strong> 2015 → сейчас</strong></div>
             </div>
         </div>
 
-        <div class="candle-selection-info" id="candleSelectionInfo">
-            <div>
-                Выбрано: <span class="selected-count" id="selectedCount">0</span>/6 свечей
-                <button class="exit-selection-btn" id="exitSelectionBtn">
-                    <i class="fas fa-check"></i> Готово
-                </button>
-                <button class="btn btn-secondary" id="tipsBtn">
-                    <i class="fas fa-lightbulb"></i> Подсказки
-                </button>
+		<div class="main">
+			<div class="panel">
+				<div class="toolbar">
+					<div class="left-tools">
+						<div class="tf">
+							<button class="btn active" data-tf="1D">1D</button>
+							<button class="btn" data-tf="1W">1W</button>
+							<button class="btn" data-tf="1M">1M</button>
             </div>
-            <div style="font-size: 12px; margin-top: 8px; color: var(--text-secondary);">
-                Выберите от 3 до 6 свечей для анализа
+						<div class="sep"></div>
+						<button id="toggle-volume-btn" class="btn">Объём</button>
+						<button id="reset-view-btn" class="btn">Сброс вида</button>
+            </div>
+					<div class="right-tools">
+						<div class="counter">Выбрано: <strong id="selected-count">0</strong>/6</div>
+						<button id="to-selected-btn" class="btn">К выбранным</button>
+						<div class="sep"></div>
+						<button id="prev-match-btn" class="btn">◀</button>
+						<span id="match-index" class="kpi" style="min-width:56px;text-align:center;">0/0</span>
+						<button id="next-match-btn" class="btn">▶</button>
+						<button id="clear-btn" class="btn">Очистить</button>
+						<button id="analyze-btn" class="btn primary" disabled>Анализировать</button>
             </div>
         </div>
-
-        <div class="selection-tooltip" id="selectionTooltip">
-            <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
-            <div style="margin-top: 5px;">Выбирайте несколько свечей и прокручивайте график влево-вправо для анализа</div>
+				<div class="chart-wrap"><div id="chart"></div></div>
         </div>
 
-        <div class="chart-wrapper">
-            <div class="chart-container" id="chartContainer"></div>
+			<div class="side">
+				<div class="card">
+					<h3>Итоги</h3>
+					<div class="stat-list">
+						<div class="stat"><span>Найдено совпадений</span><span class="val" id="matches-found">0</span></div>
+						<div class="stat"><span>Длина паттерна</span><span class="val" id="pattern-length">0</span></div>
+						<div class="stat"><span>Средняя точность</span><span class="val" id="accuracy">0%</span></div>
+					</div>
+					<div class="footer-note">Выберите 1–6 свечей на графике и запустите анализ</div>
+                </div>
+				<div class="card" id="pattern-info-card" style="display:none">
+					<h3>Паттерн</h3>
+					<div class="stat-list" id="pattern-info"></div>
+                </div>
+				<div class="card">
+					<h3>Совпадения</h3>
+					<div class="matches" id="matches"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="controls">
-        <div class="controls-container">
-            <button class="btn" id="selectCandlesBtn">
-                <i class="fas fa-magic"></i> Анализ свечей
-            </button>
-            <button class="btn btn-secondary" id="intervalBtn">
-                <i class="fas fa-chart-line"></i> Интервал: 1Д
-            </button>
-        </div>
-    </div>
-
-    <div class="modal" id="tipsModal">
-        <div class="modal-content">
-            <button class="modal-close" id="closeModalBtn">&times;</button>
-            <h2>Советы по анализу свечей</h2>
-            <ul id="tipsList">
-                <li><i class="fas fa-lightbulb"></i> Выбирайте свечи, формирующие паттерны (например, "Молот" или "Поглощение").</li>
-                <li><i class="fas fa-lightbulb"></i> Анализируйте объем торгов: рост объема подтверждает силу движения.</li>
-                <li><i class="fas fa-lightbulb"></i> Обращайте внимание на длинные тени свечей — они указывают на развороты.</li>
-                <li><i class="fas fa-lightbulb"></i> Используйте таймфреймы 1H и 4H для краткосрочных сделок.</li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="spinner"></div>
-        <div>Загрузка данных...</div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script>
-        let isSelectingCandles = false;
-        let selectedCandles = [];
-        let chart = null;
-        let candleSeries = null;
-        let allCandles = [];
-        let currentMarkers = [];
-        let originalCandleStyles = {};
-        let originalTimeScaleOptions = {};
-        let currentInterval = '1d';
-        let priceUpdateInterval = null;
-
-        const selectCandlesBtn = document.getElementById('selectCandlesBtn');
-        const candleSelectionInfo = document.getElementById('candleSelectionInfo');
-        const exitSelectionBtn = document.getElementById('exitSelectionBtn');
-        const chartContainer = document.getElementById('chartContainer');
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        const selectionTooltip = document.getElementById('selectionTooltip');
-        const intervalBtn = document.getElementById('intervalBtn');
-        const timeframeBtns = document.querySelectorAll('.timeframe-btn');
-        const tipsBtn = document.getElementById('tipsBtn');
-        const tipsModal = document.getElementById('tipsModal');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-
-        function isLightweightChartsLoaded() {
-            return typeof LightweightCharts !== 'undefined' && LightweightCharts.createChart;
-        }
-
-        async function initChart() {
-            if (!isLightweightChartsLoaded()) {
-                console.error('Lightweight Charts library failed to load');
-                chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка загрузки графика.</div>';
-                return;
+		class PatternChart {
+            constructor() {
+                this.chart = null;
+                this.candleSeries = null;
+                this.volumeSeries = null;
+                this.volumeVisible = true;
+                this.allCandles = [];
+				this.selectedIndices = new Set();
+				this.selectedMarkers = new Map();
+				this.patternMarkers = new Map();
+                this.initChart();
+                this.loadData();
+				this.bindUI();
+				this.toastEl = null;
+				this.overlay = null;
+				this.matchedHighlightPoints = [];
+				this.selectedHighlightPoints = [];
+				this.currentMatchIndex = -1;
+				this.matchedRanges = [];
             }
 
-            try {
-                showLoading();
+            initChart() {
+				const el = document.getElementById('chart');
+				this.chart = LightweightCharts.createChart(el, {
+					width: el.clientWidth,
+					height: el.clientHeight,
+					layout: { backgroundColor: '#0a0f14', textColor: '#d6dee6', fontFamily: 'Inter' },
+					grid: { vertLines: { color: 'rgba(32,42,54,0.85)' }, horzLines: { color: 'rgba(32,42,54,0.85)' } },
+					crosshair: { mode: LightweightCharts.CrosshairMode.Magnet, vertLine: { color: '#3a4654' }, horzLine: { color: '#3a4654' } },
+					rightPriceScale: { borderColor: '#243142' },
+					timeScale: { borderColor: '#243142', rightOffset: 6, barSpacing: 12, minBarSpacing: 8 },
+					handleScroll: { mouseWheel: true, pressedMouseMove: true },
+					handleScale: { axisPressedMouseMove: { time: true, price: true } },
+                });
 
-                chart = LightweightCharts.createChart(chartContainer, {
-                    width: chartContainer.clientWidth,
-                    height: chartContainer.clientHeight,
-                    layout: {
-                        backgroundColor: '#141a2e',
-                        textColor: '#f0f4f8',
-                        fontSize: 13,
-                    },
-                    grid: {
-                        vertLines: { color: '#1e2740', style: 1 },
-                        horzLines: { color: '#1e2740', style: 1 },
-                    },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                        vertLine: { color: '#3a4466', labelBackgroundColor: '#f0b90b' },
-                        horzLine: { color: '#3a4466' },
-                    },
-                    rightPriceScale: {
-                        borderVisible: false,
-                        scaleMargins: { top: 0.1, bottom: 0.2 },
-                    },
-                    timeScale: {
-                        borderVisible: false,
-                        timeVisible: true,
-                        rightOffset: 15,
-                        barSpacing: 15,
-                        fixLeftEdge: false,
-                        fixRightEdge: false,
-                        secondsVisible: false,
-                        tickMarkFormatter: (time, tickMarkType, locale) => {
-                            const date = new Date(time * 1000);
-                            if (['1d', '1w', '1M'].includes(currentInterval)) {
-                                return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-                            }
-                            return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
-                        },
-                    },
-                    localization: {
-                        locale: 'ru-RU',
-                        dateFormat: 'dd MMM yyyy',
-                    },
-                    handleScroll: {
-                        horzTouchDrag: true,
-                        vertTouchDrag: true,
-                        mouseWheel: true,
-                        pressedMouseMove: true
-                    },
-                    handleScale: {
-                        axisPressedMouseMove: true,
-                        mouseWheel: true,
-                        pinch: true
+                this.candleSeries = this.chart.addCandlestickSeries({
+					upColor: '#21d07a',
+					downColor: '#f04444',
+					borderUpColor: '#1ac46f',
+					borderDownColor: '#e73c3c',
+					wickUpColor: '#24e084',
+					wickDownColor: '#ff5050',
+                    priceLineVisible: false,
+                });
+                this.volumeSeries = this.chart.addHistogramSeries({
+                    priceScaleId: '',
+					scaleMargins: { top: 0.8, bottom: 0 },
+					priceFormat: { type: 'volume' },
+				});
+
+				this.chart.subscribeClick(this.onClick.bind(this));
+				window.addEventListener('resize', () => { this.chart.applyOptions({ width: el.clientWidth }); this.resizeOverlay(); this.redrawOverlay(); });
+				this.ensureOverlay();
+				this.chart.timeScale().subscribeVisibleTimeRangeChange(() => this.redrawOverlay());
+            }
+
+            async loadData() {
+                try {
+					// Узнаём реальные границы датасета на сервере и синхронизируемся
+					let dsStart = new Date('2018-01-01T00:00:00Z');
+					let dsEnd = new Date();
+					try {
+						const b = await fetch('/api/pattern_bounds');
+						if (b.ok) {
+							const j = await b.json();
+							if (j.success) { dsStart = new Date(j.start + 'T00:00:00Z'); dsEnd = new Date(j.end + 'T00:00:00Z'); }
+						}
+					} catch(_) {}
+					this.datasetStart = dsStart; this.datasetEnd = dsEnd;
+					this.allCandles = this.generateData(dsStart, dsEnd);
+
+					const k = this.allCandles.map(c => ({
+						time: Math.floor(new Date(c.open_time).getTime() / 1000),
+						open: +c.open_price, high: +c.high, low: +c.low, close: +c.close_price,
+					}));
+					this.candleSeries.setData(k);
+
+					const v = this.allCandles.map(c => ({
+						time: Math.floor(new Date(c.open_time).getTime() / 1000),
+						value: +c.volume,
+						color: (+c.close_price >= +c.open_price) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'
+					}));
+					this.volumeSeries.setData(v);
+                    this.chart.timeScale().fitContent();
+					// Slight zoom-in to make candles visually larger
+					const range = this.chart.timeScale().getVisibleRange();
+					if (range) {
+						const pad = Math.floor((range.to - range.from) * 0.15);
+						this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
+					}
+					this.redrawOverlay();
+				} catch (e) {
+					console.error(e);
+					alert('Не удалось загрузить исторические данные.');
+				}
+			}
+
+			generateData(startDate = new Date('2018-01-01T00:00:00Z'), endDate = new Date()) {
+				const out = [];
+				let d = new Date(startDate);
+				let price = 300;
+				while (d <= endDate) {
+					const vol = 10000 + Math.random()*50000;
+					const volat = 0.025;
+                    const open = price;
+					const delta = (Math.random()-0.5)*volat;
+					const close = open * (1 + delta);
+					const high = Math.max(open, close) * (1 + Math.random()*volat*0.6);
+					const low = Math.min(open, close) * (1 - Math.random()*volat*0.6);
+					out.push({
+						open_time: d.toISOString(),
+						close_time: new Date(d.getTime()+24*60*60*1000-1).toISOString(),
+						open_price: open.toFixed(2), close_price: close.toFixed(2),
+						high: high.toFixed(2), low: low.toFixed(2), volume: vol.toFixed(2)
+					});
+					price = close;
+					d.setUTCDate(d.getUTCDate()+1);
+				}
+				return out;
+			}
+
+			bindUI() {
+				document.getElementById('analyze-btn').addEventListener('click', () => this.analyze());
+                document.getElementById('clear-btn').addEventListener('click', () => this.clearSelection());
+				document.getElementById('reset-view-btn').addEventListener('click', () => this.resetView());
+                document.getElementById('toggle-volume-btn').addEventListener('click', () => this.toggleVolume());
+				document.getElementById('to-selected-btn').addEventListener('click', () => this.zoomToSelected());
+				document.getElementById('prev-match-btn').addEventListener('click', () => this.gotoMatch(-1));
+				document.getElementById('next-match-btn').addEventListener('click', () => this.gotoMatch(1));
+				document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', (e) => {
+					document.querySelectorAll('[data-tf]').forEach(x => x.classList.remove('active'));
+                        e.target.classList.add('active');
+					// (Таймфреймы-стаб, данные дневные)
+				}));
+            }
+
+			onClick(param) {
+                if (!param || !param.time) return;
+				const ts = param.time;
+				const idx = this.allCandles.findIndex(c => Math.floor(new Date(c.open_time).getTime()/1000) === ts);
+				if (idx === -1) return;
+				// Блокируем выбор свечей вне границ датасета
+				const t = new Date(this.allCandles[idx].open_time);
+				if (this.datasetStart && this.datasetEnd && (t < this.datasetStart || t > this.datasetEnd)) {
+					this.toast('Свеча вне диапазона датасета');
+                        return;
                     }
-                });
+				if (this.selectedIndices.has(idx)) this.selectedIndices.delete(idx);
+				else {
+					if (this.selectedIndices.size >= 6) { alert('Можно выбрать максимум 6 свечей'); return; }
+					this.selectedIndices.add(idx);
+				}
+				this.updateSelected();
+			}
 
-                originalTimeScaleOptions = chart.timeScale().options();
-                candleSeries = chart.addCandlestickSeries({
-                    upColor: '#00e676',
-                    downColor: '#ff5252',
-                    borderUpColor: '#00e676',
-                    borderDownColor: '#ff5252',
-                    wickUpColor: '#00e676',
-                    wickDownColor: '#ff5252',
-                });
+			updateSelected() {
+				document.getElementById('selected-count').textContent = this.selectedIndices.size;
+				document.getElementById('analyze-btn').disabled = this.selectedIndices.size === 0;
+				this.selectedMarkers.clear();
+				this.selectedHighlightPoints = [];
+				[...this.selectedIndices].forEach(i => {
+					const t = Math.floor(new Date(this.allCandles[i].open_time).getTime()/1000);
+					this.selectedMarkers.set(i, { time: t, position: 'aboveBar', color: '#ffd54a', shape: 'circle', text: '●', size: 1.2 });
+					this.selectedHighlightPoints.push({ time: t, color: '#ffd54a' });
+				});
+				this.applyMarkers();
+				this.redrawOverlay();
+			}
 
-                await loadChartData(currentInterval);
-                chart.subscribeClick(handleChartClick);
-                window.addEventListener('resize', handleResize);
-                await fetchCurrentPrice();
-                setupPriceUpdates();
-                hideLoading();
-
-            } catch (error) {
-                console.error('Error initializing chart:', error);
-                chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка инициализации графика.</div>';
-                hideLoading();
-            }
-        }
-
-        function showLoading() {
-            loadingOverlay.style.display = 'flex';
-        }
-
-        function hideLoading() {
-            loadingOverlay.style.display = 'none';
-        }
-
-        function handleResize() {
-            if (chart) {
-                chart.applyOptions({
-                    width: chartContainer.clientWidth,
-                    height: chartContainer.clientHeight
-                });
-            }
-        }
-
-        async function loadChartData(interval) {
-            try {
-                showLoading();
-                const response = await axios.get(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=200`);
-                const data = response.data.map(item => ({
-                    time: item[0] / 1000,
-                    open: parseFloat(item[1]),
-                    high: parseFloat(item[2]),
-                    low: parseFloat(item[3]),
-                    close: parseFloat(item[4]),
-                    volume: parseFloat(item[5])
-                }));
-
-                candleSeries.setData(data);
-                allCandles = data;
-
-                allCandles.forEach(candle => {
-                    originalCandleStyles[candle.time] = {
-                        borderColor: candle.close >= candle.open ? '#00e676' : '#ff5252',
-                        wickColor: candle.close >= candle.open ? '#00e676' : '#ff5252'
-                    };
-                });
-
-                chart.timeScale().fitContent();
-                hideLoading();
-
-            } catch (error) {
-                console.error('Error loading chart data:', error);
-                hideLoading();
-                alert('Ошибка загрузки данных. Проверьте соединение.');
-            }
-        }
-
-        function startCandleSelection() {
-            isSelectingCandles = true;
-            candleSelectionInfo.classList.add('active');
-            selectCandlesBtn.style.display = 'none';
-            chartContainer.classList.add('chart-dimmed');
-            zoomToSelectionMode();
-            chart.applyOptions({ handleScale: false });
-
-            selectionTooltip.innerHTML = `
-                <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
-                <div style="margin-top: 5px;">Выбирайте несколько свечей и прокручивайте график влево-вправо для анализа. Нажмите на выбранную свечу повторно для отмены.</div>
-            `;
-            selectionTooltip.classList.add('active');
-            setTimeout(() => {
-                selectionTooltip.classList.remove('active');
-            }, 5000);
-        }
-
-        function stopCandleSelection() {
-            isSelectingCandles = false;
-            candleSelectionInfo.classList.remove('active');
-            selectCandlesBtn.style.display = 'flex';
-            chartContainer.classList.remove('chart-dimmed');
-            selectionTooltip.classList.remove('active');
-            chart.applyOptions({ handleScale: true });
-            resetZoom();
-            if (selectedCandles.length > 0) {
-                analyzeSelectedCandles();
-            }
-            resetCandleSelection();
-        }
-
-        function zoomToSelectionMode() {
-            if (!allCandles.length) return;
-            const lastCandles = allCandles.slice(-12);
-            const firstTime = lastCandles[0].time;
-            const lastTime = lastCandles[lastCandles.length - 1].time;
-
-            chart.timeScale().setVisibleRange({
-                from: firstTime - 1800,
-                to: lastTime + 1800
-            });
-
-            chart.timeScale().applyOptions({
-                barSpacing: 30,
-                rightOffset: 10,
-                fixLeftEdge: false,
-                fixRightEdge: false
-            });
-
-            chart.timeScale().scrollToRealTime(1000);
-        }
-
-        function resetZoom() {
-            chart.timeScale().applyOptions(originalTimeScaleOptions);
-            chart.timeScale().fitContent();
-        }
-
-        function handleChartClick(param) {
-            if (!isSelectingCandles) return;
-            const time = param.time;
-            if (!time) return;
-
-            const candle = findCandleAtTime(time);
-            if (!candle) return;
-
-            const candleIndex = selectedCandles.findIndex(c => c.time === candle.time);
-            if (candleIndex !== -1) {
-                // Unselect candle if already selected
-                unselectCandle(candle, candleIndex);
-            } else if (selectedCandles.length < 6) {
-                // Select new candle if under limit
-                selectedCandles.push(candle);
-                highlightCandle(candle);
+			applyMarkers() {
+				const sel = Array.from(this.selectedMarkers.values());
+				const pats = Array.from(this.patternMarkers.values()).flat();
+				this.candleSeries.setMarkers([...sel, ...pats]);
             }
 
-            updateSelectionInfo();
-            updateTooltip();
-        }
+            clearSelection() {
+				this.selectedIndices.clear();
+				this.selectedMarkers.clear();
+				this.selectedHighlightPoints = [];
+				this.applyMarkers();
+				document.getElementById('selected-count').textContent = '0';
+				document.getElementById('analyze-btn').disabled = true;
+				this.redrawOverlay();
+			}
 
-        function unselectCandle(candle, index) {
-            selectedCandles.splice(index, 1);
-            currentMarkers = currentMarkers.filter(marker => marker.time !== candle.time);
-            candleSeries.setMarkers(currentMarkers);
-
-            // Restore original style
-            const originalStyle = originalCandleStyles[candle.time];
-            if (originalStyle) {
-                candleSeries.update({
-                    ...candle,
-                    borderColor: originalStyle.borderColor,
-                    wickColor: originalStyle.wickColor,
-                    borderUpColor: originalStyle.borderColor,
-                    borderDownColor: originalStyle.borderColor,
-                    wickUpColor: originalStyle.wickColor,
-                    wickDownColor: originalStyle.wickColor
-                });
+			resetView() {
+                this.chart.timeScale().fitContent();
+				this.patternMarkers.clear();
+				this.applyMarkers();
+				this.redrawOverlay();
             }
 
-            // Update marker numbers for remaining selected candles
-            currentMarkers = currentMarkers.map((marker, i) => ({
-                ...marker,
-                text: `${i + 1}`
-            }));
-            candleSeries.setMarkers(currentMarkers);
-        }
+            toggleVolume() {
+                this.volumeVisible = !this.volumeVisible;
+                if (this.volumeVisible) {
+					const v = this.allCandles.map(c => ({
+						time: Math.floor(new Date(c.open_time).getTime() / 1000),
+						value: +c.volume,
+						color: (+c.close_price >= +c.open_price) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'
+					}));
+					this.volumeSeries.setData(v);
+                } else {
+                    this.volumeSeries.setData([]);
+				}
+			}
 
-        function findCandleAtTime(time) {
-            return allCandles.find(c => Math.abs(c.time - time) < 1800);
-        }
-
-        function highlightCandle(candle) {
-            const newMarker = {
-                time: candle.time,
-                position: 'aboveBar',
-                color: '#f0b90b',
-                shape: 'circle',
-                text: `${selectedCandles.length}`,
-                size: 2
-            };
-            currentMarkers.push(newMarker);
-            candleSeries.setMarkers(currentMarkers);
-
-            candleSeries.update({
-                ...candle,
-                borderColor: '#f0b90b',
-                wickColor: '#f0b90b',
-                borderUpColor: '#f0b90b',
-                borderDownColor: '#f0b90b',
-                wickUpColor: '#f0b90b',
-                wickDownColor: '#f0b90b'
-            });
-        }
-
-        function resetCandleSelection() {
-            if (candleSeries) {
-                allCandles.forEach(candle => {
-                    const originalStyle = originalCandleStyles[candle.time];
-                    if (originalStyle) {
-                        candleSeries.update({
-                            ...candle,
-                            borderColor: originalStyle.borderColor,
-                            wickColor: originalStyle.wickColor,
-                            borderUpColor: originalStyle.borderColor,
-                            borderDownColor: originalStyle.borderColor,
-                            wickUpColor: originalStyle.wickColor,
-                            wickDownColor: originalStyle.wickColor
-                        });
-                    }
-                });
-                candleSeries.setMarkers([]);
-                currentMarkers = [];
-            }
-            selectedCandles = [];
-            updateSelectionInfo();
-        }
-
-        function updateSelectionInfo() {
-            document.getElementById('selectedCount').textContent = selectedCandles.length;
-        }
-
-        function updateTooltip() {
-            if (selectedCandles.length <= 2 && selectedCandles.length > 0) {
-                selectionTooltip.innerHTML = `
-                    <div><i class="fas fa-lightbulb tooltip-icon"></i> Совет</div>
-                    <div style="margin-top: 5px;">Выберите еще ${3 - selectedCandles.length} свечи для более точного анализа. Прокрутите график для выбора или нажмите на свечу для отмены.</div>
-                `;
-                selectionTooltip.classList.add('active');
-                setTimeout(() => {
-                    selectionTooltip.classList.remove('active');
-                }, 3000);
-            }
-        }
-
-        async function analyzeSelectedCandles() {
-            if (selectedCandles.length === 0) {
-                alert('Пожалуйста, выберите хотя бы одну свечу для анализа.');
-                return;
-            }
-
-            if (selectedCandles.length < 3) {
-                alert('Пожалуйста, выберите от 3 до 6 свечей для анализа.');
-                return;
-            }
-
-            showLoading();
-
-            const payload = {
-                num_candles: selectedCandles.length,
-                candles: selectedCandles.map(candle => ({
-                    open_time: new Date(candle.time * 1000).toISOString(),
-                    close_time: new Date((candle.time + getIntervalSeconds(currentInterval)) * 1000).toISOString(),
-                    open_price: parseFloat(candle.open).toFixed(2),
-                    close_price: parseFloat(candle.close).toFixed(2),
-                    high: parseFloat(candle.high).toFixed(2),
-                    low: parseFloat(candle.low).toFixed(2),
-                    volume: parseFloat(candle.volume).toFixed(2)
-                }))
-            };
-
-            try {
-                const response = await axios.post('/analyze_pattern', payload);
-                console.log('Server response:', response.data);
-                alert(`Данные успешно отправлены на сервер. Ответ: ${response.data.message}`);
-            } catch (error) {
-                console.error('Error sending data to server:', error);
-                alert('Ошибка при отправке данных на сервер. Проверьте соединение или сервер.');
-            } finally {
-                hideLoading();
-            }
-        }
-
-        function getIntervalSeconds(interval) {
-            switch (interval) {
-                case '1h': return 3600;
-                case '4h': return 14400;
-                case '1d': return 86400;
-                case '1w': return 604800;
-                case '1M': return 2592000;
-                default: return 86400;
-            }
-        }
-
-        async function fetchCurrentPrice() {
-            try {
-                const response = await axios.get('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
-                const data = response.data;
-                updatePriceDisplay(data);
-            } catch (error) {
-                console.error('Error fetching price:', error);
-            }
-        }
-
-        function setupPriceUpdates() {
-            if (priceUpdateInterval) {
-                clearInterval(priceUpdateInterval);
-            }
-            priceUpdateInterval = setInterval(fetchCurrentPrice, 3000);
-        }
-
-        function updatePriceDisplay(data) {
-            const priceElement = document.getElementById('currentPrice');
-            const changeElement = document.getElementById('priceChange');
-            const changeValueElement = document.getElementById('changeValue');
-            const marketCapElement = document.getElementById('marketCap');
-            const volumeElement = document.getElementById('volume24h');
-            const rangeElement = document.getElementById('dailyRange');
-
-            const isPositive = parseFloat(data.priceChangePercent) >= 0;
-            const priceChange = parseFloat(data.priceChangePercent);
-
-            priceElement.textContent = `$${parseFloat(data.lastPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            changeValueElement.textContent = `${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}%`;
-            changeElement.className = `price-change ${isPositive ? 'positive' : 'negative'}`;
-            marketCapElement.textContent = `$${(parseFloat(data.lastPrice) * 19700000 / 1e9).toFixed(2)}B`;
-            volumeElement.textContent = `$${(parseFloat(data.volume) * parseFloat(data.lastPrice) / 1e9).toFixed(2)}B`;
-            rangeElement.textContent = `$${parseFloat(data.lowPrice).toFixed(2)} - $${parseFloat(data.highPrice).toFixed(2)}`;
-        }
-
-        async function changeTimeframe(interval) {
-            if (interval === currentInterval) return;
-            currentInterval = interval;
-            timeframeBtns.forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.interval === interval);
-            });
-            intervalBtn.innerHTML = `<i class="fas fa-chart-line"></i> Интервал: ${getIntervalName(interval)}`;
-            await loadChartData(interval);
-        }
-
-        function getIntervalName(interval) {
-            switch (interval) {
-                case '1h': return '1Ч';
-                case '4h': return '4Ч';
-                case '1d': return '1Д';
-                case '1w': return '1Н';
-                case '1M': return '1М';
-                default: return interval;
-            }
-        }
-
-        function showModal() {
-            tipsModal.style.display = 'flex';
-        }
-
-        function hideModal() {
-            tipsModal.style.display = 'none';
-        }
-
-        selectCandlesBtn.addEventListener('click', startCandleSelection);
-        exitSelectionBtn.addEventListener('click', stopCandleSelection);
-        tipsBtn.addEventListener('click', showModal);
-        closeModalBtn.addEventListener('click', hideModal);
-
-        timeframeBtns.forEach(btn => {
-            btn.addEventListener('click', () => changeTimeframe(btn.dataset.interval));
-        });
-
-        intervalBtn.addEventListener('click', () => {
-            const intervals = ['1h', '4h', '1d', '1w', '1M'];
-            const currentIndex = intervals.indexOf(currentInterval);
-            const nextIndex = (currentIndex + 1) % intervals.length;
-            changeTimeframe(intervals[nextIndex]);
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkLibrary = setInterval(() => {
-                if (isLightweightChartsLoaded()) {
-                    clearInterval(checkLibrary);
-                    initChart();
+			async analyze() {
+				if (this.selectedIndices.size === 0) return;
+				const order = [...this.selectedIndices].sort((a,b) => a-b);
+				const candles = order.map(i => this.allCandles[i]);
+				const payload = { num_candles: candles.length, candles };
+				// UI state
+				const btn = document.getElementById('analyze-btn');
+				const loader = this.ensureLoader();
+				btn.disabled = true; loader.style.display = 'flex';
+				try {
+					const res = await fetch('/analyze_pattern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+					const data = await res.json();
+					if (!res.ok || !data.success) throw new Error(data.message || 'Ошибка анализа');
+					this.renderResults(data);
+					this.drawPatternMarkers(data.matched_patterns);
+					if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
+					this.toast('Анализ завершён');
+				} catch (e) {
+					this.toast('Ошибка: ' + e.message);
+                } finally {
+					btn.disabled = this.selectedIndices.size === 0;
+					loader.style.display = 'none';
                 }
-            }, 100);
+            }
 
-            setTimeout(() => {
-                if (!chart) {
-                    console.error('Lightweight Charts library loading timeout');
-                    chartContainer.innerHTML = '<div style="color:white;padding:20px;text-align:center;">Ошибка загрузки библиотеки графиков.</div>';
-                }
-            }, 5000);
-        });
+			renderResults(result) {
+                document.getElementById('matches-found').textContent = result.statistics.matches_found;
+                document.getElementById('pattern-length').textContent = result.pattern_info.pattern_len;
+				const percents = result.statistics.distribution_percents || {};
+				const avg = Object.keys(percents).length ? (Object.values(percents).reduce((a,b)=>a+b,0) / Object.keys(percents).length) : 0;
+				document.getElementById('accuracy').textContent = (avg||0).toFixed(2) + '%';
+
+				const pi = document.getElementById('pattern-info');
+				pi.innerHTML = `
+					<div class="stat"><span>Начало</span><span class="val">${result.pattern_info.pattern_start}</span></div>
+					<div class="stat"><span>Конец</span><span class="val">${result.pattern_info.pattern_end}</span></div>
+					<div class="stat"><span>Свечей</span><span class="val">${result.pattern_info.pattern_len}</span></div>
+				`;
+				document.getElementById('pattern-info-card').style.display = '';
+
+				const matches = document.getElementById('matches');
+				matches.innerHTML = '';
+				this.matchedRanges = [];
+				(result.matched_patterns || []).forEach((pat, i) => {
+					const first = pat[0];
+					const last = pat[pat.length-1];
+					const change = ((last.close - first.open) / first.open) * 100;
+					this.matchedRanges.push([ Math.floor(new Date(first.date).getTime()/1000), Math.floor(new Date(last.date).getTime()/1000) ]);
+					const el = document.createElement('div');
+					el.className = 'match';
+					el.innerHTML = `
+						<div class="hdr">
+							<div class="range">${new Date(first.date).toLocaleDateString()} — ${new Date(last.date).toLocaleDateString()}</div>
+							<div class="badge ${change>=0?'up':'down'}">${change>=0?'+':''}${change.toFixed(2)}%</div>
+                    </div>
+					`;
+					el.addEventListener('click', () => {
+						this.currentMatchIndex = i;
+						this.updateMatchIndexLabel();
+						const [from, to] = this.matchedRanges[i];
+						this.zoomTo(from, to);
+					});
+					matches.appendChild(el);
+				});
+				this.currentMatchIndex = this.matchedRanges.length ? 0 : -1;
+				this.updateMatchIndexLabel();
+			}
+
+			drawPatternMarkers(matched) {
+				this.patternMarkers.clear();
+				const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd166', '#a78bfa', '#f97316'];
+				this.matchedHighlightPoints = [];
+				(matched || []).forEach((pat, pIdx) => {
+					const col = colors[pIdx % colors.length];
+					const arr = [];
+					for (let i=0;i<pat.length;i++) {
+						const t = Math.floor(new Date(pat[i].date).getTime()/1000);
+						arr.push({ time: t, position: 'belowBar', color: col, shape: 'square', text: `P${pIdx+1}`, size: 1.4 });
+						this.matchedHighlightPoints.push({ time: t, color: col });
+					}
+					this.patternMarkers.set(pIdx, arr);
+				});
+				this.applyMarkers();
+				this.redrawOverlay();
+				if (matched && matched.length && matched[0].length) {
+					const f = matched[0][0];
+					const l = matched[0][matched[0].length-1];
+					this.zoomTo(Math.floor(new Date(f.date).getTime()/1000), Math.floor(new Date(l.date).getTime()/1000));
+				}
+			}
+
+			zoomTo(from, to) {
+				const pad = Math.max(3*24*60*60, Math.floor((to-from)*0.5));
+				this.chart.timeScale().setVisibleRange({ from: from - pad, to: to + pad });
+			}
+
+			// ===== Overlay helpers for highlighting candles =====
+			ensureOverlay() {
+				if (this.overlay) return this.overlay;
+				const host = document.getElementById('chart');
+				const canvas = document.createElement('canvas');
+				canvas.style.position = 'absolute';
+				canvas.style.left = '0';
+				canvas.style.top = '0';
+				canvas.style.pointerEvents = 'none';
+				canvas.width = host.clientWidth; canvas.height = host.clientHeight;
+				host.appendChild(canvas);
+				this.overlay = canvas;
+				return canvas;
+			}
+
+			resizeOverlay() {
+				const host = document.getElementById('chart');
+				if (!this.overlay) return;
+				this.overlay.width = host.clientWidth;
+				this.overlay.height = host.clientHeight;
+			}
+
+			redrawOverlay() {
+				this.ensureOverlay();
+				if (!this.overlay) return;
+				const ctx = this.overlay.getContext('2d');
+				ctx.clearRect(0,0,this.overlay.width,this.overlay.height);
+				const ts = this.chart.timeScale();
+				const barW = ts.getBarSpacing ? ts.getBarSpacing() : 12;
+				const h = this.overlay.height;
+				// draw selected first (gold), then matches
+				for (const p of (this.selectedHighlightPoints || [])) {
+					const x = ts.timeToCoordinate(p.time);
+					if (x === null || x === undefined) continue;
+					ctx.fillStyle = 'rgba(255,213,74,0.10)';
+					ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
+					ctx.strokeStyle = 'rgba(255,213,74,0.6)';
+					ctx.lineWidth = 1;
+					ctx.strokeRect(Math.round(x - barW*0.6)+0.5, 0.5, Math.round(barW*1.2)-1, h-1);
+				}
+				for (const p of (this.matchedHighlightPoints || [])) {
+					const x = ts.timeToCoordinate(p.time);
+					if (x === null || x === undefined) continue;
+					ctx.fillStyle = this.hexToRgba(p.color, 0.12);
+					ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
+					ctx.strokeStyle = this.hexToRgba(p.color, 0.35);
+					ctx.lineWidth = 1;
+					ctx.strokeRect(Math.round(x - barW*0.6)+0.5, 0.5, Math.round(barW*1.2)-1, h-1);
+				}
+			}
+
+			hexToRgba(hex, a) {
+				// supports #rrggbb format
+				const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+				if (!m) return `rgba(255,255,255,${a})`;
+				const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+				return `rgba(${r},${g},${b},${a})`;
+			}
+
+			ensureLoader() {
+				let el = document.querySelector('.loading');
+				if (!el) {
+					el = document.createElement('div'); el.className = 'loading';
+					const sp = document.createElement('div'); sp.className = 'spinner'; el.appendChild(sp);
+					document.body.appendChild(el);
+				}
+				return el;
+			}
+
+			toast(msg) {
+				if (!this.toastEl) { this.toastEl = document.createElement('div'); this.toastEl.className = 'toast'; document.body.appendChild(this.toastEl); }
+				this.toastEl.textContent = msg; this.toastEl.style.display = 'block';
+				clearTimeout(this.toastTimer); this.toastTimer = setTimeout(() => { this.toastEl.style.display = 'none'; }, 2200);
+			}
+
+			// ===== Navigation helpers =====
+			zoomToSelected() {
+				if (!this.selectedIndices.size) { this.toast('Сначала выберите свечи'); return; }
+				const sorted = [...this.selectedIndices].sort((a,b)=>a-b);
+				const first = Math.floor(new Date(this.allCandles[sorted[0]].open_time).getTime()/1000);
+				const last = Math.floor(new Date(this.allCandles[sorted[sorted.length-1]].open_time).getTime()/1000);
+				this.zoomTo(first, last);
+			}
+
+			gotoMatch(step) {
+				if (!this.matchedRanges.length) { this.toast('Совпадений нет'); return; }
+				if (this.currentMatchIndex === -1) this.currentMatchIndex = 0;
+				else this.currentMatchIndex = (this.currentMatchIndex + step + this.matchedRanges.length) % this.matchedRanges.length;
+				this.updateMatchIndexLabel();
+				const [from, to] = this.matchedRanges[this.currentMatchIndex];
+				this.zoomTo(from, to);
+			}
+
+			updateMatchIndexLabel() {
+				const el = document.getElementById('match-index');
+				if (!el) return;
+				el.textContent = this.matchedRanges.length ? `${this.currentMatchIndex+1}/${this.matchedRanges.length}` : '0/0';
+			}
+		}
+
+		document.addEventListener('DOMContentLoaded', () => new PatternChart());
     </script>
 </body>
 </html>
