@@ -1,4 +1,4 @@
-import jupytext
+# import jupytext
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import sqlite3
 import os
@@ -317,7 +317,7 @@ def deduct_points():
         points = int(data.get('points', 0))
 
         if points <= 0:
-            return jupytext({'success': False, 'message': 'Invalid points value'}), 400
+            return jsonify({'success': False, 'message': 'Invalid points value'}), 400
 
         conn = get_db_connection()
         user = conn.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
