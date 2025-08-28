@@ -1,9 +1,11 @@
+import jupytext
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import sqlite3
 import os
 import sys
 from flask_cors import CORS
 from ai.main import find_similar_patterns
+from ai.main import df as ohlcv_df
 from app.parser import staking_bp
 import pandas as pd
 
@@ -695,17 +697,20 @@ def get_chat():
 def analyze_pattern():
     try:
         data = request.get_json()
-        
+
         required_fields = ['num_candles', 'candles']
         if not all(field in data for field in required_fields):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-        
+
         candles = data['candles']
         start_date = candles[0]['open_time']
         end_date = candles[-1]['close_time']
 
         # Запуск анализа
-        result = find_similar_patterns(start_date, end_date)
+        try:
+            result = find_similar_patterns(start_date, end_date)
+        except ValueError as ve:
+            return jsonify({'success': False, 'message': str(ve)}), 400
 
         return jsonify({
             'success': True,
@@ -722,6 +727,15 @@ def analyze_pattern():
             'matched_patterns': result['matched_patterns']
         })
 
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/pattern_bounds', methods=['GET'])
+def pattern_bounds():
+    try:
+        start = str(ohlcv_df['date'].min().date())
+        end = str(ohlcv_df['date'].max().date())
+        return jsonify({'success': True, 'start': start, 'end': end})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 

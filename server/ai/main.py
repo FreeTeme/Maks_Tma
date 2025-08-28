@@ -1,7 +1,8 @@
 import pandas as pd
 import numpy as np
 
-PATH = "C:/Проекты/Maks_Tma/server/ai/btc_1d_data_2018_to_2025 (1).csv"  # путь к историческим данным
+PATH = "C:/Users/user/Desktop/BiTry/заказы/Maks_Tma/server/ai/btc_1d_data_2018_to_2025 (1).csv"  # путь к историческим данным
+
 
 def load_ohlcv(path: str) -> pd.DataFrame:
     df = pd.read_csv(path)
@@ -14,12 +15,16 @@ def load_ohlcv(path: str) -> pd.DataFrame:
         "close": "close",
         "volume": "volume"
     })
-    df["date"] = pd.to_datetime(df["date"].str.replace(" UTC", "", regex=False), errors="coerce")
+    # Parse dates and ensure tz-naive for safe comparisons
+    dt = pd.to_datetime(df["date"].str.replace(" UTC", "", regex=False), errors="coerce", utc=True)
+    df["date"] = pd.Series(dt).dt.tz_convert(None)
     df = df.dropna(subset=["date"])
     df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
     return df
 
+
 df = load_ohlcv(PATH)
+# Precompute helpers
 df["vol_ma30"] = df["volume"].rolling(window=30, min_periods=1).mean()
 
 def safe_div(numer, denom):
@@ -34,7 +39,7 @@ vol_rel = safe_div(df["volume"].astype(float), df["vol_ma30"].astype(float))
 W_BODY, W_VOL, W_UP, W_LOW = 0.6, 0.25, 0.075, 0.075
 
 features = pd.DataFrame({
-    "date": df["date"],
+    "date": df["date"],  # already tz-naive
     "body": body,
     "upper": upper_shadow,
     "lower": lower_shadow,
@@ -42,24 +47,36 @@ features = pd.DataFrame({
     "close": df["close"].astype(float)
 }).reset_index(drop=True)
 
+
 def candle_distance(idx_a: int, idx_b: int) -> float:
     a = features.loc[idx_a, ["body", "vol_rel", "upper", "lower"]].values
     b = features.loc[idx_b, ["body", "vol_rel", "upper", "lower"]].values
     weights = np.array([W_BODY, W_VOL, W_UP, W_LOW])
     return float(np.sum(weights * np.abs(a - b)))
 
+
 def find_similar_patterns(start_date: str, end_date: str,
                           max_threshold: float = 0.2,
                           years_back: int = 5):
-    sdt = pd.to_datetime(start_date)
-    edt = pd.to_datetime(end_date)
-    mask = (features["date"] >= sdt) & (features["date"] <= edt)
+    # Normalize inputs to tz-naive (UTC-based)
+    sdt = pd.to_datetime(start_date, errors="coerce")
+    edt = pd.to_datetime(end_date, errors="coerce")
+    # If inputs are tz-aware, drop tz
+    if hasattr(sdt, "tzinfo") and sdt.tzinfo is not None:
+        sdt = sdt.tz_convert(None)
+    if hasattr(edt, "tzinfo") and edt.tzinfo is not None:
+        edt = edt.tz_convert(None)
+
+    # Use features dates directly (tz-naive)
+    dates = pd.to_datetime(features["date"], errors="coerce")
+
+    mask = (dates >= sdt) & (dates <= edt)
     pat_idx = features.index[mask].tolist()
     if len(pat_idx) < 2:
         raise ValueError("Паттерн должен содержать минимум 2 свечи.")
 
     search_start = edt - pd.DateOffset(years=years_back)
-    search_mask = (features["date"] >= search_start) & (features["date"] < sdt)
+    search_mask = (dates >= search_start) & (dates < sdt)
     search_indices = features.index[search_mask].tolist()
 
     N = len(pat_idx)
@@ -93,7 +110,6 @@ def find_similar_patterns(start_date: str, end_date: str,
         if p < -10: return "Drop >10%"
         return "Other (1–10% gaps)"
 
-
     stat_counts = {}
     for p in outcomes:
         k = bucket(p)
@@ -102,8 +118,8 @@ def find_similar_patterns(start_date: str, end_date: str,
 
     return {
         "pattern_len": N,
-        "pattern_start": str(features.loc[pat_idx[0], "date"].date()),
-        "pattern_end": str(features.loc[pat_idx[-1], "date"].date()),
+        "pattern_start": str(dates.loc[pat_idx[0]].date()),
+        "pattern_end": str(dates.loc[pat_idx[-1]].date()),
         "matches_found": len(matches),
         "distribution_counts": stat_counts,
         "distribution_percents": stat_perc,
