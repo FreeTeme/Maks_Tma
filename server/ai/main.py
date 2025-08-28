@@ -91,7 +91,7 @@ def find_similar_patterns(start_date: str, end_date: str,
         if -10 <= p <= -7: return "Drop 7–10%"
         if p > 10: return "Growth >10%"
         if p < -10: return "Drop >10%"
-        return "Other (1–10% gaps)"
+        return "Other (1-10"+"%"+" gaps)"
 
 
     stat_counts = {}
