@@ -3,11 +3,14 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # Константы для весов признаков при сравнении свечей
-W_BODY = 0.4      # Вес для тела свечи (разница между open и close)
-W_DIRECTION = 0.2  # Вес для направления свечи (растущая/падающая)
-W_VOL = 0.2       # Вес для относительного объема
-W_UP = 0.1        # Вес для верхней тени
-W_LOW = 0.1       # Вес для нижней тени
+W_BODY = 0.65     # Вес для тела свечи (разница между open и close)
+W_VOL = 0.18      # Вес для относительного объема
+W_UP = 0.085      # Вес для верхней тени
+W_LOW = 0.085     # Вес для нижней тени
+
+# Пороговые значения для классификации сходства свечей
+IDENTICAL_THRESHOLD = 0.09    # Свечи идентичны
+SIMILAR_THRESHOLD = 0.18      # Свечи похожи (допустимое отклонение)
 
 def load_ohlcv(path: str) -> pd.DataFrame:
     """
@@ -78,9 +81,9 @@ vol_rel = safe_div(df["volume"].astype(float), df["vol_ma30"].astype(float))
 features = pd.DataFrame({
     "date": df["date"],          # Дата
     "body": body,                # Нормализованное тело свечи
-    "direction": direction,      # Направление свечи (1, -1, 0)
-    "upper": upper_shadow,       # Нормализованная верхняя тень
-    "lower": lower_shadow,       # Нормализованная нижняя тень
+    "direction": direction,      # Направление свечи (1, -1, 0) - оставлено для отображения
+    "upper": upper_shadow,       # Нормализованная верхняя тени
+    "lower": lower_shadow,       # Нормализованная нижняя тени
     "vol_rel": vol_rel,          # Относительный объем
     "close": df["close"].astype(float)  # Цена закрытия
 }).reset_index(drop=True)
@@ -88,33 +91,42 @@ features = pd.DataFrame({
 def candle_distance(idx_a: int, idx_b: int) -> float:
     """
     Вычисление расстояния между двумя свечами по их индексам
-    с учетом направления свечи
+    Без учета направления свечи
     """
     try:
-        # Получаем значения признаков для обеих свечей
-        a = features.loc[idx_a, ["body", "direction", "vol_rel", "upper", "lower"]].values
-        b = features.loc[idx_b, ["body", "direction", "vol_rel", "upper", "lower"]].values
+        # Получаем значения только для 4 признаков
+        a = features.loc[idx_a, ["body", "vol_rel", "upper", "lower"]].values
+        b = features.loc[idx_b, ["body", "vol_rel", "upper", "lower"]].values
         
         # Вычисляем разницы по каждому признаку
-        body_diff = np.abs(a[0] - b[0])  # Разница по телу свечи
-        direction_diff = 0 if a[1] == b[1] else 1  # Разница по направлению (0 или 1)
-        vol_diff = np.abs(a[2] - b[2])  # Разница по объему
-        upper_diff = np.abs(a[3] - b[3])  # Разница по верхней тени
-        lower_diff = np.abs(a[4] - b[4])  # Разница по нижней тени
+        body_diff = np.abs(a[0] - b[0])          # Разница по телу свечи
+        vol_diff = np.abs(a[1] - b[1])           # Разница по объему
+        upper_diff = np.abs(a[2] - b[2])         # Разница по верхней тени
+        lower_diff = np.abs(a[3] - b[3])         # Разница по нижней тени
         
         # Применяем веса к разнице признаков
-        weights = np.array([W_BODY, W_DIRECTION, W_VOL, W_UP, W_LOW])
-        diffs = np.array([body_diff, direction_diff, vol_diff, upper_diff, lower_diff])
+        weights = np.array([W_BODY, W_VOL, W_UP, W_LOW])
+        diffs = np.array([body_diff, vol_diff, upper_diff, lower_diff])
         
         # Вычисляем взвешенное расстояние
-        return float(np.sum(weights * diffs))
+        distance = float(np.sum(weights * diffs))
+        
+        # Классифицируем степень сходства
+        if distance <= IDENTICAL_THRESHOLD:
+            similarity = "identical"
+        elif distance <= SIMILAR_THRESHOLD:
+            similarity = "similar"
+        else:
+            similarity = "different"
+        
+        return distance, similarity
     
     except KeyError:
         # Если индексы выходят за границы, возвращаем большое расстояние
-        return float('inf')
+        return float('inf'), "different"
 
 def find_similar_patterns(start_date: str, end_date: str,
-                          max_threshold: float = 0.2,
+                          max_threshold: float = SIMILAR_THRESHOLD,
                           years_back: int = 5):
     """
     Поиск похожих паттернов в исторических данных
@@ -150,6 +162,7 @@ def find_similar_patterns(start_date: str, end_date: str,
     matches = []          # Индексы совпадений
     outcomes = []         # Процентные изменения после паттерна
     matched_patterns = []  # Данные совпавших паттернов
+    similarities = []     # Степень сходства паттернов
     
     # Поиск похожих паттернов в исторических данных
     for i in search_indices:
@@ -163,6 +176,7 @@ def find_similar_patterns(start_date: str, end_date: str,
         
         # Вычисляем расстояния между соответствующими свечами
         dists = []
+        similarities_list = []
         valid_comparison = True
         
         for k in range(N):
@@ -171,8 +185,9 @@ def find_similar_patterns(start_date: str, end_date: str,
                 valid_comparison = False
                 break
                 
-            dist = candle_distance(pat_idx[k], window_idx[k])
+            dist, similarity = candle_distance(pat_idx[k], window_idx[k])
             dists.append(dist)
+            similarities_list.append(similarity)
             
             # Если расстояние превышает порог, прерываем проверку
             if dist > max_threshold:
@@ -183,13 +198,24 @@ def find_similar_patterns(start_date: str, end_date: str,
         if valid_comparison and all(d <= max_threshold for d in dists):
             matches.append((i, j))
             
+            # Определяем общую степень сходства паттерна
+            if all(s == "identical" for s in similarities_list):
+                pattern_similarity = "identical"
+            elif any(s == "similar" for s in similarities_list):
+                pattern_similarity = "similar"
+            else:
+                pattern_similarity = "identical"  # Все свечи идентичны
+            
+            similarities.append(pattern_similarity)
+            
             # Сохраняем данные совпавшего паттерна
             pattern_data = df.loc[window_idx, ["date", "open", "high", "low", "close", "volume"]].to_dict(orient="records")
             
-            # Добавляем информацию о направлении каждой свечи
+            # Добавляем информацию о направлении каждой свечи (только для отображения)
             for idx, candle_data in enumerate(pattern_data):
                 candle_idx = window_idx[idx]
                 candle_data["direction"] = "bullish" if features.loc[candle_idx, "direction"] > 0 else "bearish"
+                candle_data["similarity"] = similarities_list[idx]
             
             matched_patterns.append(pattern_data)
             
@@ -237,12 +263,18 @@ def find_similar_patterns(start_date: str, end_date: str,
         total = len(outcomes)
         stat_perc = {k: round(v * 100.0 / total, 2) for k, v in stat_counts.items()}
     
+    # Подсчет количества идентичных и похожих паттернов
+    identical_count = sum(1 for s in similarities if s == "identical")
+    similar_count = sum(1 for s in similarities if s == "similar")
+    
     # Формирование результата
     return {
         "pattern_len": N,
         "pattern_start": str(dates.loc[pat_idx[0]].date()),
         "pattern_end": str(dates.loc[pat_idx[-1]].date()),
         "matches_found": len(matches),
+        "identical_count": identical_count,
+        "similar_count": similar_count,
         "distribution_counts": stat_counts,
         "distribution_percents": stat_perc,
         "matched_patterns": matched_patterns
@@ -254,17 +286,20 @@ if __name__ == "__main__":
         result = find_similar_patterns(
             start_date="2023-01-01",
             end_date="2023-01-07",
-            max_threshold=0.2,
+            max_threshold=SIMILAR_THRESHOLD,  # Используем порог для похожих свечей
             years_back=3
         )
         print(f"Найдено совпадений: {result['matches_found']}")
+        print(f"Идентичных паттернов: {result['identical_count']}")
+        print(f"Похожих паттернов: {result['similar_count']}")
         print(f"Распределение результатов: {result['distribution_percents']}")
         
         # Вывод информации о первых нескольких совпадениях
         for i, pattern in enumerate(result["matched_patterns"][:3]):
             print(f"\nСовпадение #{i+1}:")
             for candle in pattern:
-                print(f"  {candle['date'].date()}: {candle['direction']} candle, Close: {candle['close']}")
+                similarity_text = "идентична" if candle.get('similarity') == 'identical' else "похожа"
+                print(f"  {candle['date'].date()}: {candle['direction']} свеча ({similarity_text}), Close: {candle['close']}")
                 
     except Exception as e:
         print(f"Ошибка: {e}")
