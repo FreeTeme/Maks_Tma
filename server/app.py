@@ -1,16 +1,19 @@
 # import jupytext
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify
 import sqlite3
 import os
 import sys
 from flask_cors import CORS
-from ai.main import find_similar_patterns
-from ai.main import df as ohlcv_df
 from app.parser import staking_bp
 import pandas as pd
 import requests
 import numpy as np
 import time
+from ai.main import SIMILAR_THRESHOLD, analyze_selected_pattern, fetch_binance_ohlcv, build_features, find_similar_patterns,fetch_binance_ohlcv, get_data_bounds, get_full_historical_data, get_ohlcv_data
+# Добавляем путь для импорта main.py
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 
 # Add the server directory to Python path
 server_dir = os.path.dirname(os.path.abspath(__file__))
@@ -696,227 +699,78 @@ def get_chat():
     return jsonify({'chat_history': chat_data})
 
 
-@app.route('/analyze_pattern', methods=['POST'])
-def analyze_pattern():
+# Глобальная переменная для хранения данных OHLCV
+ohlcv_df = None
+
+def load_ohlcv_data():
+    """Загрузка данных OHLCV при запуске приложения"""
+    global ohlcv_df
     try:
-        data = request.get_json()
-
-        required_fields = ['num_candles', 'candles']
-        if not all(field in data for field in required_fields):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-
-        candles = data['candles']
-        start_date = candles[0]['open_time']
-        end_date = candles[-1]['close_time']
-
-        # Запуск анализа по живым данным с биржи (Binance 1D)
-        try:
-            result = analyze_with_live_data(start_date, end_date)
-        except ValueError as ve:
-            return jsonify({'success': False, 'message': str(ve)}), 400
-
-        return jsonify({
-            'success': True,
-            'pattern_info': {
-                'pattern_start': result['pattern_start'],
-                'pattern_end': result['pattern_end'],
-                'pattern_len': result['pattern_len']
-            },
-            'statistics': {
-                'matches_found': result['matches_found'],
-                'distribution_counts': result['distribution_counts'],
-                'distribution_percents': result['distribution_percents']
-            },
-            'matched_patterns': result['matched_patterns']
-        })
-
+        # Загружаем полные исторические данные через функцию из main.py
+        ohlcv_df = get_full_historical_data()
+        print(f"Загружено {len(ohlcv_df)} записей OHLCV")
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Ошибка при загрузке данных OHLCV: {e}")
+        ohlcv_df = pd.DataFrame()
+
+# Загружаем данные при запуске приложения
+load_ohlcv_data()
 
 @app.route('/api/pattern_bounds', methods=['GET'])
 def pattern_bounds():
+    """Возвращает границы доступных данных через функцию из main.py"""
     try:
-        start = str(ohlcv_df['date'].min().date())
-        end = str(ohlcv_df['date'].max().date())
-        return jsonify({'success': True, 'start': start, 'end': end})
+        result = get_data_bounds()
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify({'success': False, 'message': result['message']}), 500
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @app.route('/api/ohlcv', methods=['GET'])
 def api_ohlcv():
+    """Возвращает данные OHLCV через функцию из main.py"""
     try:
-        start = request.args.get('from')
-        end = request.args.get('to')
-        source = request.args.get('source', 'csv')
-
+        source = request.args.get('source', 'binance')
+        from_date = request.args.get('from')
+        to_date = request.args.get('to')
+        
         if source == 'binance':
-            data = fetch_binance_ohlcv(start, end)
+            # Используем функцию из main.py для получения данных
+            result = get_ohlcv_data(from_date, to_date)
+            if result['success']:
+                return jsonify(result)
+            else:
+                return jsonify({'success': False, 'message': result['message']}), 500
         else:
-            data = ohlcv_df.copy()
-            if start:
-                data = data[data['date'] >= pd.to_datetime(start, errors='coerce')]
-            if end:
-                data = data[data['date'] <= pd.to_datetime(end, errors='coerce')]
-
-        # Map to frontend schema
-        records = []
-        for _, r in data.iterrows():
-            ot = pd.to_datetime(r['date'])
-            ct = ot + pd.Timedelta(days=1) - pd.Timedelta(milliseconds=1)
-            records.append({
-                'open_time': ot.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'close_time': ct.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'open_price': float(r['open']),
-                'close_price': float(r['close']),
-                'high': float(r['high']),
-                'low': float(r['low']),
-                'volume': float(r['volume'])
-            })
-        return jsonify({'success': True, 'candles': records})
+            return jsonify({'success': False, 'message': 'Only binance source is supported'}), 400
+            
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# ===== Live OHLCV (Binance) and analysis helpers =====
-def fetch_binance_ohlcv(start_date: str | None, end_date: str | None) -> pd.DataFrame:
-    base = 'https://api.binance.com/api/v3/klines'
-    symbol = 'BTCUSDT'
-    interval = '1d'
-    limit = 1000
-    start_ts = int(pd.to_datetime(start_date if start_date else '2015-01-01').timestamp() * 1000)
-    end_ts = int(pd.to_datetime(end_date if end_date else pd.Timestamp.utcnow().date()).timestamp() * 1000)
+@app.route('/analyze_pattern', methods=['POST'])
+def analyze_pattern():
+    """Анализ паттерна через функцию из main.py"""
+    try:
+        data = request.get_json()
+        required_fields = ['num_candles', 'candles']
+        
+        if not all(field in data for field in required_fields):
+            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
+        
+        # Используем функцию из main.py для анализа
+        result = analyze_selected_pattern(data['candles'], data['num_candles'])
+        
+        if 'error' in result:
+            return jsonify({'success': False, 'message': result['error']}), 500
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
-    rows = []
-    cur = start_ts
-    while cur <= end_ts:
-        params = {'symbol': symbol, 'interval': interval, 'startTime': cur, 'endTime': end_ts, 'limit': limit}
-        resp = requests.get(base, params=params, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        if not data:
-            break
-        for k in data:
-            # [ openTime, open, high, low, close, volume, closeTime, ... ]
-            rows.append({
-                'date': pd.to_datetime(k[0], unit='ms'),
-                'open': float(k[1]),
-                'high': float(k[2]),
-                'low': float(k[3]),
-                'close': float(k[4]),
-                'volume': float(k[5]),
-            })
-        # next start is last closeTime + 1ms
-        next_ts = data[-1][6] + 1
-        if next_ts <= cur:
-            break
-        cur = next_ts
-        time.sleep(0.2)
-
-    df = pd.DataFrame(rows)
-    if df.empty:
-        return pd.DataFrame(columns=['date','open','high','low','close','volume'])
-    df['date'] = pd.to_datetime(df['date']).dt.tz_localize(None)
-    df = df.sort_values('date').drop_duplicates(subset=['date']).reset_index(drop=True)
-    return df
-
-
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
-        return pd.DataFrame(columns=['date','body','upper','lower','vol_rel','close'])
-    df = df.copy()
-    df['vol_ma30'] = df['volume'].rolling(window=30, min_periods=1).mean()
-    def safe_div(n,d):
-        return np.where(d == 0, 0.0, n/d)
-    hl = (df['high'] - df['low']).astype(float)
-    body = safe_div((df['close'] - df['open']).astype(float), hl)
-    upper = safe_div((df['high'] - np.maximum(df['open'], df['close'])).astype(float), hl)
-    lower = safe_div((np.minimum(df['open'], df['close']) - df['low']).astype(float), hl)
-    vol_rel = safe_div(df['volume'].astype(float), df['vol_ma30'].astype(float))
-    out = pd.DataFrame({
-        'date': pd.to_datetime(df['date']).dt.tz_localize(None),
-        'body': body,
-        'upper': upper,
-        'lower': lower,
-        'vol_rel': vol_rel,
-        'close': df['close'].astype(float)
-    })
-    return out.reset_index(drop=True)
-
-
-def analyze_with_live_data(start_date: str, end_date: str,
-                           max_threshold: float = 0.25, years_back: int = 6):
-    # Normalize inputs to tz-naive
-    sdt = pd.to_datetime(start_date, utc=True).tz_convert(None)
-    edt = pd.to_datetime(end_date, utc=True).tz_convert(None)
-
-    # Fetch live data for "years_back" before start and up to end
-    start_fetch = (sdt - pd.DateOffset(years=years_back)).date().isoformat()
-    end_fetch = edt.date().isoformat()
-    df_live = fetch_binance_ohlcv(start_fetch, end_fetch)
-    if df_live.empty:
-        raise ValueError('Не удалось получить данные с биржи')
-
-    feat = build_features(df_live)
-    # find indices for pattern window
-    mask = (feat['date'] >= sdt) & (feat['date'] <= edt)
-    pat_idx = feat.index[mask].tolist()
-    if len(pat_idx) < 2:
-        raise ValueError('Паттерн должен содержать минимум 2 свечи в данных биржи')
-
-    # search preceding windows
-    search_mask = (feat['date'] < sdt)
-    search_indices = feat.index[search_mask].tolist()
-    N = len(pat_idx)
-
-    def cdist(a,b):
-        wa,wv,wup,wlo = 0.6,0.25,0.075,0.075
-        A = feat.loc[a, ['body','vol_rel','upper','lower']].values
-        B = feat.loc[b, ['body','vol_rel','upper','lower']].values
-        w = np.array([wa,wv,wup,wlo])
-        return float(np.sum(w * np.abs(A - B)))
-
-    matches, outcomes, matched_patterns = [], [], []
-    for i in search_indices:
-        j = i + N - 1
-        if j >= len(feat):
-            break
-        window_idx = list(range(i, i + N))
-        dists = [cdist(pat_idx[k], window_idx[k]) for k in range(N)]
-        if all(d <= max_threshold for d in dists):
-            matches.append((i,j))
-            matched_patterns.append(df_live.loc[window_idx, ['date','open','high','low','close','volume']].to_dict(orient='records'))
-            next_idx = j + 1
-            if next_idx < len(feat):
-                last_close = float(feat.loc[j,'close'])
-                next_close = float(feat.loc[next_idx,'close'])
-                outcomes.append((next_close - last_close) / last_close * 100.0)
-
-    def bucket(p):
-        if abs(p) < 1.0: return 'Change <1%'
-        if 1 <= p <= 3: return 'Growth 1–3%'
-        if 4 <= p <= 6: return 'Growth 4–6%'
-        if 7 <= p <= 10: return 'Growth 7–10%'
-        if -3 <= p <= -1: return 'Drop 1–3%'
-        if -6 <= p <= -4: return 'Drop 4–6%'
-        if -10 <= p <= -7: return 'Drop 7–10%'
-        if p > 10: return 'Growth >10%'
-        if p < -10: return 'Drop >10%'
-        return 'Other (1–10% gaps)'
-
-    stat_counts = {}
-    for p in outcomes:
-        k = bucket(p)
-        stat_counts[k] = stat_counts.get(k, 0) + 1
-    stat_perc = {k: round(v * 100.0 / len(outcomes), 2) for k, v in stat_counts.items()} if outcomes else {}
-
-    return {
-        'pattern_len': N,
-        'pattern_start': str(feat.loc[pat_idx[0], 'date'].date()),
-        'pattern_end': str(feat.loc[pat_idx[-1], 'date'].date()),
-        'matches_found': len(matches),
-        'distribution_counts': stat_counts,
-        'distribution_percents': stat_perc,
-        'matched_patterns': matched_patterns
-    }
+# ... (остальной код app.py остается без изменений)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5010, debug=True)
