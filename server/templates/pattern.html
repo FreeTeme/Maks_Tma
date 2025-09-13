@@ -3,195 +3,687 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>BTC/USDT — Поиск паттернов</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>BTC/USDT — Поиск паттернов</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         :root {
-			--bg-0: #0f1419;
-			--bg-1: #11161c;
-			--bg-2: #131a21;
-			--bg-3: #0b1015;
-			--panel: #0f151b;
-			--border: #1c2631;
-			--muted: #8b99a8;
-			--text: #e5edf5;
-			--accent: #f7931a;
-			--green: #22c55e;
-			--red: #ef4444;
-		}
+            --bg-0: #0f1419;
+            --bg-1: #11161c;
+            --bg-2: #131a21;
+            --bg-3: #0b1015;
+            --panel: #0f151b;
+            --border: #1c2631;
+            --muted: #8b99a8;
+            --text: #e5edf5;
+            --accent: #f7931a;
+            --green: #22c55e;
+            --red: #ef4444;
+        }
 
-		html, body { height: 100%; }
-        body {
+        html, body { 
+            height: 100%; 
             margin: 0;
-			font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-			background: radial-gradient(1200px 600px at 20% -10%, #0b1117 0%, #0a0f14 45%, #070b0f 100%);
-			color: var(--text);
-		}
+            padding: 0;
+        }
+        body {
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: radial-gradient(1200px 600px at 20% -10%, #0b1117 0%, #0a0f14 45%, #070b0f 100%);
+            color: var(--text);
+            overflow: hidden;
+        }
 
-		.app {
-			display: grid;
-			grid-template-rows: auto 1fr;
-			min-height: 100vh;
-		}
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-		.topbar {
+        .topbar {
             display: flex;
             align-items: center;
-			justify-content: space-between;
-			padding: 16px 20px;
-			border-bottom: 1px solid var(--border);
-			background: linear-gradient(180deg, rgba(17,22,28,0.85), rgba(17,22,28,0.65));
-			backdrop-filter: blur(6px);
-		}
-		.brand { display: flex; align-items: center; gap: 12px; }
-		.brand .logo {
-			width: 28px; height: 28px; border-radius: 8px;
-			background: linear-gradient(135deg, #ffb547, #f7931a);
-			box-shadow: 0 2px 10px rgba(247,147,26,0.35);
-		}
-		.brand .title { font-weight: 700; letter-spacing: 0.2px; }
-		.kpis { display: flex; gap: 16px; align-items: center; }
-		.kpi { font-size: 13px; color: var(--muted); }
-		.kpi strong { color: var(--text); margin-left: 6px; }
-
-		.main {
-			display: grid;
-			grid-template-columns: 1fr 360px;
-			gap: 16px;
-			padding: 16px;
-		}
-
-		.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-
-		.toolbar {
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, rgba(17,22,28,0.85), rgba(17,22,28,0.65));
+            backdrop-filter: blur(6px);
+            flex-shrink: 0;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; }
+        .back-btn {
+            background: #1a222c;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.15s ease;
             display: flex;
             align-items: center;
-			justify-content: space-between;
-			padding: 10px 12px;
-			border-bottom: 1px solid var(--border);
-			background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
-		}
-		.left-tools, .right-tools { display: flex; gap: 8px; align-items: center; }
-		.btn {
-			background: #1a222c;
-			border: 1px solid var(--border);
-			color: var(--text);
-			padding: 8px 10px;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+        .back-btn:hover {
+            background: #212a34;
+            color: var(--accent);
+        }
+        .brand .logo {
+            width: 24px; height: 24px; border-radius: 6px;
+            background: linear-gradient(135deg, #ffb547, #f7931a);
+            box-shadow: 0 2px 8px rgba(247,147,26,0.35);
+        }
+        .brand .title { 
+            font-weight: 700; 
+            letter-spacing: 0.2px; 
+            font-size: 15px;
+        }
+        .kpis { 
+            display: flex; 
+            gap: 12px; 
+            align-items: center;
+            font-size: 12px;
+        }
+        .kpi { font-size: 11px; color: var(--muted); }
+        .kpi strong { color: var(--text); margin-left: 4px; }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .panel { 
+            background: var(--panel); 
+            border: 1px solid var(--border); 
+            border-radius: 12px; 
+            overflow: hidden;
+            flex: 1;
+            margin: 12px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
+            flex-shrink: 0;
+        }
+        .left-tools, .right-tools { display: flex; gap: 6px; align-items: center; }
+        .btn {
+            background: #1a222c;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn:hover { background: #212a34; }
+        .btn.primary { background: var(--accent); border-color: #ffb547; color: #0c0f12; font-weight: 600; }
+        .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn.analyze { 
+            background: #22c55e !important; 
+            border-color: #16a34a !important; 
+            color: #ffffff !important; 
+            font-weight: 600; 
+            padding: 8px 12px; 
+            font-size: 13px; 
+        }
+        .btn.analyze:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+            background: #22c55e !important; 
+        }
+        .btn.analyze:hover { 
+            background: #16a34a !important; 
+            border-color: #15803d !important;
+        }
+        .btn.clear { 
+            background: #dc2626 !important; 
+            border-color: #b91c1c !important; 
+            color: #ffffff !important; 
+            font-weight: 600; 
+        }
+        .btn.clear:hover { 
+            background: #b91c1c !important; 
+            border-color: #991b1b !important;
+        }
+        .tf { display: flex; gap: 4px; }
+        .tf .btn.active { background: #2a3542; border-color: #334153; }
+        .sep { width: 1px; height: 22px; background: var(--border); }
+        .counter { font-size: 12px; color: var(--muted); }
+        .counter strong { color: var(--text); }
+
+        .chart-wrap { 
+            position: relative; 
+            flex: 1; 
+            min-height: 300px; 
+        }
+        #chart { width: 100%; height: 100%; }
+
+        .side {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            padding: 0 12px 60px;
+            overflow-y: auto;
+        }
+        .side.active {
+            display: flex;
+        }
+        .card { 
+            background: var(--panel); 
+            border: 1px solid var(--border); 
+            border-radius: 10px; 
+            padding: 10px; 
+        }
+        .card h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+        .stat-list { display: grid; gap: 6px; }
+        .stat { display: flex; justify-content: space-between; font-size: 12px; }
+        .stat .val { color: var(--text); font-weight: 600; }
+
+        .matches { display: grid; gap: 8px; }
+        .match {
+            border: 1px solid var(--border);
+            border-radius: 8px; 
+            padding: 8px;
+            background: #0f151b;
+            cursor: pointer;
+            transition: 0.15s ease;
+        }
+        .match:hover { background: #131a21; border-color: #2a3847; }
+        .match .hdr { display: flex; justify-content: space-between; align-items: center; }
+        .match .range { font-size: 11px; color: var(--muted); }
+        .badge { padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+        .badge.up { background: rgba(34,197,94,0.15); color: var(--green); }
+        .badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
+
+        .footer-note { font-size: 11px; color: var(--muted); text-align: center; padding-top: 4px; }
+
+        /* Mobile bottom navigation */
+        .mobile-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-1);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            background: rgba(17, 22, 28, 0.9);
+        }
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--muted);
+            background: none;
+            border: none;
             border-radius: 8px;
-			font-size: 13px;
-			cursor: pointer;
-			transition: 0.15s ease;
-		}
-		.btn:hover { background: #212a34; }
-		.btn.primary { background: var(--accent); border-color: #ffb547; color: #0c0f12; font-weight: 600; }
-		.btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
-		.tf { display: flex; gap: 6px; }
-		.tf .btn.active { background: #2a3542; border-color: #334153; }
-		.sep { width: 1px; height: 26px; background: var(--border); }
-		.counter { font-size: 13px; color: var(--muted); }
-		.counter strong { color: var(--text); }
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-btn.active {
+            color: var(--accent);
+            background: rgba(247, 147, 26, 0.1);
+        }
+        .nav-btn i {
+            font-size: 18px;
+            margin-bottom: 2px;
+        }
 
-		.chart-wrap { position: relative; height: 74vh; min-height: 520px; }
-		#chart { width: 100%; height: 100%; }
+        /* Modal for patterns */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(7, 11, 15, 0.9);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 16px;
+            max-width: 500px;
+            margin: 0 auto;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        .modal-body {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        /* Clear Modal Styles */
+        .clear-modal-content {
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .clear-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);
+        }
+        
+        .clear-icon i {
+            font-size: 32px;
+            color: #ffffff;
+        }
+        
+        .clear-modal-content h3 {
+            margin: 0 0 12px;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        .clear-modal-content p {
+            margin: 0 0 24px;
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        
+        .clear-stats {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 0 0 24px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        
+        .clear-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        
+        .btn.clear-confirm {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            border: none;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        
+        .btn.clear-confirm:hover {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4);
+        }
+        
+        .btn.clear-cancel {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn.clear-cancel:hover {
+            background: var(--bg-3);
+            border-color: #334153;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .modal-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--muted);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        .close-modal:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--red);
+        }
 
-		.side {
-			display: grid;
-			grid-template-rows: auto auto 1fr;
-			gap: 12px;
-		}
-		.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
-		.card h3 { margin: 0 0 8px; font-size: 14px; color: var(--muted); font-weight: 600; }
-		.stat-list { display: grid; gap: 8px; }
-		.stat { display: flex; justify-content: space-between; font-size: 13px; }
-		.stat .val { color: var(--text); font-weight: 600; }
-
-		.matches { display: grid; gap: 10px; }
-		.match {
-			border: 1px solid var(--border);
-			border-radius: 10px; padding: 10px;
-			background: #0f151b;
-			cursor: pointer;
-			transition: 0.15s ease;
-		}
-		.match:hover { background: #131a21; border-color: #2a3847; }
-		.match .hdr { display: flex; justify-content: space-between; align-items: center; }
-		.match .range { font-size: 12px; color: var(--muted); }
-		.badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-		.badge.up { background: rgba(34,197,94,0.15); color: var(--green); }
-		.badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
-
-		.footer-note { font-size: 12px; color: var(--muted); text-align: center; padding-top: 6px; }
-
-		/* Overlay + toast */
+        /* Overlay + toast */
         .loading {
-			position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
-			background: rgba(3,6,9,0.55); backdrop-filter: blur(2px); z-index: 50;
-		}
-		.spinner { width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.12); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
-		@keyframes spin { to { transform: rotate(360deg); } }
-		.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #111821; border: 1px solid #223041; color: #e3edf7; padding: 10px 14px; border-radius: 10px; font-size: 13px; display: none; z-index: 60; }
+            position: fixed; 
+            inset: 0; 
+            display: none; 
+            align-items: center; 
+            justify-content: center;
+            background: rgba(3,6,9,0.55); 
+            backdrop-filter: blur(2px); 
+            z-index: 50;
+        }
+        .spinner { 
+            width: 40px; 
+            height: 40px; 
+            border-radius: 50%; 
+            border: 3px solid rgba(255,255,255,0.12); 
+            border-top-color: var(--accent); 
+            animation: spin 0.9s linear infinite; 
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast { 
+            position: fixed; 
+            bottom: 70px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: #111821; 
+            border: 1px solid #223041; 
+            color: #e3edf7; 
+            padding: 10px 14px; 
+            border-radius: 10px; 
+            font-size: 13px; 
+            display: none; 
+            z-index: 60;
+            max-width: 80%;
+            text-align: center;
+        }
+
+        /* Responsive adjustments */
+        @media (min-width: 768px) {
+            .app {
+                display: grid;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .main {
+                display: grid;
+                grid-template-columns: 1fr 320px;
+                gap: 12px;
+                padding: 12px;
+                overflow: hidden;
+            }
+            
+            .panel {
+                margin: 0;
+            }
+            
+            .side {
+                display: flex;
+                padding: 0;
+                overflow-y: auto;
+            }
+            
+            .mobile-nav {
+                display: none;
+            }
+            
+            .topbar {
+                padding: 16px 20px;
+            }
+            
+            .brand .logo {
+                width: 28px; 
+                height: 28px;
+            }
+            
+            .brand .title {
+                font-size: 16px;
+            }
+            
+            .kpis {
+                gap: 16px;
+                font-size: 13px;
+            }
+            
+            .toolbar {
+                padding: 10px 12px;
+            }
+            
+            .btn {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .toolbar {
+                flex-wrap: wrap;
+                gap: 6px;
+            }
+            
+            .left-tools, .right-tools {
+                flex-wrap: wrap;
+            }
+            
+            .btn {
+                font-size: 11px;
+                padding: 5px 6px;
+            }
+            
+            .counter {
+                font-size: 11px;
+            }
+        }
     </style>
 </head>
 <body>
-	<div class="app">
-		<div class="topbar">
-			<div class="brand">
-				<div class="logo"></div>
-				<div class="title">BTC/USDT — Поиск паттернов</div>
+    <div class="app">
+        <div class="topbar">
+            <div class="brand">
+                <button class="back-btn" onclick="history.back()" title="Назад">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div class="logo"></div>
+                <div class="title">BTC/USDT — Поиск паттернов</div>
             </div>
-			<div class="kpis">
-				<div class="kpi">Таймфрейм:<strong> 1D</strong></div>
-				<div class="kpi">Данные:<strong> 2015 → сейчас</strong></div>
+            <div class="kpis">
+                <div class="kpi">ТФ:<strong>1D</strong></div>
+                <div class="kpi">Данные:<strong>2015→</strong></div>
             </div>
         </div>
 
-		<div class="main">
-			<div class="panel">
-				<div class="toolbar">
-					<div class="left-tools">
-						<div class="tf">
-							<button class="btn active" data-tf="1D">1D</button>
-							<button class="btn" data-tf="1W">1W</button>
-							<button class="btn" data-tf="1M">1M</button>
+        <div class="main">
+            <div class="panel">
+                <div class="toolbar">
+                    <div class="left-tools">
+                        <div class="tf">
+                            <button class="btn active" data-tf="1D">1D</button>
+                            <button class="btn" data-tf="1W">1W</button>
+                            <button class="btn" data-tf="1M">1M</button>
+                        </div>
+                        <div class="sep"></div>
+                        <button id="toggle-volume-btn" class="btn">Объём</button>
+                        <button id="reset-view-btn" class="btn">Сброс</button>
+                    </div>
+                    <div class="right-tools">
+                        <div class="counter">Выбрано: <strong id="selected-count">0</strong>/6</div>
+                        <button id="to-selected-btn" class="btn">К выбр.</button>
+                        <div class="sep"></div>
+                        <button id="prev-match-btn" class="btn">◀</button>
+                        <span id="match-index" class="kpi" style="min-width:46px;text-align:center;">0/0</span>
+                        <button id="next-match-btn" class="btn">▶</button>
+                        <button id="clear-btn" class="btn clear">Очистить</button>
+                        <button id="analyze-btn" class="btn analyze" disabled>Анализ</button>
+                    </div>
+                </div>
+                <div class="chart-wrap"><div id="chart"></div></div>
             </div>
-						<div class="sep"></div>
-						<button id="toggle-volume-btn" class="btn">Объём</button>
-						<button id="reset-view-btn" class="btn">Сброс вида</button>
-            </div>
-					<div class="right-tools">
-						<div class="counter">Выбрано: <strong id="selected-count">0</strong>/6</div>
-						<button id="to-selected-btn" class="btn">К выбранным</button>
-						<div class="sep"></div>
-						<button id="prev-match-btn" class="btn">◀</button>
-						<span id="match-index" class="kpi" style="min-width:56px;text-align:center;">0/0</span>
-						<button id="next-match-btn" class="btn">▶</button>
-						<button id="clear-btn" class="btn">Очистить</button>
-						<button id="analyze-btn" class="btn primary" disabled>Анализировать</button>
-            </div>
-        </div>
-				<div class="chart-wrap"><div id="chart"></div></div>
-        </div>
 
-			<div class="side">
-				<div class="card">
-					<h3>Итоги</h3>
-					<div class="stat-list">
-						<div class="stat"><span>Найдено совпадений</span><span class="val" id="matches-found">0</span></div>
-						<div class="stat"><span>Длина паттерна</span><span class="val" id="pattern-length">0</span></div>
-						<div class="stat"><span>Средняя точность</span><span class="val" id="accuracy">0%</span></div>
-					</div>
-					<div class="footer-note">Выберите 1–6 свечей на графике и запустите анализ</div>
+            <div class="side" id="side-panel">
+                <div class="card">
+                    <h3>Итоги</h3>
+                    <div class="stat-list">
+                        <div class="stat"><span>Найдено совпадений</span><span class="val" id="matches-found">0</span></div>
+                        <div class="stat"><span>Длина паттерна</span><span class="val" id="pattern-length">0</span></div>
+                        <div class="stat"><span>Средняя точность</span><span class="val" id="accuracy">0%</span></div>
+                    </div>
+                    <div class="footer-note">Выберите 1–6 свечей на графике и запустите анализ</div>
                 </div>
-				<div class="card" id="pattern-info-card" style="display:none">
-					<h3>Паттерн</h3>
-					<div class="stat-list" id="pattern-info"></div>
+                <div class="card" id="pattern-info-card" style="display:none">
+                    <h3>Паттерн</h3>
+                    <div class="stat-list" id="pattern-info"></div>
                 </div>
-				<div class="card">
-					<h3>Совпадения</h3>
-					<div class="matches" id="matches"></div>
+                <div class="card">
+                    <h3>Совпадения</h3>
+                    <div class="matches" id="matches"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <button class="nav-btn" id="nav-analysis">
+            <i class="fas fa-chart-line"></i>
+            <span>Анализ</span>
+        </button>
+        <button class="nav-btn" id="nav-clear">
+            <i class="fas fa-trash"></i>
+            <span>Очистить</span>
+        </button>
+        <button class="nav-btn" id="nav-prev">
+            <i class="fas fa-chevron-left"></i>
+            <span>Назад</span>
+        </button>
+        <button class="nav-btn" id="nav-next">
+            <i class="fas fa-chevron-right"></i>
+            <span>Вперед</span>
+        </button>
+        <button class="nav-btn" id="nav-to-selected">
+            <i class="fas fa-search"></i>
+            <span>К выбранным</span>
+        </button>
+        <button class="nav-btn" id="nav-patterns">
+            <i class="fas fa-shapes"></i>
+            <span>Паттерны</span>
+        </button>
+    </div>
+
+    <!-- Patterns Modal -->
+    <div class="modal" id="patterns-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Найденные паттерны</div>
+                <button class="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="pattern-stats" id="modal-pattern-stats" style="margin-bottom: 16px; padding: 12px; background: var(--bg-2); border-radius: 8px; border: 1px solid var(--border);">
+                    <!-- Pattern statistics will be inserted here -->
+                </div>
+                <div id="modal-patterns-list">
+                    <!-- Patterns will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Confirmation Modal -->
+    <div class="modal" id="clear-confirmation-modal">
+        <div class="modal-content clear-modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-trash-alt" style="margin-right: 8px; color: #dc2626;"></i>
+                    Очистка выбора
+                </div>
+                <button class="close-modal" id="close-clear-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="clear-modal-content">
+                    <div class="clear-icon">
+                        <i class="fas fa-sync-alt"></i>
+                    </div>
+                    <h3>Обновить страницу?</h3>
+                    <p>Это действие обновит страницу и сбросит все выбранные свечи и анализ. Вы сможете начать заново.</p>
+                    <div class="clear-stats" id="clear-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Выбрано свечей:</span>
+                            <span class="stat-value" id="selected-count-modal">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Найдено паттернов:</span>
+                            <span class="stat-value" id="patterns-count-modal">0</span>
+                        </div>
+                    </div>
+                    <div class="clear-actions">
+                        <button class="btn clear-confirm" id="confirm-clear-btn">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Да, обновить</span>
+                        </button>
+                        <button class="btn clear-cancel" id="cancel-clear-btn">
+                            <i class="fas fa-times"></i>
+                            <span>Отмена</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -228,7 +720,7 @@
 					grid: { vertLines: { color: 'rgba(32,42,54,0.85)' }, horzLines: { color: 'rgba(32,42,54,0.85)' } },
 					crosshair: { mode: LightweightCharts.CrosshairMode.Magnet, vertLine: { color: '#3a4654' }, horzLine: { color: '#3a4654' } },
 					rightPriceScale: { borderColor: '#243142' },
-					timeScale: { borderColor: '#243142', rightOffset: 6, barSpacing: 12, minBarSpacing: 8 },
+					timeScale: { borderColor: '#243142', rightOffset: 6, barSpacing: 40, minBarSpacing: 30 },
 					handleScroll: { mouseWheel: true, pressedMouseMove: true },
 					handleScale: { axisPressedMouseMove: { time: true, price: true } },
                 });
@@ -301,13 +793,15 @@
 					this.volumeSeries.setData(v);
                     this.chart.timeScale().fitContent();
                     setTimeout(() => { try { this.chart.timeScale().fitContent(); } catch(_){} }, 0);
-					// Slight zoom-in to make candles visually larger
-					const range = this.chart.timeScale().getVisibleRange();
-					if (range) {
-						const pad = Math.floor((range.to - range.from) * 0.15);
-						this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
-					}
-					this.redrawOverlay();
+					// Zoom-in to make candles visually larger (60% closer for easier interaction)
+					setTimeout(() => {
+						const range = this.chart.timeScale().getVisibleRange();
+						if (range) {
+							const pad = Math.floor((range.to - range.from) * 0.60);
+							this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
+						}
+						this.redrawOverlay();
+					}, 100);
 				} catch (e) {
 					console.error(e);
 					alert('Не удалось загрузить исторические данные.');
@@ -340,7 +834,7 @@
 
 			bindUI() {
 				document.getElementById('analyze-btn').addEventListener('click', () => this.analyze());
-                document.getElementById('clear-btn').addEventListener('click', () => this.clearSelection());
+                document.getElementById('clear-btn').addEventListener('click', () => this.showClearConfirmationModal());
 				document.getElementById('reset-view-btn').addEventListener('click', () => this.resetView());
                 document.getElementById('toggle-volume-btn').addEventListener('click', () => this.toggleVolume());
 				document.getElementById('to-selected-btn').addEventListener('click', () => this.zoomToSelected());
@@ -351,6 +845,36 @@
                         e.target.classList.add('active');
 					// (Таймфреймы-стаб, данные дневные)
 				}));
+
+				// Mobile navigation buttons
+				document.getElementById('nav-analysis').addEventListener('click', () => this.analyze());
+				document.getElementById('nav-clear').addEventListener('click', () => this.showClearConfirmationModal());
+				document.getElementById('nav-prev').addEventListener('click', () => this.gotoMatch(-1));
+				document.getElementById('nav-next').addEventListener('click', () => this.gotoMatch(1));
+				document.getElementById('nav-to-selected').addEventListener('click', () => this.zoomToSelected());
+				document.getElementById('nav-patterns').addEventListener('click', () => this.showPatternsModal());
+
+				// Clear confirmation modal buttons
+				document.getElementById('confirm-clear-btn').addEventListener('click', () => {
+					window.location.reload();
+				});
+				document.getElementById('cancel-clear-btn').addEventListener('click', () => this.hideClearConfirmationModal());
+				document.getElementById('close-clear-modal').addEventListener('click', () => this.hideClearConfirmationModal());
+
+				// Modal close button
+				document.querySelector('.close-modal').addEventListener('click', () => this.hidePatternsModal());
+				
+				// Close modal when clicking outside
+				document.getElementById('patterns-modal').addEventListener('click', (e) => {
+					if (e.target.id === 'patterns-modal') {
+						this.hidePatternsModal();
+					}
+				});
+				document.getElementById('clear-confirmation-modal').addEventListener('click', (e) => {
+					if (e.target.id === 'clear-confirmation-modal') {
+						this.hideClearConfirmationModal();
+					}
+				});
             }
 
 			onClick(param) {
@@ -404,6 +928,14 @@
 
 			resetView() {
                 this.chart.timeScale().fitContent();
+				// Apply zoom after reset
+				setTimeout(() => {
+					const range = this.chart.timeScale().getVisibleRange();
+					if (range) {
+						const pad = Math.floor((range.to - range.from) * 0.60);
+						this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
+					}
+				}, 50);
 				this.patternMarkers.clear();
 				this.applyMarkers();
 				this.redrawOverlay();
@@ -617,6 +1149,90 @@
 				if (!el) return;
 				el.textContent = this.matchedRanges.length ? `${this.currentMatchIndex+1}/${this.matchedRanges.length}` : '0/0';
 			}
+
+			showPatternsModal() {
+				const modal = document.getElementById('patterns-modal');
+				const patternsList = document.getElementById('modal-patterns-list');
+				const patternStats = document.getElementById('modal-pattern-stats');
+				
+				// Clear previous content
+				patternsList.innerHTML = '';
+				patternStats.innerHTML = '';
+				
+				// Add pattern statistics
+				if (this.matchedRanges && this.matchedRanges.length > 0) {
+					const selectedCount = this.selectedIndices.size;
+					const patternLength = selectedCount;
+					const matchesFound = this.matchedRanges.length;
+					
+					patternStats.innerHTML = `
+						<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 8px;">
+							<div class="stat">
+								<span style="color: var(--muted); font-size: 12px;">Выбрано свечей</span>
+								<span class="val" style="color: var(--accent); font-weight: 600;">${selectedCount}</span>
+							</div>
+							<div class="stat">
+								<span style="color: var(--muted); font-size: 12px;">Найдено совпадений</span>
+								<span class="val" style="color: var(--green); font-weight: 600;">${matchesFound}</span>
+							</div>
+						</div>
+						<div style="font-size: 11px; color: var(--muted); text-align: center;">
+							Кликните на паттерн для перехода к нему на графике
+						</div>
+					`;
+					
+					// Add patterns
+					this.matchedRanges.forEach((range, index) => {
+						const startDate = new Date(range[0] * 1000).toLocaleDateString();
+						const endDate = new Date(range[1] * 1000).toLocaleDateString();
+						
+						const patternEl = document.createElement('div');
+						patternEl.className = 'match';
+						patternEl.innerHTML = `
+							<div class="hdr">
+								<div class="range">Паттерн ${index + 1}</div>
+								<div class="badge up">${index + 1}</div>
+							</div>
+							<div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+								${startDate} — ${endDate}
+							</div>
+						`;
+						patternEl.addEventListener('click', () => {
+							this.currentMatchIndex = index;
+							this.updateMatchIndexLabel();
+							this.zoomTo(range[0], range[1]);
+							this.hidePatternsModal();
+						});
+						patternsList.appendChild(patternEl);
+					});
+				} else {
+					patternStats.innerHTML = '<div style="text-align: center; color: var(--muted); padding: 20px;">Сначала выберите свечи и запустите анализ</div>';
+					patternsList.innerHTML = '';
+				}
+				
+				modal.style.display = 'block';
+			}
+
+			hidePatternsModal() {
+				const modal = document.getElementById('patterns-modal');
+				modal.style.display = 'none';
+			}
+
+			showClearConfirmationModal() {
+				const modal = document.getElementById('clear-confirmation-modal');
+				
+				// Update statistics in modal
+				document.getElementById('selected-count-modal').textContent = this.selectedIndices.size;
+				document.getElementById('patterns-count-modal').textContent = this.matchedRanges.length;
+				
+				modal.style.display = 'block';
+			}
+
+			hideClearConfirmationModal() {
+				const modal = document.getElementById('clear-confirmation-modal');
+				modal.style.display = 'none';
+			}
+
 		}
 
 		document.addEventListener('DOMContentLoaded', () => new PatternChart());
