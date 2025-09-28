@@ -728,6 +728,7 @@ def pattern_bounds():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+# Добавляем новые импорты и роуты
 @app.route('/api/ohlcv', methods=['GET'])
 def api_ohlcv():
     """Возвращает данные OHLCV через функцию из main.py"""
@@ -735,10 +736,11 @@ def api_ohlcv():
         source = request.args.get('source', 'binance')
         from_date = request.args.get('from')
         to_date = request.args.get('to')
+        timeframe = request.args.get('timeframe', '1d')  # Добавляем параметр таймфрейма
         
         if source == 'binance':
-            # Используем функцию из main.py для получения данных
-            result = get_ohlcv_data(from_date, to_date)
+            # Используем функцию из main.py для получения данных с таймфреймом
+            result = get_ohlcv_data(from_date, to_date, timeframe)
             if result['success']:
                 return jsonify(result)
             else:
@@ -748,6 +750,7 @@ def api_ohlcv():
             
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+    
 
 @app.route('/analyze_pattern', methods=['POST'])
 def analyze_pattern():
@@ -759,8 +762,11 @@ def analyze_pattern():
         if not all(field in data for field in required_fields):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
-        # Используем функцию из main.py для анализа
-        result = analyze_selected_pattern(data['candles'], data['num_candles'])
+        # Получаем таймфрейм из запроса (по умолчанию '1d')
+        timeframe = data.get('timeframe', '1d')
+        
+        # Используем функцию из main.py для анализа с таймфреймом
+        result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe)
         
         if 'error' in result:
             return jsonify({'success': False, 'message': result['error']}), 500
@@ -769,8 +775,6 @@ def analyze_pattern():
         
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-# ... (остальной код app.py остается без изменений)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5010, debug=True)

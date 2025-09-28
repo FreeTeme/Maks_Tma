@@ -6,42 +6,29 @@ import time
 from typing import Dict, List, Tuple, Optional, Union
 
 # Константы для весов признаков при сравнении свечей
-W_BODY = 0.65     # Вес для тела свечи (разница между open и close)
-W_VOL = 0.18      # Вес для относительного объема
-W_UP = 0.085      # Вес для верхней тени
-W_LOW = 0.085     # Вес для нижней тени
+W_BODY = 0.65
+W_VOL = 0.18
+W_UP = 0.085
+W_LOW = 0.085
 
 # Пороговые значения для классификации сходства свечей
-IDENTICAL_THRESHOLD = 0.09    # Свечи идентичны
-SIMILAR_THRESHOLD = 0.18      # Свечи похожи (допустимое отклонение)
+IDENTICAL_THRESHOLD = 0.09
+SIMILAR_THRESHOLD = 0.18
 
-def load_ohlcv(path: str) -> pd.DataFrame:
-    """Загрузка и предобработка исторических данных OHLCV из CSV"""
-    df = pd.read_csv(path)
-    df.columns = [c.strip().lower() for c in df.columns]
-    
-    df = df.rename(columns={
-        "open time": "date",
-        "open": "open",
-        "high": "high",
-        "low": "low",
-        "close": "close",
-        "volume": "volume"
-    })
-    
-    dt = pd.to_datetime(df["date"].str.replace(" UTC", "", regex=False), errors="coerce", utc=True)
-    df["date"] = pd.Series(dt).dt.tz_convert(None)
-    
-    df = df.dropna(subset=["date"])
-    df = df.sort_values("date").drop_duplicates(subset=["date"], keep="last").reset_index(drop=True)
-    
-    return df
+# Словарь для преобразования таймфреймов в интервалы Binance
+TIMEFRAME_MAP = {
+    '15m': '15m',
+    '1h': '1h', 
+    '4h': '4h',
+    '1d': '1d',
+    '1w': '1w'
+}
 
-def fetch_binance_ohlcv(start_date: str, end_date: str) -> pd.DataFrame:
-    """Загрузка данных OHLCV с Binance API"""
+def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
+    """Загрузка данных OHLCV с Binance API с поддержкой разных таймфреймов"""
     base_url = 'https://api.binance.com/api/v3/klines'
     symbol = 'BTCUSDT'
-    interval = '1d'
+    interval = TIMEFRAME_MAP.get(timeframe, '1d')
     limit = 1000
     
     start_ts = int(pd.to_datetime(start_date).timestamp() * 1000)
@@ -74,7 +61,8 @@ def fetch_binance_ohlcv(start_date: str, end_date: str) -> pd.DataFrame:
                     'high': float(kline[2]),
                     'low': float(kline[3]),
                     'close': float(kline[4]),
-                    'volume': float(kline[5])
+                    'volume': float(kline[5]),
+                    'timeframe': timeframe
                 })
                 
             current_ts = data[-1][6] + 1
@@ -92,36 +80,47 @@ def fetch_binance_ohlcv(start_date: str, end_date: str) -> pd.DataFrame:
     df = df.sort_values('date').drop_duplicates(subset=['date']).reset_index(drop=True)
     return df
 
-def get_full_historical_data() -> pd.DataFrame:
-    """Получение полных исторических данных с максимальной глубиной"""
+def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
+    """Получение полных исторических данных для указанного таймфрейма"""
     try:
-        # Пытаемся получить данные с 2010 года (когда Bitcoin был создан)
-        start_date = "2010-07-18"
+        # Определяем глубину данных в зависимости от таймфрейма
+        if timeframe in ['15m', '1h']:
+            # Для коротких таймфреймов берем меньше данных
+            start_date = "2020-01-01"
+        else:
+            # Для дневных и недельных - больше данных
+            start_date = "2017-01-01"
+            
         end_date = datetime.now().strftime('%Y-%m-%d')
         
-        print(f"Загрузка исторических данных с {start_date} по {end_date}")
-        df = fetch_binance_ohlcv(start_date, end_date)
+        print(f"Загрузка исторических данных {timeframe} с {start_date} по {end_date}")
+        df = fetch_binance_ohlcv(start_date, end_date, timeframe)
         
-        # Если данных мало, пытаемся загрузить с 2017 года (начало Binance)
-        if len(df) < 1000:
-            start_date = "2017-01-01"
-            print(f"Перезагрузка данных с {start_date} por {end_date}")
-            df = fetch_binance_ohlcv(start_date, end_date)
-        
-        print(f"Успешно загружено {len(df)} записей")
+        print(f"Успешно загружено {len(df)} записей для таймфрейма {timeframe}")
         return df
         
     except Exception as e:
         print(f"Ошибка при загрузке исторических данных: {e}")
-        # Возвращаем пустой DataFrame в случае ошибки
         return pd.DataFrame()
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Построение признаков для анализа свечных паттернов"""
+def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
+    """Построение признаков для анализа свечных паттернов с учетом таймфрейма"""
     df = df.copy()
     
-    # Вычисление медианного объема за 30 дней с центральным окном (15 дней до и 15 после)
-    df['vol_median30'] = df['volume'].rolling(window=30, min_periods=1, center=True).median()
+    # Адаптируем окно для медианного объема в зависимости от таймфрейма
+    if timeframe == '15m':
+        window_size = 96 * 7  # 7 дней для 15-минутных данных
+    elif timeframe == '1h':
+        window_size = 24 * 30  # 30 дней для часовых данных
+    elif timeframe == '1d':
+        window_size = 30  # 30 дней для дневных данных
+    elif timeframe == '1w':
+        window_size = 52  # 52 недели (1 год)
+    else:
+        window_size = 30
+    
+    # Вычисление медианного объема с адаптивным окном
+    df['vol_median'] = df['volume'].rolling(window=window_size, min_periods=1, center=True).median()
     
     def safe_div(numer, denom):
         return np.where(denom == 0, 0.0, numer / denom)
@@ -132,7 +131,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     body = safe_div((df['close'] - df['open']), hl_range)
     upper = safe_div((df['high'] - np.maximum(df['open'], df['close'])), hl_range)
     lower = safe_div((np.minimum(df['open'], df['close']) - df['low']), hl_range)
-    vol_rel = safe_div(df['volume'], df['vol_median30'])
+    vol_rel = safe_div(df['volume'], df['vol_median'])
     
     # Направление свечи
     direction = np.where(df['close'] > df['open'], 1.0, 
@@ -146,11 +145,11 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
         'lower': lower,
         'vol_rel': vol_rel,
         'direction': direction,
-        'close': df['close']
+        'close': df['close'],
+        'timeframe': timeframe
     })
     
     return features.dropna().reset_index(drop=True)
-
 
 def candle_distance(features_df: pd.DataFrame, idx_a: int, idx_b: int) -> Tuple[float, str]:
     """Вычисление расстояния между двумя свечами"""
@@ -181,9 +180,9 @@ def candle_distance(features_df: pd.DataFrame, idx_a: int, idx_b: int) -> Tuple[
         return float('inf'), "different"
 
 def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pattern_start_date: str, 
-                         pattern_end_date: str, max_threshold: float = SIMILAR_THRESHOLD,
+                         pattern_end_date: str, timeframe: str = '1d', max_threshold: float = SIMILAR_THRESHOLD,
                          years_back: int = 5) -> Dict:
-    """Поиск похожих паттернов в исторических данных"""
+    """Поиск похожих паттернов в исторических данных с учетом таймфрейма"""
     sdt = pd.to_datetime(pattern_start_date, errors="coerce")
     edt = pd.to_datetime(pattern_end_date, errors="coerce")
     
@@ -197,7 +196,11 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
     if len(pat_idx) < 2:
         raise ValueError("Паттерн должен содержать минимум 2 свечи")
     
-    # Определяем дату начала поиска
+    # Определяем дату начала поиска (адаптируем под таймфрейм)
+    if timeframe in ['15m', '1h']:
+        # Для коротких таймфреймов ищем меньше лет назад
+        years_back = min(years_back, 2)
+    
     search_start = edt - pd.DateOffset(years=years_back)
     search_mask = (features_df['date'] >= search_start) & (features_df['date'] < sdt)
     search_indices = features_df.index[search_mask].tolist()
@@ -207,7 +210,7 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
     outcomes = []
     matched_patterns = []
     similarities = []
-    price_changes = []  # Для хранения изменений цены после паттерна
+    price_changes = []
     
     # Поиск похожих паттернов
     for i in search_indices:
@@ -245,10 +248,9 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
             
             similarities.append(pattern_similarity)
             
-            # Сохраняем данные совпавшего паттерна с использованием исходных OHLCV данных
+            # Сохраняем данные совпавшего паттерна
             pattern_data = []
             for idx in window_idx:
-                # Используем исходные данные из ohlcv_df
                 candle_date = features_df.loc[idx, 'date']
                 ohlcv_row = ohlcv_df[ohlcv_df['date'] == candle_date].iloc[0]
                 
@@ -260,16 +262,30 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
                     'close': float(ohlcv_row['close']),
                     'volume': float(ohlcv_row['volume']),
                     'direction': 'bullish' if features_df.loc[idx, 'direction'] > 0 else 'bearish',
-                    'similarity': similarities_list[idx - i] if idx - i < len(similarities_list) else 'unknown'
+                    'similarity': similarities_list[idx - i] if idx - i < len(similarities_list) else 'unknown',
+                    'timeframe': timeframe
                 })
             
             matched_patterns.append(pattern_data)
             
             # Вычисляем процентное изменение цены после паттерна
             pattern_end_date = features_df.loc[j, 'date']
-            next_date = pattern_end_date + timedelta(days=1)
+            
+            # Определяем временной интервал для следующей свечи в зависимости от таймфрейма
+            if timeframe == '15m':
+                delta = timedelta(minutes=15)
+            elif timeframe == '1h':
+                delta = timedelta(hours=1)
+            elif timeframe == '1d':
+                delta = timedelta(days=1)
+            elif timeframe == '1w':
+                delta = timedelta(weeks=1)
+            else:
+                delta = timedelta(days=1)
+                
+            next_date = pattern_end_date + delta
 
-            # Ищем следующую свечу по дате (может быть не следующая по индексу из-за пропусков)
+            # Ищем следующую свечу по дате
             next_candles = features_df[features_df['date'] >= next_date]
 
             if not next_candles.empty:
@@ -278,10 +294,7 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
                 last_close = float(features_df.loc[j, 'close'])
                 pct_change = (next_close - last_close) / last_close * 100.0
                 outcomes.append(pct_change)
-                price_changes.append(pct_change)  # Сохраняем изменение цены
-            else:
-                # Если следующей свечи нет, пропускаем
-                pass
+                price_changes.append(pct_change)
     
     # Группировка результатов по категориям
     def bucket(pct):
@@ -320,41 +333,43 @@ def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pat
     
     return {
         "pattern_len": N,
-        "pattern_start": str(features_df.loc[pat_idx[0], 'date'].date()),
-        "pattern_end": str(features_df.loc[pat_idx[-1], 'date'].date()),
+        "pattern_start": str(features_df.loc[pat_idx[0], 'date']),
+        "pattern_end": str(features_df.loc[pat_idx[-1], 'date']),
+        "timeframe": timeframe,
         "matches_found": len(matches),
         "identical_count": identical_count,
         "similar_count": similar_count,
         "distribution_counts": stat_counts,
         "distribution_percents": stat_perc,
         "matched_patterns": matched_patterns,
-        "price_changes": price_changes  # Добавляем изменения цен в результат
+        "price_changes": price_changes
     }
 
-def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int) -> Dict:
-    """Анализ выбранного паттерна"""
+def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d') -> Dict:
+    """Анализ выбранного паттерна с поддержкой разных таймфреймов"""
     try:
         if not selected_candles or len(selected_candles) == 0:
             return {"error": "No candles selected for analysis"}
         
-        # Получаем полные исторические данные
-        ohlcv_df = get_full_historical_data()
+        # Получаем полные исторические данные для указанного таймфрейма
+        ohlcv_df = get_full_historical_data(timeframe)
         if ohlcv_df.empty:
             return {"error": "Failed to load historical data"}
         
-        # Строим признаки
-        features_df = build_features(ohlcv_df)
+        # Строим признаки с указанием таймфрейма
+        features_df = build_features(ohlcv_df, timeframe)
         
-        # Определяем даты начала и конца паттерна
-        start_date = selected_candles[0]['open_time'][:10]
-        end_date = selected_candles[-1]['close_time'][:10]
+        # Правильно парсим даты для всех таймфреймов
+        start_date = pd.to_datetime(selected_candles[0]['open_time']).strftime('%Y-%m-%d %H:%M:%S')
+        end_date = pd.to_datetime(selected_candles[-1]['close_time']).strftime('%Y-%m-%d %H:%M:%S')
         
-        # Ищем похожие паттерны (теперь передаем оба DataFrame)
+        # Ищем похожие паттерны с указанием таймфрейма
         result = find_similar_patterns(
             features_df,
-            ohlcv_df,  # Добавляем исходные данные
+            ohlcv_df,
             start_date,
             end_date,
+            timeframe=timeframe,
             max_threshold=SIMILAR_THRESHOLD,
             years_back=8
         )
@@ -364,7 +379,8 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int) -> 
             'pattern_info': {
                 'pattern_start': result['pattern_start'],
                 'pattern_end': result['pattern_end'],
-                'pattern_len': result['pattern_len']
+                'pattern_len': result['pattern_len'],
+                'timeframe': result['timeframe']
             },
             'statistics': {
                 'matches_found': result['matches_found'],
@@ -372,18 +388,17 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int) -> 
                 'distribution_percents': result['distribution_percents']
             },
             'matched_patterns': result['matched_patterns'],
-            'price_changes': result['price_changes']  # Добавляем изменения цен в ответ
+            'price_changes': result['price_changes']
         }
         
     except Exception as e:
         return {"error": f"Analysis error: {str(e)}"}
-    
 
-def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = None) -> Dict:
-    """Получение данных OHLCV для указанного периода"""
+def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = None, timeframe: str = '1d') -> Dict:
+    """Получение данных OHLCV для указанного периода и таймфрейма"""
     try:
-        # Получаем полные исторические данные
-        df = get_full_historical_data()
+        # Получаем полные исторические данные для указанного таймфрейма
+        df = get_full_historical_data(timeframe)
         if df.empty:
             return {"success": False, "message": "Failed to load historical data"}
         
@@ -399,59 +414,112 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
         records = []
         for _, row in df.iterrows():
             open_time = row['date']
-            close_time = open_time + timedelta(days=1) - timedelta(milliseconds=1)
+            
+            # Определяем время закрытия в зависимости от таймфрейма
+            if timeframe == '15m':
+                close_time = open_time + timedelta(minutes=15) - timedelta(milliseconds=1)
+                time_format = '%Y-%m-%dT%H:%M:%SZ'
+            elif timeframe == '1h':
+                close_time = open_time + timedelta(hours=1) - timedelta(milliseconds=1)
+                time_format = '%Y-%m-%dT%H:%M:%SZ'
+            elif timeframe == '1d':
+                close_time = open_time + timedelta(days=1) - timedelta(milliseconds=1)
+                time_format = '%Y-%m-%dT%H:%M:%SZ'
+            elif timeframe == '1w':
+                close_time = open_time + timedelta(weeks=1) - timedelta(milliseconds=1)
+                time_format = '%Y-%m-%dT%H:%M:%SZ'
+            else:
+                close_time = open_time + timedelta(days=1) - timedelta(milliseconds=1)
+                time_format = '%Y-%m-%dT%H:%M:%SZ'
             
             records.append({
-                'open_time': open_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
-                'close_time': close_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'open_time': open_time.strftime(time_format),
+                'close_time': close_time.strftime(time_format),
                 'open_price': float(row['open']),
                 'close_price': float(row['close']),
                 'high': float(row['high']),
                 'low': float(row['low']),
-                'volume': float(row['volume'])
+                'volume': float(row['volume']),
+                'timeframe': timeframe
             })
         
-        return {"success": True, "candles": records}
+        return {
+            "success": True, 
+            "candles": records,
+            "timeframe": timeframe,
+            "total_candles": len(records)
+        }
         
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-def get_data_bounds() -> Dict:
-    """Получение границ доступных данных"""
+def get_data_bounds(timeframe: str = '1d') -> Dict:
+    """Получение границ доступных данных для указанного таймфрейма"""
     try:
-        df = get_full_historical_data()
+        df = get_full_historical_data(timeframe)
         if df.empty:
-            # Если данные не загружены, возвращаем фиксированные значения
             today = datetime.now().date()
-            five_years_ago = (datetime.now() - timedelta(days=5*365)).date()
+            if timeframe in ['15m', '1h']:
+                start_date = (datetime.now() - timedelta(days=365)).date()
+            else:
+                start_date = (datetime.now() - timedelta(days=5*365)).date()
             return {
                 'success': True, 
-                'start': str(five_years_ago), 
-                'end': str(today)
+                'start': str(start_date), 
+                'end': str(today),
+                'timeframe': timeframe
             }
         
         start = df['date'].min().date()
         end = df['date'].max().date()
-        return {'success': True, 'start': str(start), 'end': str(end)}
+        return {
+            'success': True, 
+            'start': str(start), 
+            'end': str(end),
+            'timeframe': timeframe
+        }
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
 # Пример использования
 if __name__ == "__main__":
-    # Загрузка данных
-    df = get_full_historical_data()
-    features_df = build_features(df)
+    # Тестирование для разных таймфреймов
+    timeframes = ['15m', '1h', '1d', '1w']
     
-    # Пример анализа паттерна
-    result = find_similar_patterns(
-        features_df,
-        "2023-06-05",
-        "2023-06-10",
-        max_threshold=SIMILAR_THRESHOLD,
-        years_back=3
-    )
-    
-    print(f"Найдено совпадений: {result['matches_found']}")
-    print(f"Идентичных паттернов: {result['identical_count']}")
-    print(f"Похожих паттернов: {result['similar_count']}")
-    print(f"Распределение результатов: {result['distribution_percents']}")
+    for tf in timeframes:
+        print(f"\n=== Тестирование таймфрейма {tf} ===")
+        
+        # Загрузка данных
+        df = get_full_historical_data(tf)
+        if df.empty:
+            print(f"Не удалось загрузить данные для {tf}")
+            continue
+            
+        features_df = build_features(df, tf)
+        
+        print(f"Загружено {len(df)} записей")
+        print(f"Период: {df['date'].min()} - {df['date'].max()}")
+        
+        # Пример анализа паттерна (только для демонстрации)
+        if len(df) > 10:
+            try:
+                # Берем последние 5 свечей как пример паттерна
+                start_date = df.iloc[-5]['date'].strftime('%Y-%m-%d %H:%M:%S')
+                end_date = df.iloc[-1]['date'].strftime('%Y-%m-%d %H:%M:%S')
+                
+                result = find_similar_patterns(
+                    features_df,
+                    df,
+                    start_date,
+                    end_date,
+                    timeframe=tf,
+                    max_threshold=SIMILAR_THRESHOLD,
+                    years_back=1
+                )
+                
+                print(f"Найдено совпадений: {result['matches_found']}")
+                print(f"Идентичных паттернов: {result['identical_count']}")
+                print(f"Похожих паттернов: {result['similar_count']}")
+                
+            except Exception as e:
+                print(f"Ошибка анализа: {e}")
