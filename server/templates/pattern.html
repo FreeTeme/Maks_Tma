@@ -118,7 +118,8 @@
             background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
             flex-shrink: 0;
         }
-        .left-tools, .right-tools { display: flex; gap: 6px; align-items: center; }
+        .left-tools, .right-tools { display: flex; gap: 6px; align-items: center; width: 100%; }
+        .left-tools { justify-content: space-between; }
         .btn {
             background: #1a222c;
             border: 1px solid var(--border);
@@ -130,6 +131,7 @@
             transition: 0.15s ease;
             white-space: nowrap;
         }
+        .tf .btn { flex: 1; }
         .btn:hover { background: #212a34; }
         .btn.primary { background: var(--accent); border-color: #ffb547; color: #0c0f12; font-weight: 600; }
         .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -160,7 +162,7 @@
             background: #b91c1c !important; 
             border-color: #991b1b !important;
         }
-        .tf { display: flex; gap: 4px; }
+        .tf { display: flex; gap: 6px; flex: 1; }
         .tf .btn.active { background: #2a3542; border-color: #334153; }
         .sep { width: 1px; height: 22px; background: var(--border); }
         .counter { font-size: 12px; color: var(--muted); }
@@ -171,7 +173,14 @@
             flex: 1; 
             min-height: 300px; 
         }
-        #chart { width: 100%; height: 100%; }
+        #chart { 
+            width: 100%; 
+            height: 100%; 
+            touch-action: pan-x pan-y pinch-zoom;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
 
         .side {
             display: none;
@@ -212,6 +221,95 @@
 
         .footer-note { font-size: 11px; color: var(--muted); text-align: center; padding-top: 4px; }
 
+        /* Chart controls overlay */
+        .chart-controls {
+            display: none;
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            right: 12px;
+            background: rgba(17, 22, 28, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            z-index: 50;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+        .chart-controls.visible {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: center;
+        }
+        .chart-controls.collapsed {
+            left: 50%;
+            right: auto;
+            transform: translateX(-50%);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chart-controls.collapsed .control-btn {
+            display: none;
+        }
+        .control-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: #1a222c;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            font-weight: 500;
+            flex: 1;
+        }
+        .control-btn:hover {
+            background: #212a34;
+            border-color: #334153;
+        }
+        .control-btn i {
+            font-size: 14px;
+            width: 18px;
+            text-align: center;
+        }
+        .toggle-controls-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            background: var(--accent);
+            border: 1px solid #ffb547;
+            border-radius: 8px;
+            color: #0c0f12;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            min-width: 38px;
+            flex-shrink: 0;
+        }
+        .toggle-controls-btn:hover {
+            background: #ffb547;
+        }
+        .chart-controls.collapsed .toggle-controls-btn {
+            border-radius: 50%;
+            width: 100%;
+            height: 100%;
+            min-width: 48px;
+        }
+
         /* Mobile bottom navigation */
         .mobile-nav {
             position: fixed;
@@ -221,8 +319,9 @@
             background: var(--bg-1);
             border-top: 1px solid var(--border);
             display: flex;
-            justify-content: space-around;
-            padding: 8px 0;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 16px;
             z-index: 100;
             backdrop-filter: blur(10px);
             background: rgba(17, 22, 28, 0.9);
@@ -232,22 +331,38 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 6px 12px;
-            font-size: 11px;
-            color: var(--muted);
+            padding: 10px 24px;
+            font-size: 13px;
+            color: #ffffff;
             background: none;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
+            flex: 1;
+            font-weight: 600;
         }
         .nav-btn.active {
             color: var(--accent);
             background: rgba(247, 147, 26, 0.1);
         }
         .nav-btn i {
-            font-size: 18px;
-            margin-bottom: 2px;
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        #nav-analysis {
+            background: #22c55e !important;
+            border: 1px solid #16a34a;
+        }
+        #nav-analysis:hover {
+            background: #16a34a !important;
+        }
+        #nav-clear {
+            background: #dc2626 !important;
+            border: 1px solid #b91c1c;
+        }
+        #nav-clear:hover {
+            background: #b91c1c !important;
         }
 
         /* Modal for patterns */
@@ -515,6 +630,26 @@
             }
         }
 
+        @media (max-width: 768px) {
+            .chart-controls {
+                bottom: 80px;
+            }
+            
+            .chart-controls.collapsed {
+                bottom: 80px;
+            }
+            
+            .control-btn span {
+                display: none;
+            }
+            
+            .control-btn {
+                padding: 8px;
+                min-width: 40px;
+                justify-content: center;
+            }
+        }
+
         @media (max-width: 380px) {
             .toolbar {
                 flex-wrap: wrap;
@@ -532,6 +667,33 @@
             
             .counter {
                 font-size: 11px;
+            }
+            
+            .chart-controls {
+                gap: 6px;
+                padding: 8px;
+                left: 8px;
+                right: 8px;
+            }
+            
+            .chart-controls.collapsed {
+                width: 44px;
+                height: 44px;
+            }
+            
+            .control-btn {
+                padding: 6px;
+                min-width: 36px;
+            }
+            
+            .toggle-controls-btn {
+                padding: 6px;
+                min-width: 34px;
+                font-size: 14px;
+            }
+            
+            .chart-controls.collapsed .toggle-controls-btn {
+                min-width: 44px;
             }
         }
     </style>
@@ -557,26 +719,39 @@
                 <div class="toolbar">
                     <div class="left-tools">
                         <div class="tf">
-                            <button class="btn active" data-tf="1D">1D</button>
-                            <button class="btn" data-tf="1W">1W</button>
-                            <button class="btn" data-tf="1M">1M</button>
+                            <button class="btn" data-tf="15m">15мин</button>
+                            <button class="btn" data-tf="1h">1 час</button>
+                            <button class="btn active" data-tf="1d">1 день</button>
+                            <button class="btn" data-tf="1w">1 неделя</button>
                         </div>
-                        <div class="sep"></div>
-                        <button id="toggle-volume-btn" class="btn">Объём</button>
                         <button id="reset-view-btn" class="btn">Сброс</button>
                     </div>
-                    <div class="right-tools">
-                        <div class="counter">Выбрано: <strong id="selected-count">0</strong>/6</div>
-                        <button id="to-selected-btn" class="btn">К выбр.</button>
-                        <div class="sep"></div>
-                        <button id="prev-match-btn" class="btn">◀</button>
-                        <span id="match-index" class="kpi" style="min-width:46px;text-align:center;">0/0</span>
-                        <button id="next-match-btn" class="btn">▶</button>
-                        <button id="clear-btn" class="btn clear">Очистить</button>
-                        <button id="analyze-btn" class="btn analyze" disabled>Анализ</button>
+                </div>
+                <div class="chart-wrap">
+                    <div id="chart"></div>
+                    <!-- Chart Controls Overlay -->
+                    <div class="chart-controls" id="chart-controls">
+                        <button class="control-btn" id="nav-prev">
+                            <i class="fas fa-chevron-left"></i>
+                            <span>Назад</span>
+                        </button>
+                        <button class="control-btn" id="nav-next">
+                            <i class="fas fa-chevron-right"></i>
+                            <span>Вперед</span>
+                        </button>
+                        <button class="control-btn" id="nav-to-selected">
+                            <i class="fas fa-search"></i>
+                            <span>К выбранным</span>
+                        </button>
+                        <button class="control-btn" id="nav-patterns">
+                            <i class="fas fa-shapes"></i>
+                            <span>Паттерны</span>
+                        </button>
+                        <button class="toggle-controls-btn" id="toggle-controls-btn" title="Свернуть/Развернуть">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
                 </div>
-                <div class="chart-wrap"><div id="chart"></div></div>
             </div>
 
             <div class="side" id="side-panel">
@@ -610,22 +785,6 @@
         <button class="nav-btn" id="nav-clear">
             <i class="fas fa-trash"></i>
             <span>Очистить</span>
-        </button>
-        <button class="nav-btn" id="nav-prev">
-            <i class="fas fa-chevron-left"></i>
-            <span>Назад</span>
-        </button>
-        <button class="nav-btn" id="nav-next">
-            <i class="fas fa-chevron-right"></i>
-            <span>Вперед</span>
-        </button>
-        <button class="nav-btn" id="nav-to-selected">
-            <i class="fas fa-search"></i>
-            <span>К выбранным</span>
-        </button>
-        <button class="nav-btn" id="nav-patterns">
-            <i class="fas fa-shapes"></i>
-            <span>Паттерны</span>
         </button>
     </div>
 
@@ -700,6 +859,7 @@
 				this.selectedIndices = new Set();
 				this.selectedMarkers = new Map();
 				this.patternMarkers = new Map();
+				this.currentTimeframe = '1d'; // Текущий выбранный таймфрейм
                 this.initChart();
                 this.loadData();
 				this.bindUI();
@@ -709,6 +869,7 @@
 				this.selectedHighlightPoints = [];
 				this.currentMatchIndex = -1;
 				this.matchedRanges = [];
+				this.isAnalysisMode = false; // Режим: false = выбор свечей, true = просмотр результатов
             }
 
             initChart() {
@@ -720,10 +881,110 @@
 					grid: { vertLines: { color: 'rgba(32,42,54,0.85)' }, horzLines: { color: 'rgba(32,42,54,0.85)' } },
 					crosshair: { mode: LightweightCharts.CrosshairMode.Magnet, vertLine: { color: '#3a4654' }, horzLine: { color: '#3a4654' } },
 					rightPriceScale: { borderColor: '#243142' },
-					timeScale: { borderColor: '#243142', rightOffset: 6, barSpacing: 40, minBarSpacing: 30 },
-					handleScroll: { mouseWheel: true, pressedMouseMove: true },
-					handleScale: { axisPressedMouseMove: { time: true, price: true } },
+					timeScale: { 
+						borderColor: '#243142', 
+						rightOffset: 6, 
+						barSpacing: 60, // Увеличено для сильного начального приближения
+						minBarSpacing: 15, // Средняя чувствительность для режима выбора
+						fixLeftEdge: false,
+						fixRightEdge: false,
+						lockVisibleTimeRangeOnResize: true,
+						shiftVisibleRangeOnNewBar: true,
+						timeVisible: true,
+						secondsVisible: false
+					},
+					handleScroll: { 
+						mouseWheel: true, 
+						pressedMouseMove: true,
+						horzTouchDrag: true,
+						vertTouchDrag: true
+					},
+					handleScale: { 
+						axisPressedMouseMove: { time: true, price: true },
+						axisDoubleClickReset: { time: true, price: true },
+						mouseWheel: true,
+						pinch: true
+					},
+					kineticScroll: {
+						touch: true,
+						mouse: false
+					}
                 });
+                
+                // Увеличиваем чувствительность масштабирования колёсиком мыши
+                const timeScale = this.chart.timeScale();
+                const originalScrollPosition = timeScale.scrollPosition.bind(timeScale);
+                const originalScrollToPosition = timeScale.scrollToPosition.bind(timeScale);
+                
+                // Перехватываем события колёсика для управления чувствительностью
+                el.addEventListener('wheel', (e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                        // Масштабирование с зажатым Ctrl/Cmd
+                        e.preventDefault();
+                        const delta = e.deltaY;
+                        const currentRange = timeScale.getVisibleLogicalRange();
+                        if (currentRange) {
+                            const center = (currentRange.from + currentRange.to) / 2;
+                            // В режиме анализа - высокая чувствительность, в режиме выбора - средняя
+                            const scaleFactor = this.isAnalysisMode 
+                                ? (delta > 0 ? 1.15 : 0.85)  // Высокая чувствительность
+                                : (delta > 0 ? 1.08 : 0.92); // Средняя чувствительность
+                            const newRange = {
+                                from: center - (center - currentRange.from) * scaleFactor,
+                                to: center + (currentRange.to - center) * scaleFactor
+                            };
+                            timeScale.setVisibleLogicalRange(newRange);
+                        }
+                    }
+                }, { passive: false });
+                
+                // Улучшенная обработка тач-жестов для большей чувствительности
+                let touchStartDistance = 0;
+                let touchStartRange = null;
+                
+                el.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        touchStartDistance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+                        touchStartRange = timeScale.getVisibleLogicalRange();
+                    }
+                }, { passive: true });
+                
+                el.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2 && touchStartRange) {
+                        const touch1 = e.touches[0];
+                        const touch2 = e.touches[1];
+                        const currentDistance = Math.hypot(
+                            touch2.clientX - touch1.clientX,
+                            touch2.clientY - touch1.clientY
+                        );
+                        
+                        if (touchStartDistance > 0) {
+                            const scaleFactor = currentDistance / touchStartDistance;
+                            const rangeSize = touchStartRange.to - touchStartRange.from;
+                            const center = (touchStartRange.from + touchStartRange.to) / 2;
+                            // В режиме анализа - высокая чувствительность, в режиме выбора - средняя
+                            const sensitivity = this.isAnalysisMode ? 1.3 : 1.05;
+                            const newRangeSize = rangeSize / (scaleFactor * sensitivity);
+                            
+                            const newRange = {
+                                from: center - newRangeSize / 2,
+                                to: center + newRangeSize / 2
+                            };
+                            
+                            timeScale.setVisibleLogicalRange(newRange);
+                        }
+                    }
+                }, { passive: true });
+                
+                el.addEventListener('touchend', () => {
+                    touchStartDistance = 0;
+                    touchStartRange = null;
+                }, { passive: true });
 
                 this.candleSeries = this.chart.addCandlestickSeries({
 					upColor: '#21d07a',
@@ -752,7 +1013,7 @@
 					let dsStart = new Date('2018-01-01T00:00:00Z');
 					let dsEnd = new Date();
 					try {
-						const b = await fetch('/api/pattern_bounds');
+						const b = await fetch(`/api/pattern_bounds?timeframe=${this.currentTimeframe}`);
 						if (b.ok) {
 							const j = await b.json();
 							if (j.success) { dsStart = new Date(j.start + 'T00:00:00Z'); dsEnd = new Date(j.end + 'T00:00:00Z'); }
@@ -760,7 +1021,7 @@
 					} catch(_) {}
 					this.datasetStart = dsStart; this.datasetEnd = dsEnd;
 					// Загружаем реальные свечи с сервера
-					const api = await fetch(`/api/ohlcv?source=binance&from=${dsStart.toISOString().slice(0,10)}&to=${dsEnd.toISOString().slice(0,10)}`);
+					const api = await fetch(`/api/ohlcv?source=binance&from=${dsStart.toISOString().slice(0,10)}&to=${dsEnd.toISOString().slice(0,10)}&timeframe=${this.currentTimeframe}`);
 					if (!api.ok) throw new Error('Не удалось загрузить OHLCV');
 					const aj = await api.json();
 					if (!aj.success) throw new Error(aj.message || 'Ошибка загрузки OHLCV');
@@ -833,26 +1094,33 @@
 			}
 
 			bindUI() {
-				document.getElementById('analyze-btn').addEventListener('click', () => this.analyze());
-                document.getElementById('clear-btn').addEventListener('click', () => this.showClearConfirmationModal());
-				document.getElementById('reset-view-btn').addEventListener('click', () => this.resetView());
-                document.getElementById('toggle-volume-btn').addEventListener('click', () => this.toggleVolume());
-				document.getElementById('to-selected-btn').addEventListener('click', () => this.zoomToSelected());
-				document.getElementById('prev-match-btn').addEventListener('click', () => this.gotoMatch(-1));
-				document.getElementById('next-match-btn').addEventListener('click', () => this.gotoMatch(1));
+				// Old toolbar buttons (if they exist)
+				const analyzeBtn = document.getElementById('analyze-btn'); if (analyzeBtn) analyzeBtn.addEventListener('click', () => this.analyze());
+				const clearBtn = document.getElementById('clear-btn'); if (clearBtn) clearBtn.addEventListener('click', () => this.showClearConfirmationModal());
+				const resetBtn = document.getElementById('reset-view-btn'); if (resetBtn) resetBtn.addEventListener('click', () => this.resetView());
+				const toggleVolumeBtn = document.getElementById('toggle-volume-btn'); if (toggleVolumeBtn) toggleVolumeBtn.addEventListener('click', () => this.toggleVolume());
+				const toSelectedBtn = document.getElementById('to-selected-btn'); if (toSelectedBtn) toSelectedBtn.addEventListener('click', () => this.zoomToSelected());
+				const prevMatchBtn = document.getElementById('prev-match-btn'); if (prevMatchBtn) prevMatchBtn.addEventListener('click', () => this.gotoMatch(-1));
+				const nextMatchBtn = document.getElementById('next-match-btn'); if (nextMatchBtn) nextMatchBtn.addEventListener('click', () => this.gotoMatch(1));
 				document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', (e) => {
 					document.querySelectorAll('[data-tf]').forEach(x => x.classList.remove('active'));
                         e.target.classList.add('active');
-					// (Таймфреймы-стаб, данные дневные)
+					const newTF = e.target.getAttribute('data-tf');
+					if (newTF !== this.currentTimeframe) {
+						this.switchTimeframe(newTF);
+					}
 				}));
 
-				// Mobile navigation buttons
-				document.getElementById('nav-analysis').addEventListener('click', () => this.analyze());
-				document.getElementById('nav-clear').addEventListener('click', () => this.showClearConfirmationModal());
-				document.getElementById('nav-prev').addEventListener('click', () => this.gotoMatch(-1));
-				document.getElementById('nav-next').addEventListener('click', () => this.gotoMatch(1));
-				document.getElementById('nav-to-selected').addEventListener('click', () => this.zoomToSelected());
-				document.getElementById('nav-patterns').addEventListener('click', () => this.showPatternsModal());
+				// Mobile navigation buttons (reduced)
+				const navAnalysis = document.getElementById('nav-analysis'); if (navAnalysis) navAnalysis.addEventListener('click', () => this.analyze());
+				const navClear = document.getElementById('nav-clear'); if (navClear) navClear.addEventListener('click', () => this.showClearConfirmationModal());
+				
+				// Chart controls overlay buttons
+				const navPrev = document.getElementById('nav-prev'); if (navPrev) navPrev.addEventListener('click', () => this.gotoMatch(-1));
+				const navNext = document.getElementById('nav-next'); if (navNext) navNext.addEventListener('click', () => this.gotoMatch(1));
+				const navToSelected = document.getElementById('nav-to-selected'); if (navToSelected) navToSelected.addEventListener('click', () => this.zoomToSelected());
+				const navPatterns = document.getElementById('nav-patterns'); if (navPatterns) navPatterns.addEventListener('click', () => this.showPatternsModal());
+				const toggleControlsBtn = document.getElementById('toggle-controls-btn'); if (toggleControlsBtn) toggleControlsBtn.addEventListener('click', () => this.toggleChartControls());
 
 				// Clear confirmation modal buttons
 				document.getElementById('confirm-clear-btn').addEventListener('click', () => {
@@ -897,8 +1165,10 @@
 			}
 
 			updateSelected() {
-				document.getElementById('selected-count').textContent = this.selectedIndices.size;
-				document.getElementById('analyze-btn').disabled = this.selectedIndices.size === 0;
+				const selectedCount = document.getElementById('selected-count'); 
+				if (selectedCount) selectedCount.textContent = this.selectedIndices.size;
+				const analyzeBtn = document.getElementById('analyze-btn'); 
+				if (analyzeBtn) analyzeBtn.disabled = this.selectedIndices.size === 0;
 				this.selectedMarkers.clear();
 				this.selectedHighlightPoints = [];
 				[...this.selectedIndices].forEach(i => {
@@ -921,8 +1191,10 @@
 				this.selectedMarkers.clear();
 				this.selectedHighlightPoints = [];
 				this.applyMarkers();
-				document.getElementById('selected-count').textContent = '0';
-				document.getElementById('analyze-btn').disabled = true;
+				const selectedCount = document.getElementById('selected-count');
+				if (selectedCount) selectedCount.textContent = '0';
+				const analyzeBtn = document.getElementById('analyze-btn');
+				if (analyzeBtn) analyzeBtn.disabled = true;
 				this.redrawOverlay();
 			}
 
@@ -959,11 +1231,12 @@
 				if (this.selectedIndices.size === 0) return;
 				const order = [...this.selectedIndices].sort((a,b) => a-b);
 				const candles = order.map(i => this.allCandles[i]);
-				const payload = { num_candles: candles.length, candles };
+				const payload = { num_candles: candles.length, candles, timeframe: this.currentTimeframe };
 				// UI state
 				const btn = document.getElementById('analyze-btn');
 				const loader = this.ensureLoader();
-				btn.disabled = true; loader.style.display = 'flex';
+				if (btn) btn.disabled = true; 
+				loader.style.display = 'flex';
 				try {
 					const res = await fetch('/analyze_pattern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 					const data = await res.json();
@@ -972,10 +1245,15 @@
 					this.drawPatternMarkers(data.matched_patterns);
 					if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
 					this.toast('Анализ завершён');
+					// Show chart controls after analysis
+					const chartControls = document.getElementById('chart-controls');
+					if (chartControls) chartControls.classList.add('visible');
+					// Переключаем в режим анализа с высокой чувствительностью
+					this.switchToAnalysisMode();
 				} catch (e) {
 					this.toast('Ошибка: ' + e.message);
                 } finally {
-					btn.disabled = this.selectedIndices.size === 0;
+					if (btn) btn.disabled = this.selectedIndices.size === 0;
 					loader.style.display = 'none';
                 }
             }
@@ -1231,6 +1509,90 @@
 			hideClearConfirmationModal() {
 				const modal = document.getElementById('clear-confirmation-modal');
 				modal.style.display = 'none';
+			}
+
+			toggleChartControls() {
+				const chartControls = document.getElementById('chart-controls');
+				const toggleBtn = document.getElementById('toggle-controls-btn');
+				const toggleIcon = toggleBtn.querySelector('i');
+				
+				if (chartControls.classList.contains('collapsed')) {
+					chartControls.classList.remove('collapsed');
+					toggleIcon.className = 'fas fa-chevron-down';
+				} else {
+					chartControls.classList.add('collapsed');
+					toggleIcon.className = 'fas fa-chevron-up';
+				}
+			}
+
+			async switchTimeframe(newTimeframe) {
+				// Сохраняем новый таймфрейм
+				this.currentTimeframe = newTimeframe;
+				
+				// Очищаем текущие выборы и паттерны
+				this.selectedIndices.clear();
+				this.selectedMarkers.clear();
+				this.patternMarkers.clear();
+				this.selectedHighlightPoints = [];
+				this.matchedHighlightPoints = [];
+				this.matchedRanges = [];
+				this.currentMatchIndex = -1;
+				
+				// Показываем загрузку
+				const loader = this.ensureLoader();
+				loader.style.display = 'flex';
+				
+				try {
+					// Перезагружаем данные с новым таймфреймом
+					await this.loadData();
+					
+					// Обновляем UI
+					document.getElementById('matches-found').textContent = '0';
+					document.getElementById('pattern-length').textContent = '0';
+					document.getElementById('accuracy').textContent = '0%';
+					document.getElementById('pattern-info-card').style.display = 'none';
+					document.getElementById('matches').innerHTML = '';
+					
+					// Обновляем отображение таймфрейма в header
+					const timeframeMap = {
+						'15m': '15мин',
+						'1h': '1ч',
+						'1d': '1Д',
+						'1w': '1Н'
+					};
+					const kpiTF = document.querySelector('.kpi strong');
+					if (kpiTF) kpiTF.textContent = timeframeMap[newTimeframe] || newTimeframe;
+					
+					this.toast(`Загружены данные для таймфрейма ${timeframeMap[newTimeframe] || newTimeframe}`);
+				} catch (e) {
+					this.toast('Ошибка загрузки данных: ' + e.message);
+				} finally {
+					loader.style.display = 'none';
+				}
+			}
+
+			switchToAnalysisMode() {
+				// Переключаем в режим анализа с высокой чувствительностью
+				this.isAnalysisMode = true;
+				// Уменьшаем minBarSpacing для более свободного масштабирования
+				this.chart.applyOptions({
+					timeScale: {
+						minBarSpacing: 2 // Минимальное расстояние для режима анализа (можно увеличивать в 7.5 раз сильнее)
+					}
+				});
+			}
+
+			switchToSelectionMode() {
+				// Возвращаем в режим выбора свечей со средней чувствительностью
+				this.isAnalysisMode = false;
+				// Увеличиваем minBarSpacing для ограниченного масштабирования
+				this.chart.applyOptions({
+					timeScale: {
+						minBarSpacing: 15, // Среднее расстояние для режима выбора
+						barSpacing: 60 // Возвращаем приближение
+					}
+				});
+				this.chart.timeScale().fitContent(); // Подгоняем график
 			}
 
 		}

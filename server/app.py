@@ -720,7 +720,8 @@ load_ohlcv_data()
 def pattern_bounds():
     """Возвращает границы доступных данных через функцию из main.py"""
     try:
-        result = get_data_bounds()
+        timeframe = request.args.get('timeframe', '1d')
+        result = get_data_bounds(timeframe)
         if result['success']:
             return jsonify(result)
         else:
