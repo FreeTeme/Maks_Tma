@@ -25,17 +25,26 @@ TIMEFRAME_MAP = {
 }
 
 def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
-    """Загрузка данных OHLCV с Binance API с поддержкой разных таймфреймов"""
+    """Загрузка данных OHLCV с Binance API с оптимизацией"""
     base_url = 'https://api.binance.com/api/v3/klines'
     symbol = 'BTCUSDT'
     interval = TIMEFRAME_MAP.get(timeframe, '1d')
-    limit = 1000
+    
+    # ОПТИМИЗИРОВАНО: уменьшаем лимит для быстрой загрузки
+    if timeframe in ['15m', '1h']:
+        limit = 500  # Уменьшаем лимит для коротких таймфреймов
+    else:
+        limit = 1000
     
     start_ts = int(pd.to_datetime(start_date).timestamp() * 1000)
     end_ts = int(pd.to_datetime(end_date).timestamp() * 1000)
     
     rows = []
     current_ts = start_ts
+    
+    # ОПТИМИЗИРОВАНО: добавляем таймаут для запросов
+    session = requests.Session()
+    session.timeout = 10  # 10 секунд таймаут
     
     while current_ts <= end_ts:
         params = {
@@ -47,7 +56,8 @@ def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -
         }
         
         try:
-            response = requests.get(base_url, params=params, timeout=15)
+            # ОПТИМИЗИРОВАНО: используем сессию с таймаутом
+            response = session.get(base_url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             
@@ -65,9 +75,13 @@ def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -
                     'timeframe': timeframe
                 })
                 
+            # ОПТИМИЗИРОВАНО: убираем задержку для скорости
             current_ts = data[-1][6] + 1
-            time.sleep(0.1)
             
+            # ОПТИМИЗИРОВАНО: прерываем если набрали достаточно данных
+            if len(rows) >= 1000:  # Максимум 1000 свечей
+                break
+                
         except Exception as e:
             print(f"Ошибка при загрузке данных: {e}")
             break
@@ -78,22 +92,32 @@ def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -
         
     df['date'] = pd.to_datetime(df['date']).dt.tz_localize(None)
     df = df.sort_values('date').drop_duplicates(subset=['date']).reset_index(drop=True)
+    
+    # ОПТИМИЗИРОВАНО: логируем результат
+    print(f"Загружено {len(df)} свечей за период: {df['date'].min()} - {df['date'].max()}")
     return df
 
 def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
-    """Получение полных исторических данных для указанного таймфрейма"""
+    """Получение оптимизированных исторических данных для указанного таймфрейма"""
     try:
-        # Определяем глубину данных в зависимости от таймфрейма
-        if timeframe in ['15m', '1h']:
-            # Для коротких таймфреймов берем меньше данных
-            start_date = "2020-01-01"
-        else:
-            # Для дневных и недельных - больше данных
-            start_date = "2017-01-01"
-            
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        # ОПТИМИЗИРОВАНО: уменьшаем глубину данных для быстрой загрузки
+        today = datetime.now()
         
-        print(f"Загрузка исторических данных {timeframe} с {start_date} по {end_date}")
+        if timeframe in ['15m', '1h']:
+            # Для коротких таймфреймов берем только последние 5 дней
+            start_date = (today - timedelta(days=5)).strftime('%Y-%m-%d')
+        elif timeframe == '1d':
+            # Для дневных - 3 месяца
+            start_date = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        elif timeframe == '1w':
+            # Для недельных - 1 год
+            start_date = (today - timedelta(days=365)).strftime('%Y-%m-%d')
+        else:
+            start_date = (today - timedelta(days=30)).strftime('%Y-%m-%d')
+            
+        end_date = today.strftime('%Y-%m-%d')
+        
+        print(f"Загрузка данных {timeframe} с {start_date} по {end_date}")
         df = fetch_binance_ohlcv(start_date, end_date, timeframe)
         
         print(f"Успешно загружено {len(df)} записей для таймфрейма {timeframe}")
@@ -102,7 +126,7 @@ def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
     except Exception as e:
         print(f"Ошибка при загрузке исторических данных: {e}")
         return pd.DataFrame()
-
+    
 def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
     """Построение признаков для анализа свечных паттернов с учетом таймфрейма"""
     df = df.copy()
@@ -113,7 +137,7 @@ def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
     elif timeframe == '1h':
         window_size = 24 * 30  # 30 дней для часовых данных
     elif timeframe == '1d':
-        window_size = 30  # 30 дней для дневных данных
+        window_size = 52  # 30 дней для дневных данных
     elif timeframe == '1w':
         window_size = 52  # 52 недели (1 год)
     else:
@@ -454,15 +478,16 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
         return {"success": False, "message": str(e)}
 
 def get_data_bounds(timeframe: str = '1d') -> Dict:
-    """Получение границ доступных данных для указанного таймфрейма"""
+    """Получение границ доступных данных с оптимизацией"""
     try:
         df = get_full_historical_data(timeframe)
         if df.empty:
             today = datetime.now().date()
+            # ОПТИМИЗИРОВАНО: уменьшаем глубину по умолчанию
             if timeframe in ['15m', '1h']:
-                start_date = (datetime.now() - timedelta(days=365)).date()
+                start_date = (datetime.now() - timedelta(days=5)).date()
             else:
-                start_date = (datetime.now() - timedelta(days=5*365)).date()
+                start_date = (datetime.now() - timedelta(days=90)).date()
             return {
                 'success': True, 
                 'start': str(start_date), 
@@ -480,7 +505,7 @@ def get_data_bounds(timeframe: str = '1d') -> Dict:
         }
     except Exception as e:
         return {'success': False, 'message': str(e)}
-
+    
 # Пример использования
 if __name__ == "__main__":
     # Тестирование для разных таймфреймов
