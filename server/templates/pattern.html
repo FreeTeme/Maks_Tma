@@ -118,8 +118,9 @@
             background: linear-gradient(180deg, var(--bg-2), var(--bg-3));
             flex-shrink: 0;
         }
-        .left-tools, .right-tools { display: flex; gap: 6px; align-items: center; width: 100%; }
-        .left-tools { justify-content: space-between; }
+        .left-tools, .right-tools { display: flex; gap: 6px; align-items: center; }
+        .left-tools { justify-content: space-between; width: 100%; flex-wrap: wrap; }
+        .right-tools { flex-wrap: nowrap; }
         .btn {
             background: #1a222c;
             border: 1px solid var(--border);
@@ -356,6 +357,13 @@
         }
         #nav-analysis:hover {
             background: #16a34a !important;
+        }
+        #nav-volume {
+            background: #1a222c !important;
+            border: 1px solid var(--border);
+        }
+        #nav-volume:hover {
+            background: #212a34 !important;
         }
         #nav-clear {
             background: #dc2626 !important;
@@ -648,6 +656,11 @@
                 min-width: 40px;
                 justify-content: center;
             }
+            
+            /* Hide desktop action buttons on mobile (use mobile-nav instead) */
+            #toggle-volume-btn, #analyze-btn, #clear-btn {
+                display: none !important;
+            }
         }
 
         @media (max-width: 380px) {
@@ -724,7 +737,18 @@
                             <button class="btn active" data-tf="1d">1 день</button>
                             <button class="btn" data-tf="1w">1 неделя</button>
                         </div>
-                        <button id="reset-view-btn" class="btn">Сброс</button>
+                        <div class="right-tools">
+                            <button id="toggle-volume-btn" class="btn" title="Показать/скрыть объем">
+                                <i class="fas fa-chart-bar"></i> Объем
+                            </button>
+                            <button id="reset-view-btn" class="btn">Сброс</button>
+                            <button id="analyze-btn" class="btn analyze" disabled>
+                                <i class="fas fa-chart-line"></i> Анализ
+                            </button>
+                            <button id="clear-btn" class="btn clear">
+                                <i class="fas fa-trash"></i> Очистить
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="chart-wrap">
@@ -742,6 +766,10 @@
                         <button class="control-btn" id="nav-to-selected">
                             <i class="fas fa-search"></i>
                             <span>К выбранным</span>
+                        </button>
+                        <button class="control-btn" id="nav-volume-overlay">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Объем</span>
                         </button>
                         <button class="control-btn" id="nav-patterns">
                             <i class="fas fa-shapes"></i>
@@ -778,6 +806,10 @@
 
     <!-- Mobile Navigation -->
     <div class="mobile-nav">
+        <button class="nav-btn" id="nav-volume">
+            <i class="fas fa-chart-bar"></i>
+            <span>Объем</span>
+        </button>
         <button class="nav-btn" id="nav-analysis">
             <i class="fas fa-chart-line"></i>
             <span>Анализ</span>
@@ -997,7 +1029,7 @@
                 });
                 this.volumeSeries = this.chart.addHistogramSeries({
                     priceScaleId: '',
-					scaleMargins: { top: 0.8, bottom: 0 },
+					scaleMargins: { top: 0.85, bottom: 0 },
 					priceFormat: { type: 'volume' },
 				});
 
@@ -1049,7 +1081,7 @@
 					const v = this.allCandles.map(c => ({
 						time: Math.floor(new Date(c.open_time).getTime() / 1000),
 						value: c.volume,
-						color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'
+						color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
 					}));
 					this.volumeSeries.setData(v);
                     this.chart.timeScale().fitContent();
@@ -1112,6 +1144,7 @@
 				}));
 
 				// Mobile navigation buttons (reduced)
+				const navVolume = document.getElementById('nav-volume'); if (navVolume) navVolume.addEventListener('click', () => this.toggleVolume());
 				const navAnalysis = document.getElementById('nav-analysis'); if (navAnalysis) navAnalysis.addEventListener('click', () => this.analyze());
 				const navClear = document.getElementById('nav-clear'); if (navClear) navClear.addEventListener('click', () => this.showClearConfirmationModal());
 				
@@ -1119,6 +1152,7 @@
 				const navPrev = document.getElementById('nav-prev'); if (navPrev) navPrev.addEventListener('click', () => this.gotoMatch(-1));
 				const navNext = document.getElementById('nav-next'); if (navNext) navNext.addEventListener('click', () => this.gotoMatch(1));
 				const navToSelected = document.getElementById('nav-to-selected'); if (navToSelected) navToSelected.addEventListener('click', () => this.zoomToSelected());
+				const navVolumeOverlay = document.getElementById('nav-volume-overlay'); if (navVolumeOverlay) navVolumeOverlay.addEventListener('click', () => this.toggleVolume());
 				const navPatterns = document.getElementById('nav-patterns'); if (navPatterns) navPatterns.addEventListener('click', () => this.showPatternsModal());
 				const toggleControlsBtn = document.getElementById('toggle-controls-btn'); if (toggleControlsBtn) toggleControlsBtn.addEventListener('click', () => this.toggleChartControls());
 
@@ -1219,12 +1253,37 @@
 					const v = this.allCandles.map(c => ({
 						time: Math.floor(new Date(c.open_time).getTime() / 1000),
 						value: +c.volume,
-						color: (+c.close_price >= +c.open_price) ? 'rgba(34,197,94,0.5)' : 'rgba(239,68,68,0.5)'
+						color: (+c.close_price >= +c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
 					}));
 					this.volumeSeries.setData(v);
                 } else {
                     this.volumeSeries.setData([]);
 				}
+				
+				// Обновляем текст кнопок
+				const buttonText = this.volumeVisible ? 'Скрыть объем' : 'Показать объем';
+				const iconClass = this.volumeVisible ? 'fas fa-chart-bar' : 'fas fa-chart-bar';
+				
+				// Обновляем кнопку в toolbar
+				const toggleVolumeBtn = document.getElementById('toggle-volume-btn');
+				if (toggleVolumeBtn) {
+					toggleVolumeBtn.title = buttonText;
+					toggleVolumeBtn.innerHTML = `<i class="${iconClass}"></i> ${this.volumeVisible ? 'Объем' : 'Объем'}`;
+				}
+				
+				// Обновляем кнопку в мобильной навигации
+				const navVolume = document.getElementById('nav-volume');
+				if (navVolume) {
+					navVolume.innerHTML = `<i class="${iconClass}"></i><span>${this.volumeVisible ? 'Объем' : 'Объем'}</span>`;
+				}
+				
+				// Обновляем кнопку в chart controls overlay
+				const navVolumeOverlay = document.getElementById('nav-volume-overlay');
+				if (navVolumeOverlay) {
+					navVolumeOverlay.innerHTML = `<i class="${iconClass}"></i><span>${this.volumeVisible ? 'Объем' : 'Объем'}</span>`;
+				}
+				
+				this.toast(this.volumeVisible ? 'Объем показан' : 'Объем скрыт');
 			}
 
 			async analyze() {
