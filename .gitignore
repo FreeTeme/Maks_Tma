@@ -1,0 +1,6 @@
+bot/venv/
+server/__pycache__/
+server/app/__pycache__/
+server/app/parsers/__pycache__/
+server/venv/
+server/ai/__pycache__/

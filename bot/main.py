@@ -5,22 +5,24 @@ import pandas as pd
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.filters import Command, CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from urllib.parse import quote
 import io
 from datetime import datetime
 from typing import Union
+from aiogram import Router
 
 # Настройка логгера
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+router = Router()
 
 # Конфигурация
-API_TOKEN = "8071846167:AAH5iIcF8Z_dQ-RrmKEfxYO8mebDZ3T1uTE"
+API_TOKEN = "8165391157:AAHJr_b-FRzZUwM5S_FTM4WLqXUqThYij_k"
 ADMIN_ID = 6850731097
-WEB_APP_URL = "https://vladtichonenko.github.io/test_post1/"
+WEB_APP_URL = "https://app.histobit.twc1.net/"
 
 # Инициализация бота и диспетчера
 bot = Bot(token=API_TOKEN)
@@ -202,6 +204,7 @@ async def send_welcome(message: Message):
     username = message.from_user.username or f"user_{user_id}"
     referrer_id = None
 
+    # Обработка реферальной системы
     if len(message.text.split()) > 1:
         try:
             referrer_id = int(message.text.split()[1])
@@ -213,21 +216,21 @@ async def send_welcome(message: Message):
     add_user(user_id, username, referrer_id)
     balance = get_balance(user_id)
 
-    # Формируем URL с данными
-    posts = get_posts()
-    posts_param = "|".join([f"{p[1]}~{p[2]}~{p[3]}~{p[4]}" for p in posts])
-    posts_param = quote(posts_param)
-    url_with_data = f"{WEB_APP_URL}?user_id={user_id}"
+    # Создаем URL для веб-приложения
+    web_app_url = f"https://app.histobit.twc1.net/?user_id={user_id}"
 
-    # Создаем клавиатуру
+    # Создаем клавиатуру с Web App кнопкой
     builder = InlineKeyboardBuilder()
-    builder.button(text="Перейти в HistoBit", url=url_with_data)
+    builder.button(
+        text="🎮 Открыть HistoBit", 
+        web_app=WebAppInfo(url=web_app_url)
+    )
 
     referral_link = f"https://t.me/HistoBit_bot?start={user_id}"
     message_text = (
         f"👋 Привет, {message.from_user.first_name}!\n"
         f"🏆 Твой баланс: {balance} баллов\n\n"
-        "Нажмите кнопку ниже, чтобы перейти в наше приложение:"
+        "Нажмите кнопку ниже, чтобы открыть приложение:"
     )
 
     await message.answer(message_text, reply_markup=builder.as_markup())
