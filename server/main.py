@@ -730,19 +730,36 @@ def pattern_bounds():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # Добавляем новые импорты и роуты
+from functools import lru_cache
+import time
+
+# Глобальный кэш для данных
+data_cache = {}
+CACHE_TIMEOUT = 300  # 5 минут
+
 @app.route('/api/ohlcv', methods=['GET'])
 def api_ohlcv():
-    """Возвращает данные OHLCV через функцию из main.py"""
+    """Оптимизированный эндпоинт с кэшированием"""
     try:
         source = request.args.get('source', 'binance')
         from_date = request.args.get('from')
         to_date = request.args.get('to')
-        timeframe = request.args.get('timeframe', '1d')  # Добавляем параметр таймфрейма
+        timeframe = request.args.get('timeframe', '1d')
+        
+        # Ключ для кэша
+        cache_key = f"{source}_{timeframe}_{from_date}_{to_date}"
+        
+        # Проверяем кэш
+        if cache_key in data_cache:
+            cached_data, timestamp = data_cache[cache_key]
+            if time.time() - timestamp < CACHE_TIMEOUT:
+                return jsonify(cached_data)
         
         if source == 'binance':
-            # Используем функцию из main.py для получения данных с таймфреймом
             result = get_ohlcv_data(from_date, to_date, timeframe)
             if result['success']:
+                # Сохраняем в кэш
+                data_cache[cache_key] = (result, time.time())
                 return jsonify(result)
             else:
                 return jsonify({'success': False, 'message': result['message']}), 500
@@ -751,11 +768,10 @@ def api_ohlcv():
             
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-    
 
 @app.route('/analyze_pattern', methods=['POST'])
 def analyze_pattern():
-    """Анализ паттерна через функцию из main.py"""
+    """Оптимизированный анализ с кэшированием"""
     try:
         data = request.get_json()
         required_fields = ['num_candles', 'candles']
@@ -763,19 +779,29 @@ def analyze_pattern():
         if not all(field in data for field in required_fields):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
-        # Получаем таймфрейм из запроса (по умолчанию '1d')
         timeframe = data.get('timeframe', '1d')
         
-        # Используем функцию из main.py для анализа с таймфреймом
+        # Создаем ключ для кэша на основе выбранных свечей
+        pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
+        cache_key = f"analysis_{timeframe}_{pattern_hash}"
+        
+        # Проверяем кэш
+        if cache_key in data_cache:
+            cached_result, timestamp = data_cache[cache_key]
+            if time.time() - timestamp < CACHE_TIMEOUT:
+                return jsonify(cached_result)
+        
         result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe)
         
         if 'error' in result:
             return jsonify({'success': False, 'message': result['error']}), 500
         
+        # Кэшируем результат
+        data_cache[cache_key] = (result, time.time())
         return jsonify(result)
         
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
+    
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5010, debug=True)
