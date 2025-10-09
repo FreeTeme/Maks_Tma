@@ -173,6 +173,9 @@ def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
         print(f"Успешно загружено {len(df)} записей для таймфрейма {timeframe}")
         print(f"Период данных: {df['date'].min()} - {df['date'].max()}")
         
+        # Убедимся, что даты не имеют часового пояса
+        df['date'] = df['date'].dt.tz_localize(None)
+        
         # Проверяем, что данные охватывают нужный период
         data_start = df['date'].min()
         data_end = df['date'].max()
@@ -212,6 +215,7 @@ def build_features_fast(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame
     vol_median = df['volume'].median()
     vol_rel = df['volume'] / max(vol_median, 1)
     
+    # Более точное вычисление направления (1 для бычьей, -1 для медвежьей, 0 для нейтральной)
     direction = np.where(df['close'] > df['open'], 1.0, 
                         np.where(df['close'] < df['open'], -1.0, 0.0))
     
@@ -353,6 +357,10 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         if not selected_candles or len(selected_candles) == 0:
             return {"error": "No candles selected for analysis"}
         
+        # Проверяем соответствие количества свечей
+        if len(selected_candles) != num_candles:
+            return {"error": f"Number of candles mismatch: expected {num_candles}, got {len(selected_candles)}"}
+        
         # Создаем ключ для кэша анализа
         pattern_hash = hash(tuple(
             (c['open_time'], c['close_price']) for c in selected_candles
@@ -372,44 +380,177 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         if ohlcv_df.empty:
             return {"error": "Failed to load historical data"}
         
+        # Убедимся, что даты в ohlcv_df не имеют часового пояса
+        ohlcv_df['date'] = ohlcv_df['date'].dt.tz_localize(None)
+        
         # Строим признаки
         features_df = build_features_fast(ohlcv_df, timeframe)
         
-        # Парсим даты
-        start_date = pd.to_datetime(selected_candles[0]['open_time']).strftime('%Y-%m-%d %H:%M:%S')
-        end_date = pd.to_datetime(selected_candles[-1]['close_time']).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Загружено {len(ohlcv_df)} исторических свечей")
+        print(f"Диапазон исторических данных: {ohlcv_df['date'].min()} - {ohlcv_df['date'].max()}")
         
-        print(f"Быстрый поиск паттерна с {start_date} по {end_date}")
-        print(f"Всего свечей в истории: {len(features_df)}")
-        print(f"Период данных для анализа: {features_df['date'].min()} - {features_df['date'].max()}")
+        # Получаем даты выбранных свечей и преобразуем их к формату исторических данных
+        selected_dates = []
+        selected_directions = []  # Сохраняем направления выбранных свечей
         
-        # Используем быстрый поиск
-        result = find_similar_patterns_fast(
-            features_df,
-            ohlcv_df,
-            start_date,
-            end_date,
-            timeframe=timeframe,
-            max_threshold=SIMILAR_THRESHOLD
-        )
+        for candle in selected_candles:
+            try:
+                # Преобразуем open_time к тому же формату, что и в исторических данных
+                open_time = pd.to_datetime(candle['open_time'])
+                
+                # Убираем часовой пояс, если он есть
+                if open_time.tz is not None:
+                    open_time = open_time.tz_localize(None)
+                
+                # Для дневных данных нормализуем до даты (без времени)
+                if timeframe == '1d':
+                    open_time = open_time.normalize()
+                
+                selected_dates.append(open_time)
+                
+                # Определяем направление выбранной свечи
+                open_price = float(candle['open_price'])
+                close_price = float(candle['close_price'])
+                direction = 1 if close_price > open_price else (-1 if close_price < open_price else 0)
+                selected_directions.append(direction)
+                
+                print(f"Выбранная свеча: {candle['open_time']} -> {open_time}, направление: {direction}")
+            except Exception as e:
+                print(f"Ошибка преобразования даты {candle['open_time']}: {e}")
+                return {"error": f"Invalid date format: {candle['open_time']}"}
         
-        print(f"Быстрый анализ завершен. Найдено: {result['matches_found']} совпадений")
+        # Находим индексы выбранных свечей в features_df
+        pat_idx = []
+        pattern_directions = []  # Сохраняем направления найденных свечей паттерна
+        
+        for selected_date, expected_direction in zip(selected_dates, selected_directions):
+            # Ищем ближайшую дату в исторических данных
+            time_diff = np.abs(features_df['date'] - selected_date)
+            closest_idx = time_diff.idxmin()
+            closest_date = features_df.loc[closest_idx, 'date']
+            closest_diff = time_diff.loc[closest_idx]
+            
+            # Проверяем, что дата достаточно близкая (максимум 1 день разницы для дневных данных)
+            max_diff = pd.Timedelta(days=1) if timeframe == '1d' else pd.Timedelta(hours=1)
+            
+            if closest_diff <= max_diff:
+                # Проверяем направление свечи
+                actual_direction = features_df.loc[closest_idx, 'direction']
+                if abs(actual_direction - expected_direction) > 0.5:  # Допускаем небольшую погрешность
+                    print(f"Направление не совпадает: ожидалось {expected_direction}, получено {actual_direction}")
+                    return {"error": f"Direction mismatch for candle at {selected_date}"}
+                
+                pat_idx.append(closest_idx)
+                pattern_directions.append(actual_direction)
+                print(f"Найдена соответствущая свеча: {selected_date} -> {closest_date} (разница: {closest_diff}), направление: {actual_direction}")
+            else:
+                print(f"Не удалось найти близкую свечу для {selected_date}. Ближайшая: {closest_date} (разница: {closest_diff})")
+                return {"error": f"Could not find matching candle for date {selected_date}"}
+        
+        if len(pat_idx) != num_candles:
+            return {"error": f"Could not find all selected candles in historical data: found {len(pat_idx)}, expected {num_candles}"}
+        
+        # Сортируем индексы по порядку (они уже должны быть в правильном порядке)
+        pat_idx.sort()
+        
+        print(f"Найден паттерн из {len(pat_idx)} свечей в исторических данных")
+        print(f"Индексы паттерна: {pat_idx}")
+        print(f"Направления паттерна: {pattern_directions}")
+        
+        # Получаем матрицу признаков паттерна
+        pattern_matrix = features_df.loc[pat_idx, ['body', 'vol_rel', 'upper', 'lower']].values
+        
+        # Ищем ВО ВСЕХ данных до начала паттерна
+        pattern_start_date = features_df.loc[pat_idx[0], 'date']
+        search_mask = (features_df['date'] < pattern_start_date)
+        search_indices = features_df.index[search_mask].tolist()
+        
+        print(f"Поиск паттернов в {len(search_indices)} возможных окнах...")
+        
+        # Подготавливаем данные для векторных вычислений
+        feature_matrix = features_df[['body', 'vol_rel', 'upper', 'lower']].values
+        direction_matrix = features_df['direction'].values
+        
+        matches = []
+        matched_patterns = []
+        
+        # Ограничиваем количество проверяемых окон для скорости
+        max_windows = min(1500, len(search_indices))
+        step = max(1, len(search_indices) // max_windows)
+        
+        print(f"Проверяем {max_windows} окон с шагом {step}")
+        
+        # Собираем окна для проверки
+        windows_to_check = []
+        valid_indices = []
+        
+        for i in search_indices[::step]:
+            j = i + num_candles - 1
+            if j < len(features_df):
+                windows_to_check.append(feature_matrix[i:j+1])
+                valid_indices.append(i)
+        
+        if windows_to_check:
+            # Векторизованное вычисление расстояний для всех окон сразу
+            windows_array = np.array(windows_to_check)
+            distances = fast_pattern_distance_matrix(pattern_matrix, windows_array)
+            
+            # Находим совпадения
+            for idx, distance in enumerate(distances):
+                if distance <= SIMILAR_THRESHOLD * num_candles:  # Адаптивный порог
+                    i = valid_indices[idx]
+                    j = i + num_candles - 1
+                    
+                    # Проверяем, что направления свечей совпадают с выбранным паттерном
+                    candidate_directions = direction_matrix[i:j+1]
+                    if not np.array_equal(pattern_directions, candidate_directions):
+                        print(f"Пропускаем кандидата {i}-{j} из-за несовпадения направлений")
+                        continue
+                    
+                    matches.append((i, j))
+                    
+                    # Сохраняем данные паттерна
+                    pattern_data = []
+                    for k in range(num_candles):
+                        candle_idx = i + k
+                        candle_date = features_df.loc[candle_idx, 'date']
+                        ohlcv_row = ohlcv_df[ohlcv_df['date'] == candle_date].iloc[0]
+                        
+                        pattern_data.append({
+                            'date': candle_date,
+                            'open': float(ohlcv_row['open']),
+                            'high': float(ohlcv_row['high']),
+                            'low': float(ohlcv_row['low']),
+                            'close': float(ohlcv_row['close']),
+                            'volume': float(ohlcv_row['volume']),
+                            'direction': 'bullish' if features_df.loc[candle_idx, 'direction'] > 0 else 'bearish',
+                            'timeframe': timeframe
+                        })
+                    
+                    matched_patterns.append(pattern_data)
+                    print(f"Найден подходящий паттерн: {i}-{j} с расстоянием {distance}")
+        
+        print(f"Найдено {len(matches)} совпадений")
+        
+        # Упрощенная статистика для скорости
+        stat_counts = {"Matches": len(matches)}
+        stat_perc = {"Matches": 100.0} if matches else {}
         
         response = {
             'success': True,
             'pattern_info': {
-                'pattern_start': result['pattern_start'],
-                'pattern_end': result['pattern_end'],
-                'pattern_len': result['pattern_len'],
-                'timeframe': result['timeframe']
+                'pattern_start': str(features_df.loc[pat_idx[0], 'date']),
+                'pattern_end': str(features_df.loc[pat_idx[-1], 'date']),
+                'pattern_len': num_candles,
+                'timeframe': timeframe
             },
             'statistics': {
-                'matches_found': result['matches_found'],
-                'distribution_counts': result['distribution_counts'],
-                'distribution_percents': result['distribution_percents']
+                'matches_found': len(matches),
+                'distribution_counts': stat_counts,
+                'distribution_percents': stat_perc
             },
-            'matched_patterns': result['matched_patterns'],
-            'price_changes': result['price_changes']
+            'matched_patterns': matched_patterns,
+            'price_changes': [0] * len(matches)
         }
         
         # Сохраняем в кэш
@@ -419,8 +560,10 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         
     except Exception as e:
         print(f"Ошибка быстрого анализа: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"error": f"Analysis error: {str(e)}"}
-
+    
 # Сохраняем оригинальные функции для совместимости
 def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
     return fetch_binance_ohlcv_fast(start_date, end_date, timeframe)
@@ -442,30 +585,35 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
         
         if start_date:
             start_dt = pd.to_datetime(start_date)
+            # Убираем часовой пояс для сравнения
+            if start_dt.tz is not None:
+                start_dt = start_dt.tz_localize(None)
             df = df[df['date'] >= start_dt]
         if end_date:
             end_dt = pd.to_datetime(end_date)
+            # Убираем часовой пояс для сравнения
+            if end_dt.tz is not None:
+                end_dt = end_dt.tz_localize(None)
             df = df[df['date'] <= end_dt]
             
         records = []
         for _, row in df.iterrows():
             open_time = row['date']
             
+            # Для всех таймфреймов используем одинаковый формат даты
+            time_format = '%Y-%m-%dT%H:%M:%SZ'
+            
+            # Вычисляем close_time в зависимости от таймфрейма
             if timeframe == '15m':
                 close_time = open_time + timedelta(minutes=15)
-                time_format = '%Y-%m-%dT%H:%M:%SZ'
             elif timeframe == '1h':
                 close_time = open_time + timedelta(hours=1)
-                time_format = '%Y-%m-%dT%H:%M:%SZ'
             elif timeframe == '1d':
                 close_time = open_time + timedelta(days=1)
-                time_format = '%Y-%m-%dT%H:%M:%SZ'
             elif timeframe == '1w':
                 close_time = open_time + timedelta(weeks=1)
-                time_format = '%Y-%m-%dT%H:%M:%SZ'
             else:
                 close_time = open_time + timedelta(days=1)
-                time_format = '%Y-%m-%dT%H:%M:%SZ'
             
             records.append({
                 'open_time': open_time.strftime(time_format),

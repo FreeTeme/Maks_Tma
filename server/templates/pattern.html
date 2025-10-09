@@ -1286,34 +1286,46 @@
 				this.toast(this.volumeVisible ? 'Объем показан' : 'Объем скрыт');
 			}
 
-			async analyze() {
-				if (this.selectedIndices.size === 0) return;
-				const order = [...this.selectedIndices].sort((a,b) => a-b);
-				const candles = order.map(i => this.allCandles[i]);
-				const payload = { num_candles: candles.length, candles, timeframe: this.currentTimeframe };
-				// UI state
-				const btn = document.getElementById('analyze-btn');
-				const loader = this.ensureLoader();
-				if (btn) btn.disabled = true; 
-				loader.style.display = 'flex';
-				try {
-					const res = await fetch('/analyze_pattern', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-					const data = await res.json();
-					if (!res.ok || !data.success) throw new Error(data.message || 'Ошибка анализа');
-					this.renderResults(data);
-					this.drawPatternMarkers(data.matched_patterns);
-					if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
-					this.toast('Анализ завершён');
-					// Show chart controls after analysis
-					const chartControls = document.getElementById('chart-controls');
-					if (chartControls) chartControls.classList.add('visible');
-					// Переключаем в режим анализа с высокой чувствительностью
-					this.switchToAnalysisMode();
-				} catch (e) {
-					this.toast('Ошибка: ' + e.message);
+            async analyze() {
+                if (this.selectedIndices.size === 0) return;
+                const order = [...this.selectedIndices].sort((a,b) => a-b);
+                const candles = order.map(i => this.allCandles[i]);
+                
+                // Исправляем: отправляем точное количество выбранных свечей
+                const payload = { 
+                    num_candles: this.selectedIndices.size, // Используем реальное количество выбранных свечей
+                    candles, 
+                    timeframe: this.currentTimeframe 
+                };
+                
+                // UI state
+                const btn = document.getElementById('analyze-btn');
+                const loader = this.ensureLoader();
+                if (btn) btn.disabled = true; 
+                loader.style.display = 'flex';
+                
+                try {
+                    const res = await fetch('/analyze_pattern', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(payload) 
+                    });
+                    const data = await res.json();
+                    if (!res.ok || !data.success) throw new Error(data.message || 'Ошибка анализа');
+                    this.renderResults(data);
+                    this.drawPatternMarkers(data.matched_patterns);
+                    if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
+                    this.toast('Анализ завершён');
+                    
+                    // Show chart controls after analysis
+                    const chartControls = document.getElementById('chart-controls');
+                    if (chartControls) chartControls.classList.add('visible');
+                    this.switchToAnalysisMode();
+                } catch (e) {
+                    this.toast('Ошибка: ' + e.message);
                 } finally {
-					if (btn) btn.disabled = this.selectedIndices.size === 0;
-					loader.style.display = 'none';
+                    if (btn) btn.disabled = this.selectedIndices.size === 0;
+                    loader.style.display = 'none';
                 }
             }
 
