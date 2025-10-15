@@ -4,3 +4,5 @@ server/app/__pycache__/
 server/app/parsers/__pycache__/
 server/venv/
 server/ai/__pycache__/
+server/cache/
+server/pattern_cache/
