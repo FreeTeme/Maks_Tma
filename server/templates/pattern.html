@@ -732,8 +732,8 @@
                 <div class="toolbar">
                     <div class="left-tools">
                         <div class="tf">
-                            <button class="btn" data-tf="15m">15мин</button>
                             <button class="btn" data-tf="1h">1 час</button>
+                            <button class="btn" data-tf="4h">4 часа</button>
                             <button class="btn active" data-tf="1d">1 день</button>
                             <button class="btn" data-tf="1w">1 неделя</button>
                         </div>
@@ -1350,7 +1350,7 @@
 				(result.matched_patterns || []).forEach((pat, i) => {
 					const first = pat[0];
 					const last = pat[pat.length-1];
-					const change = ((last.close - first.open) / first.open) * 100;
+                    const change = result.price_changes ? result.price_changes[i] : 0;					
 					this.matchedRanges.push([ Math.floor(new Date(first.date).getTime()/1000), Math.floor(new Date(last.date).getTime()/1000) ]);
 					const el = document.createElement('div');
 					el.className = 'match';
@@ -1626,8 +1626,8 @@
 					
 					// Обновляем отображение таймфрейма в header
 					const timeframeMap = {
-						'15m': '15мин',
 						'1h': '1ч',
+						'4h': '4ч',
 						'1d': '1Д',
 						'1w': '1Н'
 					};

@@ -19,7 +19,6 @@ SIMILAR_THRESHOLD = 0.18
 
 # Словарь для преобразования таймфреймов в интервалы Binance
 TIMEFRAME_MAP = {
-    '15m': '15m',
     '1h': '1h', 
     '4h': '4h',
     '1d': '1d',
@@ -49,7 +48,7 @@ def save_to_cache(key, data):
         pass
 
 def load_from_cache(key):
-    """Загружает данные из кэша"""
+    """Загружает данные из кэш"""
     try:
         cache_file = CACHE_DIR / f"{key}.pkl"
         if cache_file.exists():
@@ -249,6 +248,141 @@ def fast_pattern_distance_matrix(pattern_features, window_features):
     
     return distances
 
+def calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1):
+    """
+    Вычисление изменения цены с медианной статистикой
+    
+    Формула расчета для каждого паттерна:
+    price_change = (close_next - close_pattern) / close_pattern * 100
+    
+    где:
+    - close_pattern: цена закрытия последней свечи паттерна
+    - close_next: цена закрытия следующей свечи после паттерна
+    """
+    price_changes = []
+    directions = []  # Для статистики направлений
+    
+    for pattern in matched_patterns:
+        if not pattern:
+            price_changes.append(0.0)
+            directions.append(0)
+            continue
+            
+        # Последняя свеча паттерна
+        last_pattern_candle = pattern[-1]
+        pattern_end_date = last_pattern_candle['date']
+        
+        # Находим следующую свечу после паттерна
+        future_candles = ohlcv_df[ohlcv_df['date'] > pattern_end_date]
+        
+        if len(future_candles) >= candles_after:
+            # Берём свечу через N периодов после паттерна
+            future_candle = future_candles.iloc[candles_after - 1]
+            
+            # Цена закрытия последней свечи паттерна
+            pattern_close_price = last_pattern_candle['close']
+            
+            # Цена закрытия через N свечей после паттерна
+            future_close_price = future_candle['close']
+            
+            # Процентное изменение по формуле: (новое - старое) / старое * 100
+            price_change_pct = (future_close_price - pattern_close_price) / pattern_close_price * 100
+            rounded_change = round(price_change_pct, 2)
+            price_changes.append(rounded_change)
+            
+            # Определяем направление (1 = рост, -1 = падение, 0 = без изменений)
+            if rounded_change > 0.1:  # Порог 0.1% чтобы избежать шума
+                directions.append(1)
+            elif rounded_change < -0.1:
+                directions.append(-1)
+            else:
+                directions.append(0)
+        else:
+            # Если данных недостаточно, возвращаем 0
+            price_changes.append(0.0)
+            directions.append(0)
+    
+    # Медианная статистика
+    stats = calculate_median_statistics(price_changes, directions)
+    
+    return price_changes, stats
+
+def calculate_median_statistics(price_changes, directions):
+    """
+    Расчет медианной статистики по всем паттернам
+    
+    Формулы расчета:
+    1. Медиана = серединное значение отсортированного массива
+    2. Проценты = (количество_случаев / общее_количество) * 100
+    3. Топ-20% медиана = медиана первых 20% отсортированных значений
+    4. Нижние-20% медиана = медиана последних 20% отсортированных значений
+    """
+    if not price_changes:
+        return {
+            'median_change': 0,
+            'bullish_percentage': 0,
+            'bearish_percentage': 0,
+            'neutral_percentage': 0,
+            'top_20_percent_median': 0,
+            'bottom_20_percent_median': 0,
+            'success_rate': 0,
+            'total_patterns': 0
+        }
+    
+    # Фильтруем нули (паттерны без данных)
+    valid_changes = [ch for ch in price_changes if ch != 0]
+    valid_directions = [dir for i, dir in enumerate(directions) if price_changes[i] != 0]
+    
+    if not valid_changes:
+        return {
+            'median_change': 0,
+            'bullish_percentage': 0,
+            'bearish_percentage': 0,
+            'neutral_percentage': 0,
+            'top_20_percent_median': 0,
+            'bottom_20_percent_median': 0,
+            'success_rate': 0,
+            'total_patterns': len(price_changes)
+        }
+    
+    # Основная медиана - серединное значение отсортированного массива
+    median_change = float(np.median(valid_changes))
+    
+    # Статистика направлений
+    total = len(valid_directions)
+    bullish_count = sum(1 for d in valid_directions if d == 1)
+    bearish_count = sum(1 for d in valid_directions if d == -1)
+    neutral_count = sum(1 for d in valid_directions if d == 0)
+    
+    # Проценты по формуле: (количество / общее_количество) * 100
+    bullish_percentage = round((bullish_count / total) * 100, 1) if total > 0 else 0
+    bearish_percentage = round((bearish_count / total) * 100, 1) if total > 0 else 0
+    neutral_percentage = round((neutral_count / total) * 100, 1) if total > 0 else 0
+    
+    # Медиана топ-20% лучших результатов
+    sorted_changes = sorted(valid_changes, reverse=True)
+    top_20_count = max(1, len(sorted_changes) // 5)  # 20%
+    top_20_median = float(np.median(sorted_changes[:top_20_count]))
+    
+    # Медиана нижних-20% худших результатов
+    bottom_20_count = max(1, len(sorted_changes) // 5)  # 20%
+    bottom_20_median = float(np.median(sorted_changes[-bottom_20_count:]))
+    
+    # Success rate (процент паттернов с положительным исходом)
+    success_rate = round((bullish_count / total) * 100, 1) if total > 0 else 0
+    
+    return {
+        'median_change': round(median_change, 2),
+        'bullish_percentage': bullish_percentage,
+        'bearish_percentage': bearish_percentage,
+        'neutral_percentage': neutral_percentage,
+        'top_20_percent_median': round(top_20_median, 2),
+        'bottom_20_percent_median': round(bottom_20_median, 2),
+        'success_rate': success_rate,
+        'total_patterns': len(price_changes),
+        'valid_patterns': len(valid_changes)
+    }
+
 def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, 
                               pattern_start_date: str, pattern_end_date: str, 
                               timeframe: str = '1d', max_threshold: float = SIMILAR_THRESHOLD) -> Dict:
@@ -289,7 +423,7 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
     
     print(f"Проверяем {max_windows} окон с шагом {step}")
     
-    # Собираем окна для проверки
+    # Собираем окна для проверка
     windows_to_check = []
     valid_indices = []
     
@@ -333,6 +467,9 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
     
     print(f"Найдено {len(matches)} совпадений")
     
+    # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
+    price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
+    
     # Упрощенная статистика для скорости
     stat_counts = {"Matches": len(matches)}
     stat_perc = {"Matches": 100.0} if matches else {}
@@ -348,7 +485,8 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
         "distribution_counts": stat_counts,
         "distribution_percents": stat_perc,
         "matched_patterns": matched_patterns,
-        "price_changes": [0] * len(matches)
+        "price_changes": price_changes,  # Теперь реальные данные, а не нули
+        "performance_stats": performance_stats  # Медианная статистика
     }
 
 def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d') -> Dict:
@@ -532,6 +670,9 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         
         print(f"Найдено {len(matches)} совпадений")
         
+        # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
+        price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
+        
         # Упрощенная статистика для скорости
         stat_counts = {"Matches": len(matches)}
         stat_perc = {"Matches": 100.0} if matches else {}
@@ -550,7 +691,8 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
                 'distribution_percents': stat_perc
             },
             'matched_patterns': matched_patterns,
-            'price_changes': [0] * len(matches)
+            'price_changes': price_changes,  # Теперь реальные данные, а не нули
+            'performance_stats': performance_stats  # Медианная статистика
         }
         
         # Сохраняем в кэш
@@ -604,10 +746,10 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
             time_format = '%Y-%m-%dT%H:%M:%SZ'
             
             # Вычисляем close_time в зависимости от таймфрейма
-            if timeframe == '15m':
-                close_time = open_time + timedelta(minutes=15)
-            elif timeframe == '1h':
+            if timeframe == '1h':
                 close_time = open_time + timedelta(hours=1)
+            elif timeframe == '4h':
+                close_time = open_time + timedelta(hours=4)
             elif timeframe == '1d':
                 close_time = open_time + timedelta(days=1)
             elif timeframe == '1w':
