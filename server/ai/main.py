@@ -160,7 +160,7 @@ def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
     try:
         # Всегда загружаем с 2017 года по текущий день
         start_date = "2017-01-01"
-        end_date = datetime.now().strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         
         print(f"Загрузка полных данных {timeframe} с {start_date} по {end_date}")
         df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe)

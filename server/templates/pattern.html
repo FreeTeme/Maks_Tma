@@ -1041,66 +1041,90 @@
 
             async loadData() {
                 try {
-					// Узнаём реальные границы датасета на сервере и синхронизируемся
-					let dsStart = new Date('2018-01-01T00:00:00Z');
-					let dsEnd = new Date();
-					try {
-						const b = await fetch(`/api/pattern_bounds?timeframe=${this.currentTimeframe}`);
-						if (b.ok) {
-							const j = await b.json();
-							if (j.success) { dsStart = new Date(j.start + 'T00:00:00Z'); dsEnd = new Date(j.end + 'T00:00:00Z'); }
-						}
-					} catch(_) {}
-					this.datasetStart = dsStart; this.datasetEnd = dsEnd;
-					// Загружаем реальные свечи с сервера
-					const api = await fetch(`/api/ohlcv?source=binance&from=${dsStart.toISOString().slice(0,10)}&to=${dsEnd.toISOString().slice(0,10)}&timeframe=${this.currentTimeframe}`);
-					if (!api.ok) throw new Error('Не удалось загрузить OHLCV');
-					const aj = await api.json();
-					if (!aj.success) throw new Error(aj.message || 'Ошибка загрузки OHLCV');
-					this.allCandles = aj.candles || [];
+                    // Узнаём реальные границы датасета на сервере и синхронизируемся
+                    let dsStart = new Date('2018-01-01T00:00:00Z');
+                    let dsEnd = new Date();
+                    try {
+                        const b = await fetch(`/api/pattern_bounds?timeframe=${this.currentTimeframe}`);
+                        if (b.ok) {
+                            const j = await b.json();
+                            if (j.success) { 
+                                dsStart = new Date(j.start + 'T00:00:00Z'); 
+                                dsEnd = new Date(j.end + 'T23:59:59Z'); 
+                            }
+                        }
+                    } catch(_) {}
+                    
+                    this.datasetStart = dsStart; 
+                    this.datasetEnd = dsEnd;
+                    
+                    // Добавляем 1 день к конечной дате
+                    const nextDay = new Date(dsEnd);
+                    nextDay.setDate(dsEnd.getDate() + 1);
+                    
+                    // Загружаем реальные свечи с сервера
+                    const api = await fetch(
+                        `/api/ohlcv?source=binance` +
+                        `&from=${dsStart.toISOString().slice(0,10)}` +
+                        `&to=${nextDay.toISOString().slice(0,10)}` +
+                        `&timeframe=${this.currentTimeframe}`
+                    );
+                    
+                    if (!api.ok) throw new Error('Не удалось загрузить OHLCV');
+                    const aj = await api.json();
+                    if (!aj.success) throw new Error(aj.message || 'Ошибка загрузки OHLCV');
+                    this.allCandles = aj.candles || [];
 
-					if (!Array.isArray(this.allCandles) || this.allCandles.length === 0) {
-						throw new Error('Пустой набор свечей');
-					}
-					// Нормализация типов
-					this.allCandles = this.allCandles.map(c => ({
-						open_time: c.open_time,
-						close_time: c.close_time,
-						open_price: Number(c.open_price),
-						close_price: Number(c.close_price),
-						high: Number(c.high),
-						low: Number(c.low),
-						volume: Number(c.volume),
-					}));
-					const k = this.allCandles.map(c => ({
-						time: Math.floor(new Date(c.open_time).getTime() / 1000),
-						open: c.open_price, high: c.high, low: c.low, close: c.close_price,
-					}));
-					this.candleSeries.setData(k);
+                    if (!Array.isArray(this.allCandles) || this.allCandles.length === 0) {
+                        throw new Error('Пустой набор свечей');
+                    }
+                    
+                    // Нормализация типов
+                    this.allCandles = this.allCandles.map(c => ({
+                        open_time: c.open_time,
+                        close_time: c.close_time,
+                        open_price: Number(c.open_price),
+                        close_price: Number(c.close_price),
+                        high: Number(c.high),
+                        low: Number(c.low),
+                        volume: Number(c.volume),
+                    }));
+                    
+                    const k = this.allCandles.map(c => ({
+                        time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                        open: c.open_price, high: c.high, low: c.low, close: c.close_price,
+                    }));
+                    this.candleSeries.setData(k);
 
-					const v = this.allCandles.map(c => ({
-						time: Math.floor(new Date(c.open_time).getTime() / 1000),
-						value: c.volume,
-						color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
-					}));
-					this.volumeSeries.setData(v);
+                    const v = this.allCandles.map(c => ({
+                        time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                        value: c.volume,
+                        color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
+                    }));
+                    this.volumeSeries.setData(v);
+                    
                     this.chart.timeScale().fitContent();
-                    setTimeout(() => { try { this.chart.timeScale().fitContent(); } catch(_){} }, 0);
-					// Zoom-in to make candles visually larger (60% closer for easier interaction)
-					setTimeout(() => {
-						const range = this.chart.timeScale().getVisibleRange();
-						if (range) {
-							const pad = Math.floor((range.to - range.from) * 0.60);
-							this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
-						}
-						this.redrawOverlay();
-					}, 100);
-				} catch (e) {
-					console.error(e);
-					alert('Не удалось загрузить исторические данные.');
-				}
-			}
-
+                    setTimeout(() => { 
+                        try { 
+                            this.chart.timeScale().fitContent(); 
+                        } catch(_){} 
+                    }, 0);
+                    
+                    // Zoom-in to make candles visually larger (60% closer for easier interaction)
+                    setTimeout(() => {
+                        const range = this.chart.timeScale().getVisibleRange();
+                        if (range) {
+                            const pad = Math.floor((range.to - range.from) * 0.60);
+                            this.chart.timeScale().setVisibleRange({ from: range.from + pad, to: range.to - pad });
+                        }
+                        this.redrawOverlay();
+                    }, 100);
+                    
+                } catch (e) {
+                    console.error(e);
+                    alert('Не удалось загрузить исторические данные.');
+                }
+            }
 			generateData(startDate = new Date('2018-01-01T00:00:00Z'), endDate = new Date()) {
 				const out = [];
 				let d = new Date(startDate);
