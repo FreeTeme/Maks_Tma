@@ -211,16 +211,318 @@
             padding: 8px;
             background: #0f151b;
             cursor: pointer;
-            transition: 0.15s ease;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        .match:hover { background: #131a21; border-color: #2a3847; }
+        .match:hover { 
+            background: #131a21; 
+            border-color: #2a3847; 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .match::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+        .match:hover::before {
+            left: 100%;
+        }
+        .match.active {
+            background: linear-gradient(135deg, #1a222c, #131a21);
+            border-color: var(--accent);
+            box-shadow: 0 4px 16px rgba(247, 147, 26, 0.3);
+            transform: translateY(-2px);
+        }
+        .match.active::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        /* Индикатор активных выбранных свечей */
+        .selected-candles-indicator {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff6b35, #ff8c42);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 6px 16px rgba(255, 107, 53, 0.6); }
+            100% { transform: scale(1); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
+        }
         .match .hdr { display: flex; justify-content: space-between; align-items: center; }
         .match .range { font-size: 11px; color: var(--muted); }
-        .badge { padding: 2px 6px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-        .badge.up { background: rgba(34,197,94,0.15); color: var(--green); }
-        .badge.down { background: rgba(239,68,68,0.15); color: var(--red); }
+        .badge { 
+            padding: 4px 8px; 
+            border-radius: 999px; 
+            font-size: 11px; 
+            font-weight: 700; 
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .badge.up { 
+            background: linear-gradient(135deg, rgba(34,197,94,0.2), rgba(34,197,94,0.1)); 
+            color: var(--green); 
+            border-color: rgba(34,197,94,0.3);
+            box-shadow: 0 2px 8px rgba(34,197,94,0.2);
+        }
+        .badge.down { 
+            background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(239,68,68,0.1)); 
+            color: var(--red); 
+            border-color: rgba(239,68,68,0.3);
+            box-shadow: 0 2px 8px rgba(239,68,68,0.2);
+        }
 
         .footer-note { font-size: 11px; color: var(--muted); text-align: center; padding-top: 4px; }
+        
+        /* Общий анализ паттернов */
+        .pattern-distribution {
+            margin: 12px 0;
+            display: grid;
+            gap: 8px;
+        }
+        
+        .distribution-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .distribution-label {
+            flex: 1;
+            color: var(--muted);
+            font-weight: 500;
+        }
+        
+        .distribution-bar {
+            flex: 2;
+            height: 8px;
+            background: var(--bg-2);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .distribution-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease;
+            position: relative;
+        }
+        
+        .distribution-fill.bullish {
+            background: linear-gradient(90deg, #22c55e, #16a34a);
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+        }
+        
+        .distribution-fill.bearish {
+            background: linear-gradient(90deg, #ef4444, #dc2626);
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+        }
+        
+        .distribution-value {
+            min-width: 30px;
+            text-align: right;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 11px;
+        }
+        
+        /* Недавние паттерны */
+        .recent-patterns {
+            display: grid;
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .recent-pattern {
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .recent-pattern:hover {
+            background: var(--bg-3);
+            border-color: #334153;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .recent-pattern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .recent-pattern:hover::before {
+            left: 100%;
+        }
+        
+        .recent-pattern-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        
+        .recent-pattern-dates {
+            font-size: 11px;
+            color: var(--muted);
+        }
+        
+        .recent-pattern-direction {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .recent-pattern-direction.bullish {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .recent-pattern-direction.bearish {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--red);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .recent-pattern-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 11px;
+        }
+        
+        .recent-pattern-stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .recent-pattern-stat-label {
+            color: var(--muted);
+        }
+        
+        .recent-pattern-stat-value {
+            color: var(--text);
+            font-weight: 600;
+        }
+        
+        .recent-pattern-stat-value.positive {
+            color: var(--green);
+        }
+        
+        .recent-pattern-stat-value.negative {
+            color: var(--red);
+        }
+        
+        /* Анимация загрузки для общего анализа */
+        .general-analysis-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: var(--muted);
+        }
+        
+        .general-analysis-loading i {
+            margin-right: 8px;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Мини-график */
+        .mini-chart-container {
+            margin: 12px 0;
+            padding: 8px;
+            background: var(--bg-2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .mini-chart-container canvas {
+            border-radius: 4px;
+            background: var(--bg-3);
+        }
+        
+        .mini-chart-label {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        
+        /* Статистика производительности */
+        .performance-summary {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            display: grid;
+            gap: 8px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+        
+        .summary-label {
+            color: var(--muted);
+            font-weight: 500;
+        }
+        
+        .summary-value {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        .summary-value.bullish {
+            color: var(--green);
+        }
+        
+        .summary-value.bearish {
+            color: var(--red);
+        }
 
         
         .chart-controls {
@@ -783,8 +1085,48 @@
             </div>
 
             <div class="side" id="side-panel">
+                <!-- Общий анализ паттернов -->
+                <div class="card" id="general-analysis-card">
+                    <h3>Общий анализ рынка</h3>
+                    <div class="stat-list" id="general-stats">
+                        <div class="stat"><span>Всего свечей</span><span class="val" id="total-candles">-</span></div>
+                        <div class="stat"><span>Период данных</span><span class="val" id="data-period">-</span></div>
+                        <div class="stat"><span>Волатильность</span><span class="val" id="volatility">-</span></div>
+                        <div class="stat"><span>Средний объем</span><span class="val" id="avg-volume">-</span></div>
+                    </div>
+                    <div class="pattern-distribution">
+                        <div class="distribution-item">
+                            <span class="distribution-label">Бычьи паттерны</span>
+                            <div class="distribution-bar">
+                                <div class="distribution-fill bullish" id="bullish-bar"></div>
+                            </div>
+                            <span class="distribution-value" id="bullish-count">0</span>
+                        </div>
+                        <div class="distribution-item">
+                            <span class="distribution-label">Медвежьи паттерны</span>
+                            <div class="distribution-bar">
+                                <div class="distribution-fill bearish" id="bearish-bar"></div>
+                            </div>
+                            <span class="distribution-value" id="bearish-count">0</span>
+                        </div>
+                    </div>
+                    <div class="mini-chart-container" id="mini-chart-container" style="display: none;">
+                        <canvas id="mini-chart" width="280" height="80"></canvas>
+                        <div class="mini-chart-label">Тренд цены (последние 30 дней)</div>
+                    </div>
+                    <button class="btn analyze" id="load-general-analysis" style="width: 100%; margin-top: 10px;">
+                        <i class="fas fa-chart-pie"></i> Загрузить анализ
+                    </button>
+                </div>
+                
+                <!-- Недавние паттерны -->
+                <div class="card" id="recent-patterns-card" style="display:none">
+                    <h3>Недавние паттерны</h3>
+                    <div class="recent-patterns" id="recent-patterns-list"></div>
+                </div>
+                
                 <div class="card">
-                    <h3>Итоги</h3>
+                    <h3>Итоги анализа</h3>
                     <div class="stat-list">
                         <div class="stat"><span>Найдено совпадений</span><span class="val" id="matches-found">0</span></div>
                         <div class="stat"><span>Длина паттерна</span><span class="val" id="pattern-length">0</span></div>
@@ -881,6 +1223,16 @@
     </div>
 
     <script>
+		// Вспомогательная функция для безопасного обновления textContent
+		function safeSetTextContent(elementId, text) {
+			const element = document.getElementById(elementId);
+			if (element) {
+				element.textContent = text;
+			} else {
+				console.warn(`Элемент с ID '${elementId}' не найден`);
+			}
+		}
+
 		class PatternChart {
             constructor() {
                 this.chart = null;
@@ -891,7 +1243,16 @@
 				this.selectedIndices = new Set();
 				this.selectedMarkers = new Map();
 				this.patternMarkers = new Map();
-				this.currentTimeframe = '1d'; // Текущий выбранный таймфрейм
+				
+				// Восстанавливаем сохраненный таймфрейм или используем по умолчанию
+				const savedTimeframe = localStorage.getItem('savedTimeframe');
+				this.currentTimeframe = savedTimeframe || '1d';
+				
+				// Очищаем сохраненный таймфрейм после использования
+				if (savedTimeframe) {
+					localStorage.removeItem('savedTimeframe');
+				}
+				
                 this.initChart();
                 this.loadData();
 				this.bindUI();
@@ -1036,7 +1397,15 @@
 				this.chart.subscribeClick(this.onClick.bind(this));
 				window.addEventListener('resize', () => { this.chart.applyOptions({ width: el.clientWidth }); this.resizeOverlay(); this.redrawOverlay(); });
 				this.ensureOverlay();
-				this.chart.timeScale().subscribeVisibleTimeRangeChange(() => this.redrawOverlay());
+				
+				// Подписываемся на изменения видимого диапазона с задержкой для стабильности
+				this.chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+					setTimeout(() => this.redrawOverlay(), 10);
+				});
+				
+				// Добавляем анимацию для пульсирующего эффекта
+				this.animationFrame = null;
+				this.startAnimation();
             }
 
             async loadData() {
@@ -1179,9 +1548,17 @@
 				const navVolumeOverlay = document.getElementById('nav-volume-overlay'); if (navVolumeOverlay) navVolumeOverlay.addEventListener('click', () => this.toggleVolume());
 				const navPatterns = document.getElementById('nav-patterns'); if (navPatterns) navPatterns.addEventListener('click', () => this.showPatternsModal());
 				const toggleControlsBtn = document.getElementById('toggle-controls-btn'); if (toggleControlsBtn) toggleControlsBtn.addEventListener('click', () => this.toggleChartControls());
+				
+				// Общий анализ паттернов
+				const loadGeneralAnalysisBtn = document.getElementById('load-general-analysis');
+				if (loadGeneralAnalysisBtn) {
+					loadGeneralAnalysisBtn.addEventListener('click', () => this.loadGeneralAnalysis());
+				}
 
 				// Clear confirmation modal buttons
 				document.getElementById('confirm-clear-btn').addEventListener('click', () => {
+					// Сохраняем текущий таймфрейм перед перезагрузкой
+					localStorage.setItem('savedTimeframe', this.currentTimeframe);
 					window.location.reload();
 				});
 				document.getElementById('cancel-clear-btn').addEventListener('click', () => this.hideClearConfirmationModal());
@@ -1201,6 +1578,9 @@
 						this.hideClearConfirmationModal();
 					}
 				});
+				
+				// Устанавливаем активный таймфрейм в UI
+				this.setActiveTimeframe();
             }
 
 			onClick(param) {
@@ -1229,13 +1609,52 @@
 				if (analyzeBtn) analyzeBtn.disabled = this.selectedIndices.size === 0;
 				this.selectedMarkers.clear();
 				this.selectedHighlightPoints = [];
-				[...this.selectedIndices].forEach(i => {
+				[...this.selectedIndices].forEach((i, index) => {
 					const t = Math.floor(new Date(this.allCandles[i].open_time).getTime()/1000);
-					this.selectedMarkers.set(i, { time: t, position: 'aboveBar', color: '#ffd54a', shape: 'circle', text: '●', size: 1.2 });
-					this.selectedHighlightPoints.push({ time: t, color: '#ffd54a' });
+					// Более яркие и заметные маркеры для выбранных свечей
+					this.selectedMarkers.set(i, { 
+						time: t, 
+						position: 'aboveBar', 
+						color: '#ff6b35', 
+						shape: 'circle', 
+						text: `${index + 1}`, 
+						size: 1.5,
+						textColor: '#ffffff',
+						backgroundColor: '#ff6b35'
+					});
+					this.selectedHighlightPoints.push({ time: t, color: '#ff6b35', index: index + 1 });
 				});
 				this.applyMarkers();
 				this.redrawOverlay();
+				
+				// Показываем/скрываем индикатор выбранных свечей
+				this.updateSelectedIndicator();
+			}
+			
+			updateSelectedIndicator() {
+				let indicator = document.querySelector('.selected-candles-indicator');
+				if (this.selectedIndices.size > 0) {
+					if (!indicator) {
+						indicator = document.createElement('div');
+						indicator.className = 'selected-candles-indicator';
+						document.body.appendChild(indicator);
+					}
+					indicator.textContent = `Выбрано: ${this.selectedIndices.size} свечей`;
+					indicator.style.display = 'block';
+				} else if (indicator) {
+					indicator.style.display = 'none';
+				}
+			}
+			
+			// Принудительное восстановление выделения выбранных свечей
+			forceRestoreSelection() {
+				if (this.selectedIndices && this.selectedIndices.size > 0) {
+					this.updateSelected();
+					setTimeout(() => {
+						this.redrawOverlay();
+						this.applyMarkers();
+					}, 50);
+				}
 			}
 
 			applyMarkers() {
@@ -1254,6 +1673,9 @@
 				const analyzeBtn = document.getElementById('analyze-btn');
 				if (analyzeBtn) analyzeBtn.disabled = true;
 				this.redrawOverlay();
+				
+				// Скрываем индикатор выбранных свечей
+				this.updateSelectedIndicator();
 			}
 
 			resetView() {
@@ -1268,6 +1690,12 @@
 				}, 50);
 				this.patternMarkers.clear();
 				this.applyMarkers();
+				
+				// ВАЖНО: Восстанавливаем выделение выбранных свечей после сброса
+				if (this.selectedIndices && this.selectedIndices.size > 0) {
+					this.updateSelected();
+				}
+				
 				this.redrawOverlay();
             }
 
@@ -1329,13 +1757,39 @@
                 loader.style.display = 'flex';
                 
                 try {
+                    console.log('Отправляем запрос на анализ паттерна...');
+                    // Создаем AbortController для таймаута
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 минуты таймаут
+                    
                     const res = await fetch('/analyze_pattern', { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(payload) 
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
                     });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    console.log('Получен ответ:', res.status);
+                    
+                    if (!res.ok) {
+                        if (res.status === 408) {
+                            throw new Error('Превышено время ожидания. Попробуйте выбрать меньший период или повторите попытку.');
+                        } else if (res.status === 500) {
+                            throw new Error('Ошибка сервера. Попробуйте позже.');
+                        } else {
+                            throw new Error(`Ошибка сервера: ${res.status}`);
+                        }
+                    }
+                    
                     const data = await res.json();
-                    if (!res.ok || !data.success) throw new Error(data.message || 'Ошибка анализа');
+                    console.log('Данные анализа:', data);
+                    
+                    if (!data.success) {
+                        throw new Error(data.message || 'Ошибка анализа');
+                    }
+                    
                     this.renderResults(data);
                     this.drawPatternMarkers(data.matched_patterns);
                     if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
@@ -1346,7 +1800,12 @@
                     if (chartControls) chartControls.classList.add('visible');
                     this.switchToAnalysisMode();
                 } catch (e) {
-                    this.toast('Ошибка: ' + e.message);
+                    if (e.name === 'AbortError') {
+                        this.toast('Превышено время ожидания. Попробуйте выбрать меньший период.');
+                    } else {
+                        this.toast('Ошибка: ' + e.message);
+                    }
+                    console.error('Ошибка анализа:', e);
                 } finally {
                     if (btn) btn.disabled = this.selectedIndices.size === 0;
                     loader.style.display = 'none';
@@ -1354,22 +1813,30 @@
             }
 
 			renderResults(result) {
-                document.getElementById('matches-found').textContent = result.statistics.matches_found;
-                document.getElementById('pattern-length').textContent = result.pattern_info.pattern_len;
+                const matchesFound = document.getElementById('matches-found');
+                if (matchesFound) matchesFound.textContent = result.statistics.matches_found;
+                
+                const patternLength = document.getElementById('pattern-length');
+                if (patternLength) patternLength.textContent = result.pattern_info.pattern_len;
+                
 				const percents = result.statistics.distribution_percents || {};
 				const avg = Object.keys(percents).length ? (Object.values(percents).reduce((a,b)=>a+b,0) / Object.keys(percents).length) : 0;
-				document.getElementById('accuracy').textContent = (avg||0).toFixed(2) + '%';
+				const accuracy = document.getElementById('accuracy');
+				if (accuracy) accuracy.textContent = (avg||0).toFixed(2) + '%';
 
 				const pi = document.getElementById('pattern-info');
-				pi.innerHTML = `
+				if (pi) {
+					pi.innerHTML = `
 					<div class="stat"><span>Начало</span><span class="val">${result.pattern_info.pattern_start}</span></div>
 					<div class="stat"><span>Конец</span><span class="val">${result.pattern_info.pattern_end}</span></div>
 					<div class="stat"><span>Свечей</span><span class="val">${result.pattern_info.pattern_len}</span></div>
 				`;
-				document.getElementById('pattern-info-card').style.display = '';
+					const patternInfoCard = document.getElementById('pattern-info-card');
+					if (patternInfoCard) patternInfoCard.style.display = '';
+				}
 
 				const matches = document.getElementById('matches');
-				matches.innerHTML = '';
+				if (matches) matches.innerHTML = '';
 				this.matchedRanges = [];
 				(result.matched_patterns || []).forEach((pat, i) => {
 					const first = pat[0];
@@ -1378,13 +1845,23 @@
 					this.matchedRanges.push([ Math.floor(new Date(first.date).getTime()/1000), Math.floor(new Date(last.date).getTime()/1000) ]);
 					const el = document.createElement('div');
 					el.className = 'match';
+					el.setAttribute('data-pattern-index', i);
 					el.innerHTML = `
 						<div class="hdr">
-							<div class="range">${new Date(first.date).toLocaleDateString()} — ${new Date(last.date).toLocaleDateString()}</div>
+							<div class="range">
+								<span style="color: var(--accent); font-weight: 600;">Паттерн ${i + 1}</span>
+								<br>
+								<small style="color: var(--muted);">${new Date(first.date).toLocaleDateString()} — ${new Date(last.date).toLocaleDateString()}</small>
+							</div>
 							<div class="badge ${change>=0?'up':'down'}">${change>=0?'+':''}${change.toFixed(2)}%</div>
                     </div>
 					`;
 					el.addEventListener('click', () => {
+						// Убираем активный класс с других элементов
+						document.querySelectorAll('.match').forEach(m => m.classList.remove('active'));
+						// Добавляем активный класс к текущему элементу
+						el.classList.add('active');
+						
 						this.currentMatchIndex = i;
 						this.updateMatchIndexLabel();
 						const [from, to] = this.matchedRanges[i];
@@ -1398,15 +1875,26 @@
 
 			drawPatternMarkers(matched) {
 				this.patternMarkers.clear();
-				const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd166', '#a78bfa', '#f97316'];
+				// Более яркие и контрастные цвета для паттернов
+				const colors = ['#00d4aa', '#ff4757', '#3742fa', '#ffa502', '#2ed573', '#ff3838'];
 				this.matchedHighlightPoints = [];
 				(matched || []).forEach((pat, pIdx) => {
 					const col = colors[pIdx % colors.length];
 					const arr = [];
 					for (let i=0;i<pat.length;i++) {
 						const t = Math.floor(new Date(pat[i].date).getTime()/1000);
-						arr.push({ time: t, position: 'belowBar', color: col, shape: 'square', text: `P${pIdx+1}`, size: 1.4 });
-						this.matchedHighlightPoints.push({ time: t, color: col });
+						// Более заметные маркеры для паттернов
+						arr.push({ 
+							time: t, 
+							position: 'belowBar', 
+							color: col, 
+							shape: 'square', 
+							text: `${pIdx+1}`, 
+							size: 1.8,
+							textColor: '#ffffff',
+							backgroundColor: col
+						});
+						this.matchedHighlightPoints.push({ time: t, color: col, patternIndex: pIdx + 1 });
 					}
 					this.patternMarkers.set(pIdx, arr);
 				});
@@ -1422,6 +1910,11 @@
 			zoomTo(from, to) {
 				const pad = Math.max(3*24*60*60, Math.floor((to-from)*0.5));
 				this.chart.timeScale().setVisibleRange({ from: from - pad, to: to + pad });
+				
+				// Принудительно обновляем оверлей после изменения видимого диапазона
+				setTimeout(() => {
+					this.redrawOverlay();
+				}, 50);
 			}
 
 			// ===== Overlay helpers for highlighting candles =====
@@ -1449,29 +1942,72 @@
 			redrawOverlay() {
 				this.ensureOverlay();
 				if (!this.overlay) return;
+				
 				const ctx = this.overlay.getContext('2d');
 				ctx.clearRect(0,0,this.overlay.width,this.overlay.height);
+				
 				const ts = this.chart.timeScale();
 				const barW = ts.getBarSpacing ? ts.getBarSpacing() : 12;
 				const h = this.overlay.height;
-				// draw selected first (gold), then matches
-				for (const p of (this.selectedHighlightPoints || [])) {
-					const x = ts.timeToCoordinate(p.time);
-					if (x === null || x === undefined) continue;
-					ctx.fillStyle = 'rgba(255,213,74,0.10)';
-					ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
-					ctx.strokeStyle = 'rgba(255,213,74,0.6)';
-					ctx.lineWidth = 1;
-					ctx.strokeRect(Math.round(x - barW*0.6)+0.5, 0.5, Math.round(barW*1.2)-1, h-1);
+				
+				// Проверяем, что у нас есть выбранные свечи для отображения
+				if (!this.selectedHighlightPoints || this.selectedHighlightPoints.length === 0) {
+					// Если нет выбранных свечей, но есть индексы, восстанавливаем их
+					if (this.selectedIndices && this.selectedIndices.size > 0) {
+						this.updateSelected();
+					}
 				}
+				
+				// Рисуем найденные паттерны сначала (более заметные)
 				for (const p of (this.matchedHighlightPoints || [])) {
 					const x = ts.timeToCoordinate(p.time);
 					if (x === null || x === undefined) continue;
-					ctx.fillStyle = this.hexToRgba(p.color, 0.12);
+					
+					// Создаем градиент для паттернов
+					const gradient = ctx.createLinearGradient(x - barW*0.8, 0, x + barW*0.8, 0);
+					gradient.addColorStop(0, this.hexToRgba(p.color, 0.0));
+					gradient.addColorStop(0.5, this.hexToRgba(p.color, 0.25));
+					gradient.addColorStop(1, this.hexToRgba(p.color, 0.0));
+					
+					ctx.fillStyle = gradient;
+					ctx.fillRect(Math.round(x - barW*0.8), 0, Math.round(barW*1.6), h);
+					
+					// Более яркая граница для паттернов
+					ctx.strokeStyle = this.hexToRgba(p.color, 0.8);
+					ctx.lineWidth = 2;
+					ctx.strokeRect(Math.round(x - barW*0.8)+1, 1, Math.round(barW*1.6)-2, h-2);
+					
+					// Добавляем пульсирующий эффект
+					const time = Date.now() / 1000;
+					const pulse = Math.sin(time * 3) * 0.1 + 0.9;
+					ctx.fillStyle = this.hexToRgba(p.color, 0.15 * pulse);
 					ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
-					ctx.strokeStyle = this.hexToRgba(p.color, 0.35);
-					ctx.lineWidth = 1;
-					ctx.strokeRect(Math.round(x - barW*0.6)+0.5, 0.5, Math.round(barW*1.2)-1, h-1);
+				}
+				
+				// Рисуем выбранные свечи (еще более заметные)
+				for (const p of (this.selectedHighlightPoints || [])) {
+					const x = ts.timeToCoordinate(p.time);
+					if (x === null || x === undefined) continue;
+					
+					// Создаем градиент для выбранных свечей
+					const gradient = ctx.createLinearGradient(x - barW*0.7, 0, x + barW*0.7, 0);
+					gradient.addColorStop(0, 'rgba(255,107,53,0.0)');
+					gradient.addColorStop(0.5, 'rgba(255,107,53,0.4)');
+					gradient.addColorStop(1, 'rgba(255,107,53,0.0)');
+					
+					ctx.fillStyle = gradient;
+					ctx.fillRect(Math.round(x - barW*0.7), 0, Math.round(barW*1.4), h);
+					
+					// Очень яркая граница для выбранных свечей
+					ctx.strokeStyle = 'rgba(255,107,53,1.0)';
+					ctx.lineWidth = 3;
+					ctx.strokeRect(Math.round(x - barW*0.7)+1.5, 1.5, Math.round(barW*1.4)-3, h-3);
+					
+					// Пульсирующий эффект для выбранных свечей
+					const time = Date.now() / 1000;
+					const pulse = Math.sin(time * 4) * 0.2 + 0.8;
+					ctx.fillStyle = `rgba(255,107,53,${0.3 * pulse})`;
+					ctx.fillRect(Math.round(x - barW*0.5), 0, Math.round(barW*1.0), h);
 				}
 			}
 
@@ -1481,6 +2017,21 @@
 				if (!m) return `rgba(255,255,255,${a})`;
 				const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
 				return `rgba(${r},${g},${b},${a})`;
+			}
+
+			startAnimation() {
+				const animate = () => {
+					this.redrawOverlay();
+					this.animationFrame = requestAnimationFrame(animate);
+				};
+				animate();
+			}
+
+			stopAnimation() {
+				if (this.animationFrame) {
+					cancelAnimationFrame(this.animationFrame);
+					this.animationFrame = null;
+				}
 			}
 
 			ensureLoader() {
@@ -1502,10 +2053,30 @@
 			// ===== Navigation helpers =====
 			zoomToSelected() {
 				if (!this.selectedIndices.size) { this.toast('Сначала выберите свечи'); return; }
+				
+				// Принудительно восстанавливаем выделение ПЕРЕД зумом
+				this.updateSelected();
+				this.applyMarkers();
+				this.redrawOverlay();
+				
 				const sorted = [...this.selectedIndices].sort((a,b)=>a-b);
 				const first = Math.floor(new Date(this.allCandles[sorted[0]].open_time).getTime()/1000);
 				const last = Math.floor(new Date(this.allCandles[sorted[sorted.length-1]].open_time).getTime()/1000);
+				
 				this.zoomTo(first, last);
+				
+				// Множественные обновления для гарантии
+				setTimeout(() => {
+					this.updateSelected();
+					this.applyMarkers();
+					this.redrawOverlay();
+				}, 100);
+				
+				setTimeout(() => {
+					this.updateSelected();
+					this.applyMarkers();
+					this.redrawOverlay();
+				}, 300);
 			}
 
 			gotoMatch(step) {
@@ -1513,8 +2084,20 @@
 				if (this.currentMatchIndex === -1) this.currentMatchIndex = 0;
 				else this.currentMatchIndex = (this.currentMatchIndex + step + this.matchedRanges.length) % this.matchedRanges.length;
 				this.updateMatchIndexLabel();
+				
+				// Обновляем активное состояние в списке
+				document.querySelectorAll('.match').forEach(m => m.classList.remove('active'));
+				const activeMatch = document.querySelector(`[data-pattern-index="${this.currentMatchIndex}"]`);
+				if (activeMatch) activeMatch.classList.add('active');
+				
 				const [from, to] = this.matchedRanges[this.currentMatchIndex];
 				this.zoomTo(from, to);
+				
+				// Принудительно обновляем оверлей после навигации
+				setTimeout(() => {
+					this.redrawOverlay();
+					this.applyMarkers();
+				}, 100);
 			}
 
 			updateMatchIndexLabel() {
@@ -1595,8 +2178,11 @@
 				const modal = document.getElementById('clear-confirmation-modal');
 				
 				// Update statistics in modal
-				document.getElementById('selected-count-modal').textContent = this.selectedIndices.size;
-				document.getElementById('patterns-count-modal').textContent = this.matchedRanges.length;
+				const selectedCountModal = document.getElementById('selected-count-modal');
+				if (selectedCountModal) selectedCountModal.textContent = this.selectedIndices.size;
+				
+				const patternsCountModal = document.getElementById('patterns-count-modal');
+				if (patternsCountModal) patternsCountModal.textContent = this.matchedRanges.length;
 				
 				modal.style.display = 'block';
 			}
@@ -1624,14 +2210,19 @@
 				// Сохраняем новый таймфрейм
 				this.currentTimeframe = newTimeframe;
 				
-				// Очищаем текущие выборы и паттерны
-				this.selectedIndices.clear();
-				this.selectedMarkers.clear();
+				// Очищаем только паттерны, но сохраняем выбранные свечи если они есть
+				const hadSelection = this.selectedIndices.size > 0;
 				this.patternMarkers.clear();
-				this.selectedHighlightPoints = [];
 				this.matchedHighlightPoints = [];
 				this.matchedRanges = [];
 				this.currentMatchIndex = -1;
+				
+				// Очищаем выбранные свечи только если их не было
+				if (!hadSelection) {
+					this.selectedIndices.clear();
+					this.selectedMarkers.clear();
+					this.selectedHighlightPoints = [];
+				}
 				
 				// Показываем загрузку
 				const loader = this.ensureLoader();
@@ -1642,11 +2233,24 @@
 					await this.loadData();
 					
 					// Обновляем UI
-					document.getElementById('matches-found').textContent = '0';
-					document.getElementById('pattern-length').textContent = '0';
-					document.getElementById('accuracy').textContent = '0%';
-					document.getElementById('pattern-info-card').style.display = 'none';
-					document.getElementById('matches').innerHTML = '';
+					const matchesFound = document.getElementById('matches-found');
+					if (matchesFound) matchesFound.textContent = '0';
+					
+					const patternLength = document.getElementById('pattern-length');
+					if (patternLength) patternLength.textContent = '0';
+					
+					const accuracy = document.getElementById('accuracy');
+					if (accuracy) accuracy.textContent = '0%';
+					const patternInfoCard = document.getElementById('pattern-info-card');
+					if (patternInfoCard) patternInfoCard.style.display = 'none';
+					
+					const matches = document.getElementById('matches');
+					if (matches) matches.innerHTML = '';
+					
+					// Восстанавливаем выделение выбранных свечей если они были
+					if (hadSelection) {
+						this.updateSelected();
+					}
 					
 					// Обновляем отображение таймфрейма в header
 					const timeframeMap = {
@@ -1675,6 +2279,9 @@
 						minBarSpacing: 2 // Минимальное расстояние для режима анализа (можно увеличивать в 7.5 раз сильнее)
 					}
 				});
+				
+				// ВАЖНО: Сохраняем выделение выбранных свечей в режиме анализа
+				this.updateSelected();
 			}
 
 			switchToSelectionMode() {
@@ -1688,6 +2295,543 @@
 					}
 				});
 				this.chart.timeScale().fitContent(); // Подгоняем график
+			}
+
+			setActiveTimeframe() {
+				// Устанавливаем активный таймфрейм в UI
+				document.querySelectorAll('[data-tf]').forEach(btn => {
+					btn.classList.remove('active');
+					if (btn.getAttribute('data-tf') === this.currentTimeframe) {
+						btn.classList.add('active');
+					}
+				});
+				
+				// Обновляем отображение таймфрейма в header
+				const timeframeMap = {
+					'1h': '1ч',
+					'4h': '4ч',
+					'1d': '1Д',
+					'1w': '1Н'
+				};
+				const kpiTF = document.querySelector('.kpi strong');
+				if (kpiTF) kpiTF.textContent = timeframeMap[this.currentTimeframe] || this.currentTimeframe;
+			}
+
+			// ===== Общий анализ паттернов =====
+			async loadGeneralAnalysis() {
+				const btn = document.getElementById('load-general-analysis');
+				if (btn) btn.disabled = true;
+				
+				// Показываем загрузку
+				this.showGeneralAnalysisLoading();
+				
+				try {
+					// Проверяем, что данные загружены
+					if (!this.allCandles || this.allCandles.length === 0) {
+						throw new Error('Данные графика не загружены');
+					}
+					
+					console.log('Загружаем общий анализ через /analyze_pattern...');
+					
+					// Берем последние 3 свечи для простого анализа
+					const recentCandles = this.allCandles.slice(-3);
+					
+					const payload = {
+						num_candles: recentCandles.length,
+						candles: recentCandles.map(candle => ({
+							open_time: candle.open_time,
+							close_time: candle.close_time,
+							open_price: candle.open_price,
+							close_price: candle.close_price,
+							high: candle.high,
+							low: candle.low,
+							volume: candle.volume
+						})),
+						timeframe: this.currentTimeframe
+					};
+					
+					console.log('Отправляем запрос:', payload);
+					
+					const response = await fetch('/analyze_pattern', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(payload)
+					});
+					
+					console.log('Response status:', response.status);
+					
+					if (!response.ok) {
+						if (response.status === 408) {
+							throw new Error('Превышено время ожидания анализа. Попробуйте позже.');
+						} else if (response.status === 500) {
+							throw new Error('Ошибка сервера при анализе. Попробуйте позже.');
+						} else {
+							throw new Error(`Ошибка сервера: ${response.status}`);
+						}
+					}
+					
+					const data = await response.json();
+					console.log('Response data:', data);
+					
+					if (!data.success) {
+						throw new Error(data.message || 'Ошибка загрузки анализа');
+					}
+					
+					// Отображаем простую статистику из результата
+					this.displaySimpleAnalysis(data);
+					this.toast('Общий анализ загружен');
+					
+				} catch (error) {
+					console.error('Ошибка загрузки общего анализа:', error);
+					this.toast('Ошибка: ' + error.message);
+				} finally {
+					if (btn) btn.disabled = false;
+				}
+			}
+
+			createGeneralAnalysisData(analysisResult) {
+				// Создаем общую статистику из результата анализа паттернов
+				const totalCandles = this.allCandles.length;
+				const firstDate = this.allCandles[0] ? new Date(this.allCandles[0].open_time).toISOString().slice(0, 10) : 'N/A';
+				const lastDate = this.allCandles[totalCandles-1] ? new Date(this.allCandles[totalCandles-1].open_time).toISOString().slice(0, 10) : 'N/A';
+				
+				// Вычисляем статистику рынка
+				const volumes = this.allCandles.map(c => parseFloat(c.volume));
+				const prices = this.allCandles.map(c => parseFloat(c.close_price));
+				const highs = this.allCandles.map(c => parseFloat(c.high));
+				const lows = this.allCandles.map(c => parseFloat(c.low));
+				
+				// Вычисляем волатильность
+				const returns = [];
+				for (let i = 1; i < prices.length; i++) {
+					returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+				}
+				const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
+				
+				// Анализируем направление паттернов из найденных совпадений
+				const matchedPatterns = analysisResult.matched_patterns || [];
+				let bullishCount = 0;
+				let bearishCount = 0;
+				
+				matchedPatterns.forEach(pattern => {
+					if (pattern.length > 0) {
+						const firstCandle = pattern[0];
+						const lastCandle = pattern[pattern.length - 1];
+						const priceChange = (lastCandle.close - firstCandle.open) / firstCandle.open;
+						if (priceChange > 0) {
+							bullishCount++;
+						} else {
+							bearishCount++;
+						}
+					}
+				});
+				
+				// Создаем недавние паттерны из найденных совпадений
+				const recentPatterns = matchedPatterns.slice(-10).map((pattern, index) => {
+					if (pattern.length === 0) return null;
+					
+					const firstCandle = pattern[0];
+					const lastCandle = pattern[pattern.length - 1];
+					const priceChange = (lastCandle.close - firstCandle.open) / firstCandle.open * 100;
+					const volumeChange = (lastCandle.volume - firstCandle.volume) / firstCandle.volume * 100;
+					
+					return {
+						start_date: firstCandle.date.slice(0, 10),
+						end_date: lastCandle.date.slice(0, 10),
+						price_change: priceChange,
+						volume_change: volumeChange,
+						direction: priceChange >= 0 ? 'bullish' : 'bearish',
+						strength: Math.abs(priceChange),
+						candles: pattern
+					};
+				}).filter(p => p !== null);
+				
+				return {
+					success: true,
+					timeframe: this.currentTimeframe,
+					total_candles: totalCandles,
+					date_range: {
+						start: firstDate,
+						end: lastDate
+					},
+					market_statistics: {
+						total_volume: volumes.reduce((sum, v) => sum + v, 0),
+						avg_volume: volumes.reduce((sum, v) => sum + v, 0) / volumes.length,
+						price_range: {
+							min: Math.min(...lows),
+							max: Math.max(...highs),
+							current: prices[prices.length - 1]
+						},
+						volatility: volatility
+					},
+					pattern_statistics: {
+						bullish_patterns: bullishCount,
+						bearish_patterns: bearishCount,
+						avg_body_size: 0, // Можно вычислить если нужно
+						avg_volume_ratio: 0 // Можно вычислить если нужно
+					},
+					recent_patterns: recentPatterns
+				};
+			}
+
+			displaySimpleAnalysis(data) {
+				// Отображаем данные напрямую из performance_stats и statistics
+				console.log('Отображаем данные:', data);
+				
+				// Общая информация
+				const totalCandles = document.getElementById('total-candles');
+				if (totalCandles) totalCandles.textContent = this.allCandles.length.toLocaleString();
+				
+				// Период данных
+				const firstDate = new Date(this.allCandles[0].open_time).toLocaleDateString();
+				const lastDate = new Date(this.allCandles[this.allCandles.length-1].open_time).toLocaleDateString();
+				const dataPeriod = document.getElementById('data-period');
+				if (dataPeriod) dataPeriod.textContent = `${firstDate} — ${lastDate}`;
+				
+				// Простая волатильность из данных
+				const prices = this.allCandles.map(c => parseFloat(c.close_price));
+				const returns = [];
+				for (let i = 1; i < prices.length; i++) {
+					returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+				}
+				const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
+				const volatilityEl = document.getElementById('volatility');
+				if (volatilityEl) volatilityEl.textContent = volatility.toFixed(2) + '%';
+				
+				// Средний объем
+				const volumes = this.allCandles.map(c => parseFloat(c.volume));
+				const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
+				const avgVolumeEl = document.getElementById('avg-volume');
+				if (avgVolumeEl) avgVolumeEl.textContent = this.formatVolume(avgVolume);
+				
+				// Используем данные из performance_stats
+				const perfStats = data.performance_stats || {};
+				const bullishPercentage = perfStats.bullish_percentage || 0;
+				const bearishPercentage = perfStats.bearish_percentage || 0;
+				
+				// Обновляем прогресс-бары с реальными данными
+				const bullishCount = document.getElementById('bullish-count');
+				if (bullishCount) bullishCount.textContent = Math.round(bullishPercentage * (perfStats.total_patterns || 0) / 100);
+				
+				const bearishCount = document.getElementById('bearish-count');
+				if (bearishCount) bearishCount.textContent = Math.round(bearishPercentage * (perfStats.total_patterns || 0) / 100);
+				
+				// Анимируем прогресс-бары
+				setTimeout(() => {
+					const bullishBar = document.getElementById('bullish-bar');
+					const bearishBar = document.getElementById('bearish-bar');
+					
+					if (bullishBar) bullishBar.style.width = bullishPercentage + '%';
+					if (bearishBar) bearishBar.style.width = bearishPercentage + '%';
+				}, 100);
+				
+				// Отображаем дополнительную статистику в карточке
+				this.displayPerformanceStats(perfStats, data.statistics);
+				
+				// Отображаем найденные паттерны
+				const matchedPatterns = data.matched_patterns || [];
+				this.displayRecentPatterns(matchedPatterns.slice(-5));
+				
+				// Создаем мини-график
+				this.createMiniChart(data);
+			}
+
+			displayPerformanceStats(perfStats, statistics) {
+				// Создаем дополнительную карточку с детальной статистикой
+				let performanceCard = document.getElementById('performance-stats-card');
+				if (!performanceCard) {
+					// Создаем карточку если её нет
+					const sidePanel = document.getElementById('side-panel');
+					const generalCard = document.getElementById('general-analysis-card');
+					
+					performanceCard = document.createElement('div');
+					performanceCard.id = 'performance-stats-card';
+					performanceCard.className = 'card';
+					performanceCard.innerHTML = `
+						<h3>Статистика производительности</h3>
+						<div class="performance-stats" id="performance-stats-content"></div>
+					`;
+					
+					// Вставляем после карточки общего анализа
+					generalCard.parentNode.insertBefore(performanceCard, generalCard.nextSibling);
+				}
+				
+				const content = document.getElementById('performance-stats-content');
+				content.innerHTML = `
+					<div class="stat-list">
+						<div class="stat">
+							<span>Найдено паттернов</span>
+							<span class="val" style="color: var(--accent);">${perfStats.total_patterns || 0}</span>
+						</div>
+						<div class="stat">
+							<span>Успешность</span>
+							<span class="val" style="color: var(--green);">${perfStats.success_rate || 0}%</span>
+						</div>
+						<div class="stat">
+							<span>Медианное изменение</span>
+							<span class="val" style="color: ${(perfStats.median_change || 0) >= 0 ? 'var(--green)' : 'var(--red)'}">
+								${(perfStats.median_change || 0) >= 0 ? '+' : ''}${(perfStats.median_change || 0).toFixed(2)}%
+							</span>
+						</div>
+						<div class="stat">
+							<span>Лучшие 20%</span>
+							<span class="val" style="color: var(--green);">+${(perfStats.top_20_percent_median || 0).toFixed(2)}%</span>
+						</div>
+						<div class="stat">
+							<span>Худшие 20%</span>
+							<span class="val" style="color: var(--red);">${(perfStats.bottom_20_percent_median || 0).toFixed(2)}%</span>
+						</div>
+					</div>
+					<div class="performance-summary">
+						<div class="summary-item">
+							<span class="summary-label">Бычьи паттерны:</span>
+							<span class="summary-value bullish">${perfStats.bullish_percentage || 0}%</span>
+						</div>
+						<div class="summary-item">
+							<span class="summary-label">Медвежьи паттерны:</span>
+							<span class="summary-value bearish">${perfStats.bearish_percentage || 0}%</span>
+						</div>
+					</div>
+				`;
+				
+				performanceCard.style.display = 'block';
+			}
+
+			showGeneralAnalysisLoading() {
+				const generalStats = document.getElementById('general-stats');
+				if (generalStats) {
+					generalStats.innerHTML = `
+						<div class="general-analysis-loading">
+							<i class="fas fa-spinner"></i>
+							<span>Загрузка анализа...</span>
+						</div>
+					`;
+				}
+			}
+
+			displayGeneralAnalysis(data) {
+				// Обновляем основную статистику
+				const totalCandles = document.getElementById('total-candles');
+				if (totalCandles) totalCandles.textContent = data.total_candles.toLocaleString();
+				
+				const dataPeriod = document.getElementById('data-period');
+				if (dataPeriod) dataPeriod.textContent = `${data.date_range.start} — ${data.date_range.end}`;
+				
+				const volatility = document.getElementById('volatility');
+				if (volatility) volatility.textContent = data.market_statistics.volatility.toFixed(2) + '%';
+				
+				const avgVolume = document.getElementById('avg-volume');
+				if (avgVolume) avgVolume.textContent = this.formatVolume(data.market_statistics.avg_volume);
+				
+				// Обновляем распределение паттернов
+				const bullishCount = data.pattern_statistics.bullish_patterns;
+				const bearishCount = data.pattern_statistics.bearish_patterns;
+				const total = bullishCount + bearishCount;
+				
+				const bullishCountEl = document.getElementById('bullish-count');
+				if (bullishCountEl) bullishCountEl.textContent = bullishCount.toLocaleString();
+				
+				const bearishCountEl = document.getElementById('bearish-count');
+				if (bearishCountEl) bearishCountEl.textContent = bearishCount.toLocaleString();
+				
+				// Анимируем прогресс-бары
+				setTimeout(() => {
+					const bullishBar = document.getElementById('bullish-bar');
+					const bearishBar = document.getElementById('bearish-bar');
+					
+					if (total > 0) {
+						const bullishPercent = (bullishCount / total) * 100;
+						const bearishPercent = (bearishCount / total) * 100;
+						
+						if (bullishBar) bullishBar.style.width = bullishPercent + '%';
+						if (bearishBar) bearishBar.style.width = bearishPercent + '%';
+					}
+				}, 100);
+				
+				// Отображаем недавние паттерны
+				this.displayRecentPatterns(data.recent_patterns);
+				
+				// Создаем мини-график
+				this.createMiniChart(data);
+			}
+
+			displayRecentPatterns(patterns) {
+				const recentPatternsCard = document.getElementById('recent-patterns-card');
+				const recentPatternsList = document.getElementById('recent-patterns-list');
+				
+				if (!patterns || patterns.length === 0) {
+					recentPatternsCard.style.display = 'none';
+					return;
+				}
+				
+				recentPatternsList.innerHTML = '';
+				
+				patterns.forEach((pattern, index) => {
+					const patternEl = document.createElement('div');
+					patternEl.className = 'recent-pattern';
+					
+					const priceChangeClass = pattern.price_change >= 0 ? 'positive' : 'negative';
+					const volumeChangeClass = pattern.volume_change >= 0 ? 'positive' : 'negative';
+					
+					patternEl.innerHTML = `
+						<div class="recent-pattern-header">
+							<div class="recent-pattern-dates">
+								${new Date(pattern.start_date).toLocaleDateString()} — ${new Date(pattern.end_date).toLocaleDateString()}
+							</div>
+							<div class="recent-pattern-direction ${pattern.direction}">
+								${pattern.direction === 'bullish' ? '↗' : '↘'} ${pattern.direction}
+							</div>
+						</div>
+						<div class="recent-pattern-stats">
+							<div class="recent-pattern-stat">
+								<span class="recent-pattern-stat-label">Изменение цены:</span>
+								<span class="recent-pattern-stat-value ${priceChangeClass}">
+									${pattern.price_change >= 0 ? '+' : ''}${pattern.price_change.toFixed(2)}%
+								</span>
+							</div>
+							<div class="recent-pattern-stat">
+								<span class="recent-pattern-stat-label">Изменение объема:</span>
+								<span class="recent-pattern-stat-value ${volumeChangeClass}">
+									${pattern.volume_change >= 0 ? '+' : ''}${pattern.volume_change.toFixed(1)}%
+								</span>
+							</div>
+						</div>
+					`;
+					
+					// Добавляем обработчик клика для перехода к паттерну на графике
+					patternEl.addEventListener('click', () => {
+						this.zoomToPattern(pattern);
+					});
+					
+					recentPatternsList.appendChild(patternEl);
+				});
+				
+				recentPatternsCard.style.display = 'block';
+			}
+
+			zoomToPattern(pattern) {
+				if (!pattern.candles || pattern.candles.length === 0) return;
+				
+				const firstCandle = pattern.candles[0];
+				const lastCandle = pattern.candles[pattern.candles.length - 1];
+				
+				const startTime = Math.floor(new Date(firstCandle.date).getTime() / 1000);
+				const endTime = Math.floor(new Date(lastCandle.date).getTime() / 1000);
+				
+				this.zoomTo(startTime, endTime);
+				this.toast(`Переход к паттерну ${pattern.direction}`);
+			}
+
+			formatVolume(volume) {
+				if (volume >= 1e9) return (volume / 1e9).toFixed(1) + 'B';
+				if (volume >= 1e6) return (volume / 1e6).toFixed(1) + 'M';
+				if (volume >= 1e3) return (volume / 1e3).toFixed(1) + 'K';
+				return volume.toFixed(0);
+			}
+
+			async createMiniChart(data) {
+				const miniChartContainer = document.getElementById('mini-chart-container');
+				const canvas = document.getElementById('mini-chart');
+				
+				if (!canvas || !miniChartContainer) return;
+				
+				// Показываем контейнер
+				miniChartContainer.style.display = 'block';
+				
+				try {
+					// Получаем последние 30 дней данных для мини-графика
+					const response = await fetch(`/api/ohlcv?source=binance&timeframe=${this.currentTimeframe}&from=${this.getDateDaysAgo(30)}`);
+					const chartData = await response.json();
+					
+					if (!chartData.success || !chartData.candles) return;
+					
+					// Создаем график
+					const ctx = canvas.getContext('2d');
+					const width = canvas.width;
+					const height = canvas.height;
+					
+					// Очищаем canvas
+					ctx.clearRect(0, 0, width, height);
+					
+					// Подготавливаем данные
+					const prices = chartData.candles.slice(-30).map(c => parseFloat(c.close_price));
+					const minPrice = Math.min(...prices);
+					const maxPrice = Math.max(...prices);
+					const priceRange = maxPrice - minPrice;
+					
+					// Настройки графика
+					const padding = 10;
+					const chartWidth = width - padding * 2;
+					const chartHeight = height - padding * 2;
+					
+					// Рисуем фон
+					ctx.fillStyle = '#0a0f14';
+					ctx.fillRect(0, 0, width, height);
+					
+					// Рисуем сетку
+					ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+					ctx.lineWidth = 1;
+					for (let i = 0; i <= 4; i++) {
+						const y = padding + (chartHeight / 4) * i;
+						ctx.beginPath();
+						ctx.moveTo(padding, y);
+						ctx.lineTo(width - padding, y);
+						ctx.stroke();
+					}
+					
+					// Рисуем линию цены
+					ctx.strokeStyle = '#f7931a';
+					ctx.lineWidth = 2;
+					ctx.beginPath();
+					
+					prices.forEach((price, index) => {
+						const x = padding + (chartWidth / (prices.length - 1)) * index;
+						const y = padding + chartHeight - ((price - minPrice) / priceRange) * chartHeight;
+						
+						if (index === 0) {
+							ctx.moveTo(x, y);
+						} else {
+							ctx.lineTo(x, y);
+						}
+					});
+					
+					ctx.stroke();
+					
+					// Добавляем градиент под линией
+					const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
+					gradient.addColorStop(0, 'rgba(247, 147, 26, 0.3)');
+					gradient.addColorStop(1, 'rgba(247, 147, 26, 0.05)');
+					
+					ctx.fillStyle = gradient;
+					ctx.lineTo(width - padding, height - padding);
+					ctx.lineTo(padding, height - padding);
+					ctx.closePath();
+					ctx.fill();
+					
+					// Добавляем точки на концах
+					const firstPrice = prices[0];
+					const lastPrice = prices[prices.length - 1];
+					
+					ctx.fillStyle = '#f7931a';
+					ctx.beginPath();
+					ctx.arc(padding, padding + chartHeight - ((firstPrice - minPrice) / priceRange) * chartHeight, 3, 0, 2 * Math.PI);
+					ctx.fill();
+					
+					ctx.fillStyle = lastPrice >= firstPrice ? '#22c55e' : '#ef4444';
+					ctx.beginPath();
+					ctx.arc(width - padding, padding + chartHeight - ((lastPrice - minPrice) / priceRange) * chartHeight, 3, 0, 2 * Math.PI);
+					ctx.fill();
+					
+				} catch (error) {
+					console.error('Ошибка создания мини-графика:', error);
+					miniChartContainer.style.display = 'none';
+				}
+			}
+
+			getDateDaysAgo(days) {
+				const date = new Date();
+				date.setDate(date.getDate() - days);
+				return date.toISOString().slice(0, 10);
 			}
 
 		}
