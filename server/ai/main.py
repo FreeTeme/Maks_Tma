@@ -83,7 +83,16 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
         limit = 2000
     
     request_count = 0
-    while current_ts <= end_ts and request_count < 100:  # Защита от бесконечного цикла
+    max_requests = 50  # Уменьшаем лимит запросов
+    start_time = time.time()
+    max_duration = 30  # Максимальное время загрузки - 30 секунд
+    
+    while current_ts <= end_ts and request_count < max_requests:
+        # Проверяем общее время выполнения
+        if time.time() - start_time > max_duration:
+            print(f"Превышено максимальное время загрузки ({max_duration} сек)")
+            break
+            
         params = {
             'symbol': symbol,
             'interval': interval,
@@ -93,11 +102,12 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
         }
         
         try:
-            response = requests.get(base_url, params=params, timeout=15)
+            response = requests.get(base_url, params=params, timeout=10)  # Уменьшаем таймаут
             response.raise_for_status()
             data = response.json()
             
             if not data:
+                print("Получены пустые данные, завершаем загрузку")
                 break
                 
             # Быстрая обработка батча
@@ -114,15 +124,24 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
                 })
             
             all_rows.extend(batch_rows)
+            
+            # Проверяем, что мы получили новые данные
+            if len(data) < limit:
+                print("Получены все доступные данные")
+                break
+                
             current_ts = data[-1][6] + 1
             request_count += 1
             
-            print(f"Загружено {len(all_rows)} записей...")
+            print(f"Загружено {len(all_rows)} записей... (запрос {request_count}/{max_requests})")
             
-            # Минимальная задержка только при необходимости
-            if len(all_rows) > 50000:
-                time.sleep(0.05)
+            # Обязательная задержка между запросами
+            time.sleep(0.1)
                 
+        except requests.exceptions.Timeout:
+            print(f"Таймаут запроса {request_count + 1}, пропускаем")
+            request_count += 1
+            continue
         except Exception as e:
             print(f"Ошибка при загрузке данных: {e}")
             break
@@ -566,16 +585,30 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         
         print(f"Быстрый анализ паттерна: {len(selected_candles)} свечей, ТФ: {timeframe}")
         
-        # Загружаем данные
+        # Проверяем время выполнения
+        if time.time() - start_time > max_analysis_time:
+            return {"error": "Analysis timeout - exceeded maximum time limit"}
+        
+        # Загружаем данные с таймаутом
+        print("Загружаем исторические данные...")
         ohlcv_df = get_full_historical_data(timeframe)
         if ohlcv_df.empty:
             return {"error": "Failed to load historical data"}
+        
+        # Проверяем время выполнения после загрузки данных
+        if time.time() - start_time > max_analysis_time:
+            return {"error": "Analysis timeout - data loading took too long"}
         
         # Убедимся, что даты в ohlcv_df не имеют часового пояса
         ohlcv_df['date'] = ohlcv_df['date'].dt.tz_localize(None)
         
         # Строим признаки
+        print("Строим признаки...")
         features_df = build_features_fast(ohlcv_df, timeframe)
+        
+        # Проверяем время выполнения после построения признаков
+        if time.time() - start_time > max_analysis_time:
+            return {"error": "Analysis timeout - feature building took too long"}
         
         print(f"Загружено {len(ohlcv_df)} исторических свечей")
         print(f"Диапазон исторических данных: {ohlcv_df['date'].min()} - {ohlcv_df['date'].max()}")
@@ -706,6 +739,7 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         print(f"Найдено {len(all_matches)} совпадений (идентичных: {len(identical_matches)}, похожих: {len(similar_matches)})")
         
         # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
+        print("Рассчитываем статистику производительности...")
         price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
         
         # Правильная статистика

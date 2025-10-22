@@ -771,15 +771,25 @@ def api_ohlcv():
 
 @app.route('/analyze_pattern', methods=['POST'])
 def analyze_pattern():
-    """Оптимизированный анализ с кэшированием"""
+    """Оптимизированный анализ с кэшированием и таймаутами"""
+    start_time = time.time()
+    max_request_time = 120  # Максимальное время обработки запроса - 2 минуты
+    
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+            
         required_fields = ['num_candles', 'candles']
         
         if not all(field in data for field in required_fields):
             return jsonify({'success': False, 'message': 'Missing required fields'}), 400
         
         timeframe = data.get('timeframe', '1d')
+        
+        # Проверяем время выполнения запроса
+        if time.time() - start_time > max_request_time:
+            return jsonify({'success': False, 'message': 'Request timeout'}), 408
         
         # Создаем ключ для кэша на основе выбранных свечей
         pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
@@ -789,15 +799,31 @@ def analyze_pattern():
         if cache_key in data_cache:
             cached_result, timestamp = data_cache[cache_key]
             if time.time() - timestamp < CACHE_TIMEOUT:
+                print("Возвращаем кэшированный результат")
                 return jsonify(cached_result)
+        
+        print(f"Начинаем анализ паттерна: {data['num_candles']} свечей, ТФ: {timeframe}")
+        
+        # Проверяем время выполнения перед началом анализа
+        if time.time() - start_time > max_request_time:
+            return jsonify({'success': False, 'message': 'Request timeout before analysis'}), 408
         
         result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe)
         
+        # Проверяем время выполнения после анализа
+        if time.time() - start_time > max_request_time:
+            return jsonify({'success': False, 'message': 'Analysis timeout'}), 408
+        
         if 'error' in result:
+            print(f"Ошибка анализа: {result['error']}")
             return jsonify({'success': False, 'message': result['error']}), 500
         
         # Кэшируем результат
         data_cache[cache_key] = (result, time.time())
+        
+        total_time = time.time() - start_time
+        print(f"Анализ завершен за {total_time:.2f} секунд")
+        
         return jsonify(result)
         
     except Exception as e:
