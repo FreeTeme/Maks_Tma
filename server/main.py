@@ -791,24 +791,28 @@ def analyze_pattern():
         if time.time() - start_time > max_request_time:
             return jsonify({'success': False, 'message': 'Request timeout'}), 408
         
-        # Создаем ключ для кэша на основе выбранных свечей
-        pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
-        cache_key = f"analysis_{timeframe}_{pattern_hash}"
+        # Проверяем, нужно ли отключить кэширование
+        no_cache = data.get('no_cache', False)
         
-        # Проверяем кэш
-        if cache_key in data_cache:
-            cached_result, timestamp = data_cache[cache_key]
-            if time.time() - timestamp < CACHE_TIMEOUT:
-                print("Возвращаем кэшированный результат")
-                return jsonify(cached_result)
+        if not no_cache:
+            # Создаем ключ для кэша на основе выбранных свечей
+            pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
+            cache_key = f"analysis_{timeframe}_{pattern_hash}"
+            
+            # Проверяем кэш
+            if cache_key in data_cache:
+                cached_result, timestamp = data_cache[cache_key]
+                if time.time() - timestamp < CACHE_TIMEOUT:
+                    print("Возвращаем кэшированный результат")
+                    return jsonify(cached_result)
         
-        print(f"Начинаем анализ паттерна: {data['num_candles']} свечей, ТФ: {timeframe}")
+        print(f"Начинаем анализ паттерна: {data['num_candles']} свечей, ТФ: {timeframe}, no_cache: {no_cache}")
         
         # Проверяем время выполнения перед началом анализа
         if time.time() - start_time > max_request_time:
             return jsonify({'success': False, 'message': 'Request timeout before analysis'}), 408
         
-        result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe)
+        result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe, no_cache=no_cache)
         
         # Проверяем время выполнения после анализа
         if time.time() - start_time > max_request_time:
@@ -818,8 +822,17 @@ def analyze_pattern():
             print(f"Ошибка анализа: {result['error']}")
             return jsonify({'success': False, 'message': result['error']}), 500
         
-        # Кэшируем результат
-        data_cache[cache_key] = (result, time.time())
+        # Отладочная информация о performance_stats
+        if 'performance_stats' in result:
+            print(f"performance_stats: {result['performance_stats']}")
+        else:
+            print("performance_stats отсутствует в результате")
+        
+        # Кэшируем результат только если кэширование не отключено
+        if not no_cache:
+            pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
+            cache_key = f"analysis_{timeframe}_{pattern_hash}"
+            data_cache[cache_key] = (result, time.time())
         
         total_time = time.time() - start_time
         print(f"Анализ завершен за {total_time:.2f} секунд")

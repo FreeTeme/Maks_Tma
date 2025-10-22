@@ -336,6 +336,7 @@ def calculate_median_statistics(price_changes, directions):
     3. Топ-20% медиана = медиана первых 20% отсортированных значений
     4. Нижние-20% медиана = медиана последних 20% отсортированных значений
     """
+    print(f"calculate_median_statistics вызвана с {len(price_changes)} изменениями цен")
     if not price_changes:
         return {
             'median_change': 0,
@@ -390,7 +391,7 @@ def calculate_median_statistics(price_changes, directions):
     # Success rate (процент паттернов с положительным исходом)
     success_rate = round((bullish_count / total) * 100, 1) if total > 0 else 0
     
-    return {
+    result = {
         'median_change': round(median_change, 2),
         'bullish_percentage': bullish_percentage,
         'bearish_percentage': bearish_percentage,
@@ -401,6 +402,9 @@ def calculate_median_statistics(price_changes, directions):
         'total_patterns': len(price_changes),
         'valid_patterns': len(valid_changes)
     }
+    
+    print(f"calculate_median_statistics возвращает: {result}")
+    return result
 
 def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, 
                               pattern_start_date: str, pattern_end_date: str, 
@@ -508,7 +512,7 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
         "performance_stats": performance_stats  # Медианная статистика
     }
 
-def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d') -> Dict:
+def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', no_cache: bool = False) -> Dict:
     """Оптимизированный анализ паттерна с кэшированием и таймаутами"""
     start_time = time.time()
     max_analysis_time = 60  # Максимальное время анализа - 60 секунд
@@ -521,19 +525,21 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         if len(selected_candles) != num_candles:
             return {"error": f"Number of candles mismatch: expected {num_candles}, got {len(selected_candles)}"}
         
-        # Создаем ключ для кэша анализа
-        pattern_hash = hash(tuple(
-            (c['open_time'], c['close_price']) for c in selected_candles
-        ))
-        cache_key = get_cache_key("analysis", timeframe, pattern_hash)
+        # Проверяем кэш только если кэширование не отключено
+        if not no_cache:
+            # Создаем ключ для кэша анализа
+            pattern_hash = hash(tuple(
+                (c['open_time'], c['close_price']) for c in selected_candles
+            ))
+            cache_key = get_cache_key("analysis", timeframe, pattern_hash)
+            
+            # Проверяем кэш анализа
+            cached_result = load_from_cache(cache_key)
+            if cached_result is not None:
+                print("Используем кэшированный результат анализа")
+                return cached_result
         
-        # Проверяем кэш анализа
-        cached_result = load_from_cache(cache_key)
-        if cached_result is not None:
-            print("Используем кэшированный результат анализа")
-            return cached_result
-        
-        print(f"Быстрый анализ паттерна: {len(selected_candles)} свечей, ТФ: {timeframe}")
+        print(f"Быстрый анализ паттерна: {len(selected_candles)} свечей, ТФ: {timeframe}, no_cache: {no_cache}")
         
         # Проверяем время выполнения
         if time.time() - start_time > max_analysis_time:
@@ -713,6 +719,7 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
         print("Рассчитываем статистику производительности...")
         price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
+        print(f"performance_stats создан: {performance_stats}")
         
         # Упрощенная статистика для скорости
         stat_counts = {"Matches": len(matches)}
@@ -736,8 +743,13 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
             'performance_stats': performance_stats  # Медианная статистика
         }
         
-        # Сохраняем в кэш
-        save_to_cache(cache_key, response)
+        # Сохраняем в кэш только если кэширование не отключено
+        if not no_cache:
+            pattern_hash = hash(tuple(
+                (c['open_time'], c['close_price']) for c in selected_candles
+            ))
+            cache_key = get_cache_key("analysis", timeframe, pattern_hash)
+            save_to_cache(cache_key, response)
         
         return response
         

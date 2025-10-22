@@ -1115,7 +1115,7 @@
                         <div class="mini-chart-label">Тренд цены (последние 30 дней)</div>
                     </div>
                     <button class="btn analyze" id="load-general-analysis" style="width: 100%; margin-top: 10px;">
-                        <i class="fas fa-chart-pie"></i> Загрузить анализ
+                        <i class="fas fa-chart-pie"></i> Анализ выбранных свечей
                     </button>
                 </div>
                 
@@ -1228,6 +1228,26 @@
 			const element = document.getElementById(elementId);
 			if (element) {
 				element.textContent = text;
+			} else {
+				console.warn(`Элемент с ID '${elementId}' не найден`);
+			}
+		}
+
+		// Безопасная функция для обновления innerHTML
+		function safeSetInnerHTML(elementId, html) {
+			const element = document.getElementById(elementId);
+			if (element) {
+				element.innerHTML = html;
+			} else {
+				console.warn(`Элемент с ID '${elementId}' не найден`);
+			}
+		}
+
+		// Безопасная функция для установки стилей
+		function safeSetStyle(elementId, property, value) {
+			const element = document.getElementById(elementId);
+			if (element) {
+				element.style[property] = value;
 			} else {
 				console.warn(`Элемент с ID '${elementId}' не найден`);
 			}
@@ -1603,10 +1623,13 @@
 			}
 
 			updateSelected() {
-				const selectedCount = document.getElementById('selected-count'); 
-				if (selectedCount) selectedCount.textContent = this.selectedIndices.size;
+				safeSetTextContent('selected-count', this.selectedIndices.size);
 				const analyzeBtn = document.getElementById('analyze-btn'); 
 				if (analyzeBtn) analyzeBtn.disabled = this.selectedIndices.size === 0;
+				
+				// Обновляем кнопку общего анализа
+				const generalAnalysisBtn = document.getElementById('load-general-analysis');
+				if (generalAnalysisBtn) generalAnalysisBtn.disabled = this.selectedIndices.size === 0;
 				this.selectedMarkers.clear();
 				this.selectedHighlightPoints = [];
 				[...this.selectedIndices].forEach((i, index) => {
@@ -1668,10 +1691,13 @@
 				this.selectedMarkers.clear();
 				this.selectedHighlightPoints = [];
 				this.applyMarkers();
-				const selectedCount = document.getElementById('selected-count');
-				if (selectedCount) selectedCount.textContent = '0';
+				safeSetTextContent('selected-count', '0');
 				const analyzeBtn = document.getElementById('analyze-btn');
 				if (analyzeBtn) analyzeBtn.disabled = true;
+				
+				// Обновляем кнопку общего анализа
+				const generalAnalysisBtn = document.getElementById('load-general-analysis');
+				if (generalAnalysisBtn) generalAnalysisBtn.disabled = true;
 				this.redrawOverlay();
 				
 				// Скрываем индикатор выбранных свечей
@@ -1747,7 +1773,8 @@
                 const payload = { 
                     num_candles: this.selectedIndices.size, // Используем реальное количество выбранных свечей
                     candles, 
-                    timeframe: this.currentTimeframe 
+                    timeframe: this.currentTimeframe,
+                    no_cache: true  // Отключаем кэширование для получения актуальных данных
                 };
                 
                 // UI state
@@ -1813,30 +1840,22 @@
             }
 
 			renderResults(result) {
-                const matchesFound = document.getElementById('matches-found');
-                if (matchesFound) matchesFound.textContent = result.statistics.matches_found;
-                
-                const patternLength = document.getElementById('pattern-length');
-                if (patternLength) patternLength.textContent = result.pattern_info.pattern_len;
+                safeSetTextContent('matches-found', result.statistics.matches_found);
+                safeSetTextContent('pattern-length', result.pattern_info.pattern_len);
                 
 				const percents = result.statistics.distribution_percents || {};
 				const avg = Object.keys(percents).length ? (Object.values(percents).reduce((a,b)=>a+b,0) / Object.keys(percents).length) : 0;
-				const accuracy = document.getElementById('accuracy');
-				if (accuracy) accuracy.textContent = (avg||0).toFixed(2) + '%';
+				safeSetTextContent('accuracy', (avg||0).toFixed(2) + '%');
 
-				const pi = document.getElementById('pattern-info');
-				if (pi) {
-					pi.innerHTML = `
+				const patternInfoHTML = `
 					<div class="stat"><span>Начало</span><span class="val">${result.pattern_info.pattern_start}</span></div>
 					<div class="stat"><span>Конец</span><span class="val">${result.pattern_info.pattern_end}</span></div>
 					<div class="stat"><span>Свечей</span><span class="val">${result.pattern_info.pattern_len}</span></div>
 				`;
-					const patternInfoCard = document.getElementById('pattern-info-card');
-					if (patternInfoCard) patternInfoCard.style.display = '';
-				}
+				safeSetInnerHTML('pattern-info', patternInfoHTML);
+				safeSetStyle('pattern-info-card', 'display', '');
 
-				const matches = document.getElementById('matches');
-				if (matches) matches.innerHTML = '';
+				safeSetInnerHTML('matches', '');
 				this.matchedRanges = [];
 				(result.matched_patterns || []).forEach((pat, i) => {
 					const first = pat[0];
@@ -2101,9 +2120,8 @@
 			}
 
 			updateMatchIndexLabel() {
-				const el = document.getElementById('match-index');
-				if (!el) return;
-				el.textContent = this.matchedRanges.length ? `${this.currentMatchIndex+1}/${this.matchedRanges.length}` : '0/0';
+				const label = this.matchedRanges.length ? `${this.currentMatchIndex+1}/${this.matchedRanges.length}` : '0/0';
+				safeSetTextContent('match-index', label);
 			}
 
 			showPatternsModal() {
@@ -2178,13 +2196,10 @@
 				const modal = document.getElementById('clear-confirmation-modal');
 				
 				// Update statistics in modal
-				const selectedCountModal = document.getElementById('selected-count-modal');
-				if (selectedCountModal) selectedCountModal.textContent = this.selectedIndices.size;
+				safeSetTextContent('selected-count-modal', this.selectedIndices.size);
+				safeSetTextContent('patterns-count-modal', this.matchedRanges.length);
 				
-				const patternsCountModal = document.getElementById('patterns-count-modal');
-				if (patternsCountModal) patternsCountModal.textContent = this.matchedRanges.length;
-				
-				modal.style.display = 'block';
+				if (modal) modal.style.display = 'block';
 			}
 
 			hideClearConfirmationModal() {
@@ -2233,19 +2248,11 @@
 					await this.loadData();
 					
 					// Обновляем UI
-					const matchesFound = document.getElementById('matches-found');
-					if (matchesFound) matchesFound.textContent = '0';
-					
-					const patternLength = document.getElementById('pattern-length');
-					if (patternLength) patternLength.textContent = '0';
-					
-					const accuracy = document.getElementById('accuracy');
-					if (accuracy) accuracy.textContent = '0%';
-					const patternInfoCard = document.getElementById('pattern-info-card');
-					if (patternInfoCard) patternInfoCard.style.display = 'none';
-					
-					const matches = document.getElementById('matches');
-					if (matches) matches.innerHTML = '';
+					safeSetTextContent('matches-found', '0');
+					safeSetTextContent('pattern-length', '0');
+					safeSetTextContent('accuracy', '0%');
+					safeSetStyle('pattern-info-card', 'display', 'none');
+					safeSetInnerHTML('matches', '');
 					
 					// Восстанавливаем выделение выбранных свечей если они были
 					if (hadSelection) {
@@ -2333,12 +2340,18 @@
 					
 					console.log('Загружаем общий анализ через /analyze_pattern...');
 					
-					// Берем последние 3 свечи для простого анализа
-					const recentCandles = this.allCandles.slice(-3);
+					// Проверяем, есть ли выбранные свечи для анализа
+					if (this.selectedIndices.size === 0) {
+						throw new Error('Сначала выберите свечи для анализа');
+					}
+					
+					// Берем выбранные свечи для анализа
+					const order = [...this.selectedIndices].sort((a,b) => a-b);
+					const selectedCandles = order.map(i => this.allCandles[i]);
 					
 					const payload = {
-						num_candles: recentCandles.length,
-						candles: recentCandles.map(candle => ({
+						num_candles: selectedCandles.length,
+						candles: selectedCandles.map(candle => ({
 							open_time: candle.open_time,
 							close_time: candle.close_time,
 							open_price: candle.open_price,
@@ -2347,7 +2360,8 @@
 							low: candle.low,
 							volume: candle.volume
 						})),
-						timeframe: this.currentTimeframe
+						timeframe: this.currentTimeframe,
+						no_cache: true  // Отключаем кэширование для общего анализа
 					};
 					
 					console.log('Отправляем запрос:', payload);
@@ -2379,7 +2393,7 @@
 					
 					// Отображаем простую статистику из результата
 					this.displaySimpleAnalysis(data);
-					this.toast('Общий анализ загружен');
+					this.toast('Анализ выбранных свечей завершен');
 					
 				} catch (error) {
 					console.error('Ошибка загрузки общего анализа:', error);
@@ -2477,16 +2491,16 @@
 			displaySimpleAnalysis(data) {
 				// Отображаем данные напрямую из performance_stats и statistics
 				console.log('Отображаем данные:', data);
+				console.log('performance_stats:', data.performance_stats);
+				console.log('statistics:', data.statistics);
 				
 				// Общая информация
-				const totalCandles = document.getElementById('total-candles');
-				if (totalCandles) totalCandles.textContent = this.allCandles.length.toLocaleString();
+				safeSetTextContent('total-candles', this.allCandles.length.toLocaleString());
 				
 				// Период данных
 				const firstDate = new Date(this.allCandles[0].open_time).toLocaleDateString();
 				const lastDate = new Date(this.allCandles[this.allCandles.length-1].open_time).toLocaleDateString();
-				const dataPeriod = document.getElementById('data-period');
-				if (dataPeriod) dataPeriod.textContent = `${firstDate} — ${lastDate}`;
+				safeSetTextContent('data-period', `${firstDate} — ${lastDate}`);
 				
 				// Простая волатильность из данных
 				const prices = this.allCandles.map(c => parseFloat(c.close_price));
@@ -2495,14 +2509,12 @@
 					returns.push((prices[i] - prices[i-1]) / prices[i-1]);
 				}
 				const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
-				const volatilityEl = document.getElementById('volatility');
-				if (volatilityEl) volatilityEl.textContent = volatility.toFixed(2) + '%';
+				safeSetTextContent('volatility', volatility.toFixed(2) + '%');
 				
 				// Средний объем
 				const volumes = this.allCandles.map(c => parseFloat(c.volume));
 				const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
-				const avgVolumeEl = document.getElementById('avg-volume');
-				if (avgVolumeEl) avgVolumeEl.textContent = this.formatVolume(avgVolume);
+				safeSetTextContent('avg-volume', this.formatVolume(avgVolume));
 				
 				// Используем данные из performance_stats
 				const perfStats = data.performance_stats || {};
@@ -2510,11 +2522,11 @@
 				const bearishPercentage = perfStats.bearish_percentage || 0;
 				
 				// Обновляем прогресс-бары с реальными данными
-				const bullishCount = document.getElementById('bullish-count');
-				if (bullishCount) bullishCount.textContent = Math.round(bullishPercentage * (perfStats.total_patterns || 0) / 100);
+				const bullishCountValue = Math.round(bullishPercentage * (perfStats.total_patterns || 0) / 100);
+				const bearishCountValue = Math.round(bearishPercentage * (perfStats.total_patterns || 0) / 100);
 				
-				const bearishCount = document.getElementById('bearish-count');
-				if (bearishCount) bearishCount.textContent = Math.round(bearishPercentage * (perfStats.total_patterns || 0) / 100);
+				safeSetTextContent('bullish-count', bullishCountValue);
+				safeSetTextContent('bearish-count', bearishCountValue);
 				
 				// Анимируем прогресс-бары
 				setTimeout(() => {
@@ -2538,6 +2550,7 @@
 
 			displayPerformanceStats(perfStats, statistics) {
 				// Создаем дополнительную карточку с детальной статистикой
+				console.log('displayPerformanceStats вызвана с данными:', perfStats);
 				let performanceCard = document.getElementById('performance-stats-card');
 				if (!performanceCard) {
 					// Создаем карточку если её нет
