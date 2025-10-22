@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 import numpy as np
 import time
-from ai.main import SIMILAR_THRESHOLD, analyze_selected_pattern, fetch_binance_ohlcv, build_features, find_similar_patterns,fetch_binance_ohlcv, get_data_bounds, get_full_historical_data, get_ohlcv_data
+from ai.main import SIMILAR_THRESHOLD, analyze_selected_pattern, fetch_binance_ohlcv, build_features, find_similar_patterns,fetch_binance_ohlcv, get_data_bounds, get_data_freshness, get_full_historical_data, get_ohlcv_data
 # Добавляем путь для импорта main.py
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -800,6 +800,72 @@ def analyze_pattern():
         data_cache[cache_key] = (result, time.time())
         return jsonify(result)
         
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
+
+# Добавляем в импорты app.py
+from ai.data_updater import data_updater
+import atexit
+
+# Добавляем после инициализации приложения
+@app.before_request
+def startup():
+    """Запускается при старте приложения"""
+    try:
+        # Предварительная загрузка данных
+        load_ohlcv_data()
+        
+        # Запуск фонового обновления
+        data_updater.start()
+        print("Приложение запущено, фоновое обновление данных активировано")
+    except Exception as e:
+        print(f"Ошибка при запуске приложения: {e}")
+
+@atexit.register
+def shutdown():
+    """Останавливаем при завершении приложения"""
+    data_updater.stop()
+
+# Добавляем новые API endpoints для управления обновлением
+@app.route('/api/update_status', methods=['GET'])
+def get_update_status():
+    """Возвращает статус фонового обновления"""
+    timeframes = ['1h', '4h', '1d', '1w']
+    status = {}
+    
+    for tf in timeframes:
+        freshness = get_data_freshness(tf)
+        status[tf] = freshness
+    
+    return jsonify({
+        'success': True,
+        'update_running': data_updater.is_running,
+        'data_status': status
+    })
+
+@app.route('/api/force_update', methods=['POST'])
+def force_update():
+    """Принудительное обновление данных"""
+    try:
+        data_updater.update_all_timeframes()
+        return jsonify({'success': True, 'message': 'Обновление данных запущено'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/update_settings', methods=['POST'])
+def update_settings():
+    """Изменение настроек обновления"""
+    try:
+        data = request.get_json()
+        interval = data.get('interval')
+        
+        if interval and isinstance(interval, int) and interval >= 300:
+            data_updater.update_interval = interval
+            return jsonify({'success': True, 'message': f'Интервал обновления изменен на {interval} секунд'})
+        else:
+            return jsonify({'success': False, 'message': 'Неверный интервал'}), 400
+            
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
     
