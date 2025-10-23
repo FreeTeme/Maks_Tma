@@ -565,7 +565,7 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
         "performance_stats": performance_stats
     }
 
-def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d') -> Dict:
+def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', no_cache: bool = False) -> Dict:
     """Оптимизированный анализ паттерна с кэшированием и таймаутами"""
     start_time = time.time()
     max_analysis_time = 60  # Максимальное время анализа - 60 секунд
@@ -744,7 +744,7 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
             
             matched_patterns.append(pattern_data)
             print(f"Найден подходящий паттерн: {i}-{j}")
-    
+
         print(f"Найдено {len(all_matches)} совпадений (идентичных: {len(identical_matches)}, похожих: {len(similar_matches)})")
         
         # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
@@ -794,14 +794,17 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
             cache_key = get_cache_key("analysis", timeframe, pattern_hash)
             save_to_cache(cache_key, response)
         
+        total_time = time.time() - start_time
+        print(f"Анализ завершен за {total_time:.2f} секунд")
+        
         return response
         
     except Exception as e:
         print(f"Ошибка быстрого анализа: {str(e)}")
         import traceback
         traceback.print_exc()
-        return {"error": f"Analysis error: {str(e)}"}
-    
+        return {"error": f"Analysis error: {str(e)}"}   
+
 # Сохраняем оригинальные функции для совместимости
 def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
     return fetch_binance_ohlcv_fast(start_date, end_date, timeframe)
