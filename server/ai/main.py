@@ -17,6 +17,28 @@ W_LOW = 0.085
 IDENTICAL_THRESHOLD = 0.09
 SIMILAR_THRESHOLD = 0.18
 
+# Список поддерживаемых торговых пар
+SUPPORTED_SYMBOLS = [
+    'ETHUSDT', 'BTCUSDT', 'XRPUSDT', 'SOLUSDT', 'BNBUSDT', 
+    'TRXUSDT', 'ADAUSDT', 'SUIUSDT', 'LINKUSDT', 'LTCUSDT', 'TONUSDT'
+]
+
+# Словарь для преобразования пар с # в формат Binance
+SYMBOL_MAP = {
+    'ETH#USDT': 'ETHUSDT',
+    'BTC#USDT': 'BTCUSDT', 
+    'XRP#USDT': 'XRPUSDT',
+    'SOL#USDT': 'SOLUSDT',
+    'BNB#USDT': 'BNBUSDT',
+    'TRX#USDT': 'TRXUSDT',
+    'ADA#USDT': 'ADAUSDT',
+    'SUI#USDT': 'SUIUSDT',
+    'LINK#USDT': 'LINKUSDT',
+    'LTC#USDT': 'LTCUSDT',
+    'TON#USDT': 'TONUSDT',
+    'BTC#ETH': 'BTCETH'
+}
+
 # Словарь для преобразования таймфреймов в интервалы Binance
 TIMEFRAME_MAP = {
     '1h': '1h', 
@@ -24,6 +46,10 @@ TIMEFRAME_MAP = {
     '1d': '1d',
     '1w': '1w'
 }
+
+def normalize_symbol(symbol: str) -> str:
+    """Нормализует символ для Binance API"""
+    return SYMBOL_MAP.get(symbol, symbol.replace('#', ''))
 
 # Глобальные кэши
 _data_cache = {}
@@ -57,16 +83,16 @@ def load_from_cache(key):
         pass
     return None
 
-def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
-    """Быстрая загрузка данных OHLCV с Binance API"""
-    cache_key = get_cache_key("ohlcv", timeframe, start_date, end_date)
+def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFrame:
+    """Быстрая загрузка данных OHLCV с Binance API для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
+    cache_key = get_cache_key("ohlcv", normalized_symbol, timeframe, start_date, end_date)
     cached_data = load_from_cache(cache_key)
     if cached_data is not None:
-        print(f"Используем кэшированные данные для {timeframe}")
+        print(f"Используем кэшированные данные для {normalized_symbol} {timeframe}")
         return cached_data
     
     base_url = 'https://api.binance.com/api/v3/klines'
-    symbol = 'BTCUSDT'
     interval = TIMEFRAME_MAP.get(timeframe, '1d')
     limit = 1000
     
@@ -76,25 +102,24 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
     all_rows = []
     current_ts = start_ts
     
-    print(f"Загрузка данных {timeframe} с {start_date} по {end_date}")
+    print(f"Загрузка данных {normalized_symbol} {timeframe} с {start_date} по {end_date}")
     
     # Оптимизация: для недельных данных увеличиваем лимит
     if timeframe == '1w':
         limit = 2000
     
     request_count = 0
-    max_requests = 50  # Уменьшаем лимит запросов
+    max_requests = 50
     start_time = time.time()
-    max_duration = 30  # Максимальное время загрузки - 30 секунд
+    max_duration = 30
     
     while current_ts <= end_ts and request_count < max_requests:
-        # Проверяем общее время выполнения
         if time.time() - start_time > max_duration:
             print(f"Превышено максимальное время загрузки ({max_duration} сек)")
             break
             
         params = {
-            'symbol': symbol,
+            'symbol': normalized_symbol,
             'interval': interval,
             'startTime': current_ts,
             'endTime': end_ts,
@@ -102,7 +127,7 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
         }
         
         try:
-            response = requests.get(base_url, params=params, timeout=10)  # Уменьшаем таймаут
+            response = requests.get(base_url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             
@@ -110,7 +135,6 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
                 print("Получены пустые данные, завершаем загрузку")
                 break
                 
-            # Быстрая обработка батча
             batch_rows = []
             for kline in data:
                 batch_rows.append({
@@ -120,12 +144,12 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
                     'low': float(kline[3]),
                     'close': float(kline[4]),
                     'volume': float(kline[5]),
-                    'timeframe': timeframe
+                    'timeframe': timeframe,
+                    'symbol': normalized_symbol
                 })
             
             all_rows.extend(batch_rows)
             
-            # Проверяем, что мы получили новые данные
             if len(data) < limit:
                 print("Получены все доступные данные")
                 break
@@ -134,8 +158,6 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
             request_count += 1
             
             print(f"Загружено {len(all_rows)} записей... (запрос {request_count}/{max_requests})")
-            
-            # Обязательная задержка между запросами
             time.sleep(0.1)
                 
         except requests.exceptions.Timeout:
@@ -143,7 +165,7 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
             request_count += 1
             continue
         except Exception as e:
-            print(f"Ошибка при загрузке данных: {e}")
+            print(f"Ошибка при загрузке данных для {normalized_symbol}: {e}")
             break
     
     df = pd.DataFrame(all_rows)
@@ -161,19 +183,22 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
     
     return df
 
-def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
-    """Оптимизированное получение полных исторических данных"""
+def get_full_historical_data(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFrame:
+    """Оптимизированное получение полных исторических данных для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
+    
     # Проверяем кэш в памяти
-    if timeframe in _data_cache:
-        print(f"Используем кэшированные данные в памяти для {timeframe}")
-        return _data_cache[timeframe].copy()
+    cache_key = f"{normalized_symbol}_{timeframe}"
+    if cache_key in _data_cache:
+        print(f"Используем кэшированные данные в памяти для {normalized_symbol} {timeframe}")
+        return _data_cache[cache_key].copy()
     
     # Проверяем кэш на диске
-    cache_key = get_cache_key("full_data", timeframe)
-    cached_data = load_from_cache(cache_key)
+    disk_cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
+    cached_data = load_from_cache(disk_cache_key)
     if cached_data is not None:
-        print(f"Используем кэшированные данные с диска для {timeframe}")
-        _data_cache[timeframe] = cached_data
+        print(f"Используем кэшированные данные с диска для {normalized_symbol} {timeframe}")
+        _data_cache[cache_key] = cached_data
         return cached_data.copy()
     
     try:
@@ -181,14 +206,14 @@ def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
         start_date = "2017-01-01"
         end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         
-        print(f"Загрузка полных данных {timeframe} с {start_date} по {end_date}")
-        df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe)
+        print(f"Загрузка полных данных {normalized_symbol} {timeframe} с {start_date} по {end_date}")
+        df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
         
         if df.empty:
-            print(f"Не удалось загрузить данные для {timeframe}")
+            print(f"Не удалось загрузить данные для {normalized_symbol} {timeframe}")
             return pd.DataFrame()
             
-        print(f"Успешно загружено {len(df)} записей для таймфрейма {timeframe}")
+        print(f"Успешно загружено {len(df)} записей для {normalized_symbol} {timeframe}")
         print(f"Период данных: {df['date'].min()} - {df['date'].max()}")
         
         # Убедимся, что даты не имеют часового пояса
@@ -203,13 +228,13 @@ def get_full_historical_data(timeframe: str = '1d') -> pd.DataFrame:
             print(f"ВНИМАНИЕ: Данные начинаются с {data_start}, а не с 2017-01-01")
         
         # Сохраняем в кэши
-        _data_cache[timeframe] = df.copy()
-        save_to_cache(cache_key, df)
+        _data_cache[cache_key] = df.copy()
+        save_to_cache(disk_cache_key, df)
         
         return df
         
     except Exception as e:
-        print(f"Ошибка при загрузке исторических данных: {e}")
+        print(f"Ошибка при загрузке исторических данных для {normalized_symbol}: {e}")
         return pd.DataFrame()
 
 def build_features_fast(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
@@ -245,7 +270,8 @@ def build_features_fast(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame
         'vol_rel': vol_rel,
         'direction': direction,
         'close': df['close'],
-        'timeframe': timeframe
+        'timeframe': timeframe,
+        'symbol': df.get('symbol', 'BTCUSDT')
     })
     
     # Сохраняем в кэш
@@ -304,7 +330,7 @@ def fast_pattern_distance_matrix(pattern_features, window_features):
     
     return distances
 
-def calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1):
+def calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, symbol='BTCUSDT', candles_after=1):
     """
     Вычисление изменения цены с медианной статистикой
     
@@ -445,7 +471,7 @@ def calculate_median_statistics(price_changes, directions):
 
 def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, 
                               pattern_start_date: str, pattern_end_date: str, 
-                              timeframe: str = '1d', max_threshold: float = SIMILAR_THRESHOLD) -> Dict:
+                              timeframe: str = '1d', symbol: str = 'BTCUSDT', max_threshold: float = SIMILAR_THRESHOLD) -> Dict:
     """ПРАВИЛЬНЫЙ поиск похожих паттернов по ТЗ"""
     sdt = pd.to_datetime(pattern_start_date, errors="coerce")
     edt = pd.to_datetime(pattern_end_date, errors="coerce")
@@ -526,7 +552,8 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
                 'close': float(ohlcv_row['close']),
                 'volume': float(ohlcv_row['volume']),
                 'direction': 'bullish' if features_df.loc[candle_idx, 'direction'] > 0 else 'bearish',
-                'timeframe': timeframe
+                'timeframe': timeframe,
+                'symbol': symbol
             })
         
         matched_patterns.append(pattern_data)
@@ -534,7 +561,7 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
     print(f"Найдено совпадений: {len(all_matches)} (идентичных: {len(identical_matches)}, похожих: {len(similar_matches)})")
     
     # Рассчитываем реальные изменения цены после паттернов
-    price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
+    price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, symbol, candles_after=1)
     
     # Правильная статистика по ТЗ
     stat_counts = {
@@ -555,6 +582,7 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
         "pattern_start": str(features_df.loc[pat_idx[0], 'date']),
         "pattern_end": str(features_df.loc[pat_idx[-1], 'date']),
         "timeframe": timeframe,
+        "symbol": symbol,
         "matches_found": total_found,
         "identical_count": len(identical_matches),
         "similar_count": len(similar_matches),
@@ -565,46 +593,41 @@ def find_similar_patterns_fast(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame
         "performance_stats": performance_stats
     }
 
-def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', no_cache: bool = False) -> Dict:
-    """Оптимизированный анализ паттерна с кэшированием и таймаутами"""
+def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', 
+                           symbol: str = 'BTCUSDT', no_cache: bool = False) -> Dict:
+    """Оптимизированный анализ паттерна с поддержкой разных пар"""
+    normalized_symbol = normalize_symbol(symbol)
     start_time = time.time()
-    max_analysis_time = 60  # Максимальное время анализа - 60 секунд
+    max_analysis_time = 60
     
     try:
         if not selected_candles or len(selected_candles) == 0:
             return {"error": "No candles selected for analysis"}
         
-        # Проверяем соответствие количества свечей
         if len(selected_candles) != num_candles:
             return {"error": f"Number of candles mismatch: expected {num_candles}, got {len(selected_candles)}"}
         
-        # Проверяем кэш только если кэширование не отключено
         if not no_cache:
-            # Создаем ключ для кэша анализа
             pattern_hash = hash(tuple(
                 (c['open_time'], c['close_price']) for c in selected_candles
             ))
-            cache_key = get_cache_key("analysis", timeframe, pattern_hash)
+            cache_key = get_cache_key("analysis", normalized_symbol, timeframe, pattern_hash)
             
-            # Проверяем кэш анализа
             cached_result = load_from_cache(cache_key)
             if cached_result is not None:
                 print("Используем кэшированный результат анализа")
                 return cached_result
         
-        print(f"Быстрый анализ паттерна: {len(selected_candles)} свечей, ТФ: {timeframe}, no_cache: {no_cache}")
+        print(f"Быстрый анализ паттерна: {len(selected_candles)} свечей, Пара: {normalized_symbol}, ТФ: {timeframe}")
         
-        # Проверяем время выполнения
         if time.time() - start_time > max_analysis_time:
             return {"error": "Analysis timeout - exceeded maximum time limit"}
         
-        # Загружаем данные с таймаутом
         print("Загружаем исторические данные...")
-        ohlcv_df = get_full_historical_data(timeframe)
+        ohlcv_df = get_full_historical_data(timeframe, normalized_symbol)
         if ohlcv_df.empty:
-            return {"error": "Failed to load historical data"}
+            return {"error": f"Failed to load historical data for {normalized_symbol}"}
         
-        # Проверяем время выполнения после загрузки данных
         if time.time() - start_time > max_analysis_time:
             return {"error": "Analysis timeout - data loading took too long"}
         
@@ -615,7 +638,6 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         print("Строим признаки...")
         features_df = build_features_fast(ohlcv_df, timeframe)
         
-        # Проверяем время выполнения после построения признаков
         if time.time() - start_time > max_analysis_time:
             return {"error": "Analysis timeout - feature building took too long"}
         
@@ -739,7 +761,8 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
                     'close': float(ohlcv_row['close']),
                     'volume': float(ohlcv_row['volume']),
                     'direction': 'bullish' if features_df.loc[candle_idx, 'direction'] > 0 else 'bearish',
-                    'timeframe': timeframe
+                    'timeframe': timeframe,
+                    'symbol': normalized_symbol
                 })
             
             matched_patterns.append(pattern_data)
@@ -749,7 +772,7 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         
         # Рассчитываем реальные изменения цены после паттернов с медианной статистикой
         print("Рассчитываем статистику производительности...")
-        price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, candles_after=1)
+        price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, normalized_symbol, candles_after=1)
         print(f"performance_stats создан: {performance_stats}")
         
         # Правильная статистика
@@ -772,7 +795,8 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
                 'pattern_start': str(features_df.loc[pat_idx[0], 'date']),
                 'pattern_end': str(features_df.loc[pat_idx[-1], 'date']),
                 'pattern_len': num_candles,
-                'timeframe': timeframe
+                'timeframe': timeframe,
+                'symbol': normalized_symbol
             },
             'statistics': {
                 'matches_found': len(all_matches),
@@ -791,7 +815,7 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
             pattern_hash = hash(tuple(
                 (c['open_time'], c['close_price']) for c in selected_candles
             ))
-            cache_key = get_cache_key("analysis", timeframe, pattern_hash)
+            cache_key = get_cache_key("analysis", normalized_symbol, timeframe, pattern_hash)
             save_to_cache(cache_key, response)
         
         total_time = time.time() - start_time
@@ -800,39 +824,27 @@ def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, tim
         return response
         
     except Exception as e:
-        print(f"Ошибка быстрого анализа: {str(e)}")
+        print(f"Ошибка быстрого анализа для {normalized_symbol}: {str(e)}")
         import traceback
         traceback.print_exc()
-        return {"error": f"Analysis error: {str(e)}"}   
+        return {"error": f"Analysis error: {str(e)}"}
 
-# Сохраняем оригинальные функции для совместимости
-def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
-    return fetch_binance_ohlcv_fast(start_date, end_date, timeframe)
-
-def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
-    return build_features_fast(df, timeframe)
-
-def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pattern_start_date: str, 
-                         pattern_end_date: str, timeframe: str = '1d', max_threshold: float = SIMILAR_THRESHOLD,
-                         years_back: int = 5) -> Dict:
-    return find_similar_patterns_fast(features_df, ohlcv_df, pattern_start_date, pattern_end_date, timeframe, max_threshold)
-
-def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = None, timeframe: str = '1d') -> Dict:
-    """Оптимизированное получение данных OHLCV"""
+def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = None, 
+                   timeframe: str = '1d', symbol: str = 'BTCUSDT') -> Dict:
+    """Оптимизированное получение данных OHLCV для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
     try:
-        df = get_full_historical_data(timeframe)
+        df = get_full_historical_data(timeframe, normalized_symbol)
         if df.empty:
-            return {"success": False, "message": "Failed to load historical data"}
+            return {"success": False, "message": f"Failed to load historical data for {normalized_symbol}"}
         
         if start_date:
             start_dt = pd.to_datetime(start_date)
-            # Убираем часовой пояс для сравнения
             if start_dt.tz is not None:
                 start_dt = start_dt.tz_localize(None)
             df = df[df['date'] >= start_dt]
         if end_date:
             end_dt = pd.to_datetime(end_date)
-            # Убираем часовой пояс для сравнения
             if end_dt.tz is not None:
                 end_dt = end_dt.tz_localize(None)
             df = df[df['date'] <= end_dt]
@@ -841,10 +853,8 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
         for _, row in df.iterrows():
             open_time = row['date']
             
-            # Для всех таймфреймов используем одинаковый формат даты
             time_format = '%Y-%m-%dT%H:%M:%SZ'
             
-            # Вычисляем close_time в зависимости от таймфрейма
             if timeframe == '1h':
                 close_time = open_time + timedelta(hours=1)
             elif timeframe == '4h':
@@ -864,23 +874,26 @@ def get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = N
                 'high': float(row['high']),
                 'low': float(row['low']),
                 'volume': float(row['volume']),
-                'timeframe': timeframe
+                'timeframe': timeframe,
+                'symbol': normalized_symbol
             })
         
         return {
             "success": True, 
             "candles": records,
             "timeframe": timeframe,
+            "symbol": normalized_symbol,
             "total_candles": len(records)
         }
         
     except Exception as e:
         return {"success": False, "message": str(e)}
 
-def get_data_bounds(timeframe: str = '1d') -> Dict:
-    """Получение границ данных"""
+def get_data_bounds(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> Dict:
+    """Получение границ данных для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
     try:
-        df = get_full_historical_data(timeframe)
+        df = get_full_historical_data(timeframe, normalized_symbol)
         if df.empty:
             today = datetime.now().date()
             start_date = (datetime.now() - timedelta(days=365*8)).date()
@@ -888,7 +901,8 @@ def get_data_bounds(timeframe: str = '1d') -> Dict:
                 'success': True, 
                 'start': str(start_date), 
                 'end': str(today),
-                'timeframe': timeframe
+                'timeframe': timeframe,
+                'symbol': normalized_symbol
             }
         
         start = df['date'].min().date()
@@ -897,10 +911,70 @@ def get_data_bounds(timeframe: str = '1d') -> Dict:
             'success': True, 
             'start': str(start), 
             'end': str(end),
-            'timeframe': timeframe
+            'timeframe': timeframe,
+            'symbol': normalized_symbol
         }
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+def get_data_freshness(timeframe: str = '1d', symbol: str = 'BTCUSDT'):
+    """Проверяет свежесть данных в кэше для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
+    cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
+    cached_data = load_from_cache(cache_key)
+    
+    if cached_data is None or cached_data.empty:
+        return None
+    
+    last_date = cached_data['date'].max()
+    freshness = datetime.now() - last_date
+    
+    return {
+        'last_date': last_date,
+        'freshness_hours': freshness.total_seconds() / 3600,
+        'is_fresh': freshness.total_seconds() < 3600,
+        'symbol': normalized_symbol,
+        'timeframe': timeframe
+    }
+
+def force_data_refresh(timeframe='1d', symbol='BTCUSDT'):
+    """Принудительное обновление данных для указанной пары"""
+    normalized_symbol = normalize_symbol(symbol)
+    try:
+        cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
+        cache_file = CACHE_DIR / f"{cache_key}.pkl"
+        if cache_file.exists():
+            cache_file.unlink()
+        
+        memory_cache_key = f"{normalized_symbol}_{timeframe}"
+        if memory_cache_key in _data_cache:
+            del _data_cache[memory_cache_key]
+        
+        df = get_full_historical_data(timeframe, normalized_symbol)
+        return not df.empty
+    except Exception as e:
+        print(f"Ошибка при принудительном обновлении для {normalized_symbol}: {e}")
+        return False
+
+def get_supported_symbols() -> Dict:
+    """Возвращает список поддерживаемых торговых пар"""
+    return {
+        "success": True,
+        "symbols": list(SYMBOL_MAP.keys()),
+        "binance_symbols": list(SYMBOL_MAP.values())
+    }
+
+# Сохраняем оригинальные функции для совместимости
+def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d') -> pd.DataFrame:
+    return fetch_binance_ohlcv_fast(start_date, end_date, timeframe)
+
+def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
+    return build_features_fast(df, timeframe)
+
+def find_similar_patterns(features_df: pd.DataFrame, ohlcv_df: pd.DataFrame, pattern_start_date: str, 
+                         pattern_end_date: str, timeframe: str = '1d', max_threshold: float = SIMILAR_THRESHOLD,
+                         years_back: int = 5) -> Dict:
+    return find_similar_patterns_fast(features_df, ohlcv_df, pattern_start_date, pattern_end_date, timeframe, max_threshold)
 
 # Оригинальная функция для совместимости
 def candle_distance(features_df: pd.DataFrame, idx_a: int, idx_b: int) -> Tuple[float, str]:
@@ -930,75 +1004,30 @@ def candle_distance(features_df: pd.DataFrame, idx_a: int, idx_b: int) -> Tuple[
         
     except (KeyError, IndexError):
         return float('inf'), "different"
-    
-
-# Добавляем в main.py после существующих функций
-
-def get_data_freshness(timeframe):
-    """Проверяет свежесть данных в кэше"""
-    cache_key = get_cache_key("full_data", timeframe)
-    cached_data = load_from_cache(cache_key)
-    
-    if cached_data is None or cached_data.empty:
-        return None
-    
-    last_date = cached_data['date'].max()
-    freshness = datetime.now() - last_date
-    
-    return {
-        'last_date': last_date,
-        'freshness_hours': freshness.total_seconds() / 3600,
-        'is_fresh': freshness.total_seconds() < 3600  # Считаем свежими если младше 1 часа
-    }
-
-def force_data_refresh(timeframe='1d'):
-    """Принудительное обновление данных"""
-    try:
-        # Удаляем данные из кэша
-        cache_key = get_cache_key("full_data", timeframe)
-        cache_file = CACHE_DIR / f"{cache_key}.pkl"
-        if cache_file.exists():
-            cache_file.unlink()
-        
-        # Очищаем кэш в памяти
-        if timeframe in _data_cache:
-            del _data_cache[timeframe]
-        
-        # Загружаем заново
-        df = get_full_historical_data(timeframe)
-        return not df.empty
-    except Exception as e:
-        print(f"Ошибка при принудительном обновлении: {e}")
-        return False
 
 if __name__ == "__main__":
-    # Тестирование загрузки данных
-    timeframes = ['1d', '1h']
+    # Тестирование загрузки данных для разных пар
+    test_symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT']
     
-    for tf in timeframes:
-        print(f"\n=== Тестирование загрузки данных {tf} ===")
+    for symbol in test_symbols:
+        print(f"\n=== Тестирование загрузки данных {symbol} ===")
         
         start_time = time.time()
-        df = get_full_historical_data(tf)
+        df = get_full_historical_data('1d', symbol)
         load_time = time.time() - start_time
         
         if df.empty:
-            print(f"Не удалось загрузить данные для {tf}")
+            print(f"Не удалось загрузить данные для {symbol}")
             continue
             
-        start_time = time.time()
-        features_df = build_features_fast(df, tf)
-        features_time = time.time() - start_time
-        
         print(f"Загружено {len(df)} записей за {load_time:.2f} сек")
-        print(f"Признаки построены за {features_time:.2f} сек")
         print(f"Период данных: {df['date'].min()} - {df['date'].max()}")
         
         # Проверяем, что данные охватывают 2017-2025
         data_start = df['date'].min()
         data_end = df['date'].max()
         expected_start = pd.to_datetime("2017-01-01")
-        expected_end = pd.to_datetime("2024-12-31")  # Текущий год
+        expected_end = pd.to_datetime("2024-12-31")
         
         if data_start <= expected_start:
             print("✓ Данные начинаются с 2017 года или ранее")
@@ -1009,3 +1038,9 @@ if __name__ == "__main__":
             print("✓ Данные включают текущий год")
         else:
             print(f"✗ Данные заканчиваются на {data_end}, а не на текущий год")
+    
+    # Тестирование получения списка пар
+    print(f"\n=== Тестирование списка пар ===")
+    symbols_info = get_supported_symbols()
+    print(f"Поддерживаемые пары: {symbols_info['symbols']}")
+    print(f"Binance символы: {symbols_info['binance_symbols']}")

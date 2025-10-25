@@ -1434,7 +1434,7 @@
                     let dsStart = new Date('2018-01-01T00:00:00Z');
                     let dsEnd = new Date();
                     try {
-                        const b = await fetch(`/api/pattern_bounds?timeframe=${this.currentTimeframe}`);
+                        const b = await fetch(`/api/pattern/bounds?timeframe=${this.currentTimeframe}`);
                         if (b.ok) {
                             const j = await b.json();
                             if (j.success) { 
@@ -1453,7 +1453,7 @@
                     
                     // Загружаем реальные свечи с сервера
                     const api = await fetch(
-                        `/api/ohlcv?source=binance` +
+                        `/api/pattern/ohlcv?source=binance` +
                         `&from=${dsStart.toISOString().slice(0,10)}` +
                         `&to=${nextDay.toISOString().slice(0,10)}` +
                         `&timeframe=${this.currentTimeframe}`
@@ -1789,7 +1789,7 @@
                     const controller = new AbortController();
                     const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 минуты таймаут
                     
-                    const res = await fetch('/analyze_pattern', { 
+                    const res = await fetch('/api/pattern/analyze', { 
                         method: 'POST', 
                         headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify(payload),
@@ -2366,7 +2366,7 @@
 					
 					console.log('Отправляем запрос:', payload);
 					
-					const response = await fetch('/analyze_pattern', {
+					const response = await fetch('/api/pattern/analyze', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify(payload)
@@ -2753,7 +2753,7 @@
 				
 				try {
 					// Получаем последние 30 дней данных для мини-графика
-					const response = await fetch(`/api/ohlcv?source=binance&timeframe=${this.currentTimeframe}&from=${this.getDateDaysAgo(30)}`);
+					const response = await fetch(`/api/pattern/ohlcv?source=binance&timeframe=${this.currentTimeframe}&from=${this.getDateDaysAgo(30)}`);
 					const chartData = await response.json();
 					
 					if (!chartData.success || !chartData.candles) return;
