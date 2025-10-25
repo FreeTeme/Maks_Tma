@@ -11,6 +11,8 @@ import requests
 import numpy as np
 import time
 
+from ai.main import get_full_historical_data
+
 # Добавляем путь для импорта main.py
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -895,135 +897,13 @@ def load_ohlcv_data():
 # Загружаем данные при запуске приложения
 load_ohlcv_data()
 
-@app.route('/api/pattern_bounds', methods=['GET'])
-@require_auth
-def pattern_bounds():
-    """Возвращает границы доступных данных через функцию из main.py"""
-    try:
-        timeframe = request.args.get('timeframe', '1d')
-        result = get_data_bounds(timeframe)
-        if result['success']:
-            return jsonify(result)
-        else:
-            return jsonify({'success': False, 'message': result['message']}), 500
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# Добавляем новые импорты и роуты
-from functools import lru_cache
-import time
-
-# Глобальный кэш для данных
-data_cache = {}
-CACHE_TIMEOUT = 300  # 5 минут
-
-@app.route('/api/ohlcv', methods=['GET'])
-@require_auth
-def api_ohlcv():
-    """Оптимизированный эндпоинт с кэшированием"""
-    try:
-        source = request.args.get('source', 'binance')
-        from_date = request.args.get('from')
-        to_date = request.args.get('to')
-        timeframe = request.args.get('timeframe', '1d')
-        
-        # Ключ для кэша
-        cache_key = f"{source}_{timeframe}_{from_date}_{to_date}"
-        
-        # Проверяем кэш
-        if cache_key in data_cache:
-            cached_data, timestamp = data_cache[cache_key]
-            if time.time() - timestamp < CACHE_TIMEOUT:
-                return jsonify(cached_data)
-        
-        if source == 'binance':
-            result = get_ohlcv_data(from_date, to_date, timeframe)
-            if result['success']:
-                # Сохраняем в кэш
-                data_cache[cache_key] = (result, time.time())
-                return jsonify(result)
-            else:
-                return jsonify({'success': False, 'message': result['message']}), 500
-        else:
-            return jsonify({'success': False, 'message': 'Only binance source is supported'}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/analyze_pattern', methods=['POST'])
-@require_auth
-def analyze_pattern():
-    """Оптимизированный анализ с кэшированием и таймаутами"""
-    start_time = time.time()
-    max_request_time = 120  # Максимальное время обработки запроса - 2 минуты
-    
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'success': False, 'message': 'No data provided'}), 400
-            
-        required_fields = ['num_candles', 'candles']
-        
-        if not all(field in data for field in required_fields):
-            return jsonify({'success': False, 'message': 'Missing required fields'}), 400
-        
-        timeframe = data.get('timeframe', '1d')
-        
-        # Проверяем время выполнения запроса
-        if time.time() - start_time > max_request_time:
-            return jsonify({'success': False, 'message': 'Request timeout'}), 408
-        
-        # Проверяем, нужно ли отключить кэширование
-        no_cache = data.get('no_cache', False)
-        
-        if not no_cache:
-            # Создаем ключ для кэша на основе выбранных свечей
-            pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
-            cache_key = f"analysis_{timeframe}_{pattern_hash}"
-            
-            # Проверяем кэш
-            if cache_key in data_cache:
-                cached_result, timestamp = data_cache[cache_key]
-                if time.time() - timestamp < CACHE_TIMEOUT:
-                    print("Возвращаем кэшированный результат")
-                    return jsonify(cached_result)
-        
-        print(f"Начинаем анализ паттерна: {data['num_candles']} свечей, ТФ: {timeframe}, no_cache: {no_cache}")
-        
-        # Проверяем время выполнения перед началом анализа
-        if time.time() - start_time > max_request_time:
-            return jsonify({'success': False, 'message': 'Request timeout before analysis'}), 408
-        
-        result = analyze_selected_pattern(data['candles'], data['num_candles'], timeframe, no_cache=no_cache)
-        
-        # Проверяем время выполнения после анализа
-        if time.time() - start_time > max_request_time:
-            return jsonify({'success': False, 'message': 'Analysis timeout'}), 408
-        
-        if 'error' in result:
-            print(f"Ошибка анализа: {result['error']}")
-            return jsonify({'success': False, 'message': result['error']}), 500
-        
-        # Отладочная информация о performance_stats
-        if 'performance_stats' in result:
-            print(f"performance_stats: {result['performance_stats']}")
-        else:
-            print("performance_stats отсутствует в результате")
-        
-        # Кэшируем результат только если кэширование не отключено
-        if not no_cache:
-            pattern_hash = hash(str([c['open_time'] for c in data['candles']]))
-            cache_key = f"analysis_{timeframe}_{pattern_hash}"
-            data_cache[cache_key] = (result, time.time())
-        
-        total_time = time.time() - start_time
-        print(f"Анализ завершен за {total_time:.2f} секунд")
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-    
+# УДАЛЕНЫ ДУБЛИРУЮЩИЕСЯ ЭНДПОИНТЫ, КОТОРЫЕ ПЕРЕМЕЩЕНЫ В pattern_blueprint.py:
+# - /api/pattern_bounds
+# - /api/ohlcv  
+# - /analyze_pattern
+# - /api/update_status
+# - /api/force_update
+# - /api/update_settings
 
 # Добавляем в импорты app.py
 from ai.data_updater import data_updater
@@ -1044,51 +924,6 @@ def startup():
 def shutdown():
     """Останавливаем при завершении приложения"""
     data_updater.stop()
-
-# Добавляем новые API endpoints для управления обновлением
-@app.route('/api/update_status', methods=['GET'])
-@require_auth
-def get_update_status():
-    """Возвращает статус фонового обновления"""
-    timeframes = ['1h', '4h', '1d', '1w']
-    status = {}
-    
-    for tf in timeframes:
-        freshness = get_data_freshness(tf)
-        status[tf] = freshness
-    
-    return jsonify({
-        'success': True,
-        'update_running': data_updater.is_running,
-        'data_status': status
-    })
-
-@app.route('/api/force_update', methods=['POST'])
-@require_auth
-def force_update():
-    """Принудительное обновление данных"""
-    try:
-        data_updater.update_all_timeframes()
-        return jsonify({'success': True, 'message': 'Обновление данных запущено'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/api/update_settings', methods=['POST'])
-@require_auth
-def update_settings():
-    """Изменение настроек обновления"""
-    try:
-        data = request.get_json()
-        interval = data.get('interval')
-        
-        if interval and isinstance(interval, int) and interval >= 300:
-            data_updater.update_interval = interval
-            return jsonify({'success': True, 'message': f'Интервал обновления изменен на {interval} секунд'})
-        else:
-            return jsonify({'success': False, 'message': 'Неверный интервал'}), 400
-            
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
 
 # Админ маршруты
 @app.route('/admin/logs')
