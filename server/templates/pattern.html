@@ -1011,6 +1011,26 @@
                 min-width: 44px;
             }
         }
+
+        .symbol-selector {
+            margin-left: 15px;
+        }
+
+        .symbol-select {
+            background: #1a222c;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .symbol-select option {
+            background: var(--bg-2);
+            color: var(--text);
+        }
     </style>
 </head>
 <body>
@@ -1021,11 +1041,27 @@
                     <i class="fas fa-arrow-left"></i>
                 </button>
                 <div class="logo"></div>
-                <div class="title">BTC/USDT — Поиск паттернов</div>
+                <!-- В разделе .brand, после .title -->
+                <div class="title" id="page-title">BTC/USDT — Поиск паттернов</div>
+                <div class="symbol-selector">
+                    <select id="symbol-select" class="symbol-select">
+                        <option value="BTC#USDT">BTC/USDT</option>
+                        <option value="ETH#USDT">ETH/USDT</option>
+                        <option value="XRP#USDT">XRP/USDT</option>
+                        <option value="SOL#USDT">SOL/USDT</option>
+                        <option value="BNB#USDT">BNB/USDT</option>
+                        <option value="TRX#USDT">TRX/USDT</option>
+                        <option value="ADA#USDT">ADA/USDT</option>
+                        <option value="SUI#USDT">SUI/USDT</option>
+                        <option value="LINK#USDT">LINK/USDT</option>
+                        <option value="LTC#USDT">LTC/USDT</option>
+                        <option value="TON#USDT">TON/USDT</option>
+                    </select>
+                </div>
             </div>
             <div class="kpis">
                 <div class="kpi">ТФ:<strong>1D</strong></div>
-                <div class="kpi">Данные:<strong>2015→</strong></div>
+                <div class="kpi">Данные:<strong>2017→</strong></div>
             </div>
         </div>
 
@@ -1272,6 +1308,14 @@
 				if (savedTimeframe) {
 					localStorage.removeItem('savedTimeframe');
 				}
+
+                const savedSymbol = localStorage.getItem('savedSymbol');
+                this.currentSymbol = savedSymbol || 'BTC#USDT';
+                
+                // Очищаем сохраненный символ после использования
+                if (savedSymbol) {
+                    localStorage.removeItem('savedSymbol');
+                }
 				
                 this.initChart();
                 this.loadData();
@@ -1283,6 +1327,52 @@
 				this.currentMatchIndex = -1;
 				this.matchedRanges = [];
 				this.isAnalysisMode = false; // Режим: false = выбор свечей, true = просмотр результатов
+            }
+
+            async switchSymbol(newSymbol) {
+                if (newSymbol === this.currentSymbol) return;
+                
+                // Сохраняем новый символ
+                this.currentSymbol = newSymbol;
+                
+                // Обновляем заголовок страницы
+                this.updatePageTitle();
+                
+                // Очищаем текущие данные
+                this.clearSelection();
+                this.patternMarkers.clear();
+                this.matchedHighlightPoints = [];
+                this.matchedRanges = [];
+                this.currentMatchIndex = -1;
+                
+                // Показываем загрузку
+                const loader = this.ensureLoader();
+                loader.style.display = 'flex';
+                
+                try {
+                    // Перезагружаем данные с новым символом
+                    await this.loadData();
+                    
+                    // Обновляем UI
+                    safeSetTextContent('matches-found', '0');
+                    safeSetTextContent('pattern-length', '0');
+                    safeSetTextContent('accuracy', '0%');
+                    safeSetStyle('pattern-info-card', 'display', 'none');
+                    safeSetInnerHTML('matches', '');
+                    
+                    this.toast(`Загружены данные для ${newSymbol.replace('#', '/')}`);
+                } catch (e) {
+                    this.toast('Ошибка загрузки данных: ' + e.message);
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+
+            updatePageTitle() {
+                const titleElement = document.getElementById('page-title');
+                if (titleElement) {
+                    titleElement.textContent = `${this.currentSymbol.replace('#', '/')} — Поиск паттернов`;
+                }
             }
 
             initChart() {
@@ -1434,7 +1524,7 @@
                     let dsStart = new Date('2018-01-01T00:00:00Z');
                     let dsEnd = new Date();
                     try {
-                        const b = await fetch(`/api/pattern/bounds?timeframe=${this.currentTimeframe}`);
+                        const b = await fetch(`/api/pattern/bounds?timeframe=${this.currentTimeframe}&symbol=${this.currentSymbol}`);
                         if (b.ok) {
                             const j = await b.json();
                             if (j.success) { 
@@ -1456,7 +1546,8 @@
                         `/api/pattern/ohlcv?source=binance` +
                         `&from=${dsStart.toISOString().slice(0,10)}` +
                         `&to=${nextDay.toISOString().slice(0,10)}` +
-                        `&timeframe=${this.currentTimeframe}`
+                        `&timeframe=${this.currentTimeframe}` +
+                        `&symbol=${this.currentSymbol}`  // ← добавить эту строку
                     );
                     
                     if (!api.ok) throw new Error('Не удалось загрузить OHLCV');
@@ -1547,7 +1638,14 @@
 				const toSelectedBtn = document.getElementById('to-selected-btn'); if (toSelectedBtn) toSelectedBtn.addEventListener('click', () => this.zoomToSelected());
 				const prevMatchBtn = document.getElementById('prev-match-btn'); if (prevMatchBtn) prevMatchBtn.addEventListener('click', () => this.gotoMatch(-1));
 				const nextMatchBtn = document.getElementById('next-match-btn'); if (nextMatchBtn) nextMatchBtn.addEventListener('click', () => this.gotoMatch(1));
-				document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', (e) => {
+				const symbolSelect = document.getElementById('symbol-select');
+                    if (symbolSelect) {
+                        symbolSelect.value = this.currentSymbol;
+                        symbolSelect.addEventListener('change', (e) => {
+                            this.switchSymbol(e.target.value);
+                        });
+                    }
+                document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', (e) => {
 					document.querySelectorAll('[data-tf]').forEach(x => x.classList.remove('active'));
                         e.target.classList.add('active');
 					const newTF = e.target.getAttribute('data-tf');
@@ -1771,10 +1869,11 @@
                 
                 // Исправляем: отправляем точное количество выбранных свечей
                 const payload = { 
-                    num_candles: this.selectedIndices.size, // Используем реальное количество выбранных свечей
+                    num_candles: this.selectedIndices.size,
                     candles, 
                     timeframe: this.currentTimeframe,
-                    no_cache: true  // Отключаем кэширование для получения актуальных данных
+                    symbol: this.currentSymbol,  // ← добавить эту строку
+                    no_cache: true
                 };
                 
                 // UI state
@@ -2193,7 +2292,10 @@
 			}
 
 			showClearConfirmationModal() {
-				const modal = document.getElementById('clear-confirmation-modal');
+
+                localStorage.setItem('savedSymbol', this.currentSymbol);
+                
+                const modal = document.getElementById('clear-confirmation-modal');
 				
 				// Update statistics in modal
 				safeSetTextContent('selected-count-modal', this.selectedIndices.size);

@@ -42,7 +42,17 @@ TIMEFRAME_MAP = {
 
 def normalize_symbol(symbol: str) -> str:
     """Нормализует символ для Binance API"""
-    return SYMBOL_MAP.get(symbol, symbol.replace('#', ''))
+    # Если символ содержит #, преобразуем его
+    normalized = SYMBOL_MAP.get(symbol, symbol.replace('#', ''))
+    
+    # Добавляем USDT если символ слишком короткий (только для основных пар)
+    if len(normalized) <= 6 and not normalized.endswith('USDT'):
+        # Проверяем, есть ли символ в списке поддерживаемых
+        supported_symbols = ['BTC', 'ETH', 'XRP', 'SOL', 'BNB', 'TRX', 'ADA', 'SUI', 'LINK', 'LTC', 'TON']
+        if normalized in supported_symbols:
+            normalized += 'USDT'
+    
+    return normalized
 
 # Единый кэш для всех данных
 CACHE_DIR = Path("pattern_cache")
