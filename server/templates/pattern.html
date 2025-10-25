@@ -1744,23 +1744,8 @@
 				this.redrawOverlay();
 				
 				// Показываем/скрываем индикатор выбранных свечей
-				this.updateSelectedIndicator();
 			}
 			
-			// updateSelectedIndicator() {
-			// 	let indicator = document.querySelector('.selected-candles-indicator');
-			// 	if (this.selectedIndices.size > 0) {
-			// 		if (!indicator) {
-			// 			indicator = document.createElement('div');
-			// 			indicator.className = 'selected-candles-indicator';
-			// 			document.body.appendChild(indicator);
-			// 		}
-			// 		indicator.textContent = `Выбрано: ${this.selectedIndices.size} свечей`;
-			// 		indicator.style.display = 'block';
-			// 	} else if (indicator) {
-			// 		indicator.style.display = 'none';
-			// 	}
-			// }
 			
 			// Принудительное восстановление выделения выбранных свечей
 			forceRestoreSelection() {
@@ -1794,7 +1779,6 @@
 				this.redrawOverlay();
 				
 				// Скрываем индикатор выбранных свечей
-				this.updateSelectedIndicator();
 			}
 
 			resetView() {
