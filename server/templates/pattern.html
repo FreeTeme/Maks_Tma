@@ -1329,9 +1329,7 @@
                 
                 // Сохраняем новый символ
                 this.currentSymbol = newSymbol;
-                
-                // Обновляем заголовок страницы
-                this.updatePageTitle();
+            
                 
                 // Очищаем текущие данные
                 this.clearSelection();
@@ -1363,12 +1361,6 @@
                 }
             }
 
-            updatePageTitle() {
-                const titleElement = document.getElementById('page-title');
-                if (titleElement) {
-                    titleElement.textContent = `${this.currentSymbol.replace('#', '/')} — Поиск паттернов`;
-                }
-            }
 
             initChart() {
 				const el = document.getElementById('chart');
