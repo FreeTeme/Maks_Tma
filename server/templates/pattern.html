@@ -2391,13 +2391,15 @@
 						throw new Error(data.message || 'Ошибка загрузки анализа');
 					}
 					
-					// Отображаем простую статистику из результата
-					this.displaySimpleAnalysis(data);
-					this.toast('Анализ выбранных свечей завершен');
-					
+									// Отображаем простую статистику из результата
+				this.displaySimpleAnalysis(data);
+				this.toast('Анализ выбранных свечей завершен');
+				
 				} catch (error) {
 					console.error('Ошибка загрузки общего анализа:', error);
 					this.toast('Ошибка: ' + error.message);
+					// Скрываем загрузку при ошибке
+					this.hideGeneralAnalysisLoading();
 				} finally {
 					if (btn) btn.disabled = false;
 				}
@@ -2489,6 +2491,9 @@
 			}
 
 			displaySimpleAnalysis(data) {
+				// Скрываем загрузку при отображении результатов
+				this.hideGeneralAnalysisLoading();
+				
 				// Отображаем данные напрямую из performance_stats и statistics
 				console.log('Отображаем данные:', data);
 				console.log('performance_stats:', data.performance_stats);
@@ -2619,6 +2624,21 @@
 							<span>Загрузка анализа...</span>
 						</div>
 					`;
+					
+					// Автоматически скрываем загрузку через 10 секунд
+					setTimeout(() => {
+						this.hideGeneralAnalysisLoading();
+					}, 10000);
+				}
+			}
+
+			hideGeneralAnalysisLoading() {
+				const generalStats = document.getElementById('general-stats');
+				if (generalStats) {
+					const loading = generalStats.querySelector('.general-analysis-loading');
+					if (loading) {
+						loading.remove();
+					}
 				}
 			}
 

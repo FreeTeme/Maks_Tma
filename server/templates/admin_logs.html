@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логи входов - Админ панель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        
+        .controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .controls h3 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .filter-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .filter-group label {
+            font-weight: 500;
+        }
+        
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .logs-table {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .table-header h3 {
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .success {
+            color: #28a745;
+            font-weight: 500;
+        }
+        
+        .failed {
+            color: #dc3545;
+            font-weight: 500;
+        }
+        
+        .role-admin {
+            background: #fff3cd;
+            color: #856404;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .role-worker {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .pagination button {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .pagination button:hover {
+            background: #f8f9fa;
+        }
+        
+        .pagination button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .logout-btn {
+            position: absolute;
+            top: 1rem;
+            right: 2rem;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/logout" class="logout-btn">Выйти</a>
+        <h1>🔐 Логи входов в систему</h1>
+        <p>Мониторинг доступа к приложению</p>
+    </div>
+    
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="total-logins">-</div>
+                <div class="stat-label">Всего входов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="successful-logins">-</div>
+                <div class="stat-label">Успешных</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="failed-logins">-</div>
+                <div class="stat-label">Неудачных</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unique-ips">-</div>
+                <div class="stat-label">Уникальных IP</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <h3>Фильтры</h3>
+            <div class="filter-group">
+                <label for="status-filter">Статус:</label>
+                <select id="status-filter">
+                    <option value="">Все</option>
+                    <option value="success">Успешные</option>
+                    <option value="failed">Неудачные</option>
+                </select>
+                
+                <label for="role-filter">Роль:</label>
+                <select id="role-filter">
+                    <option value="">Все</option>
+                    <option value="админ">Админ</option>
+                    <option value="работник">Работник</option>
+                </select>
+                
+                <label for="date-from">С даты:</label>
+                <input type="date" id="date-from">
+                
+                <label for="date-to">По дату:</label>
+                <input type="date" id="date-to">
+                
+                <button class="btn" onclick="applyFilters()">Применить</button>
+                <button class="btn" onclick="clearFilters()">Очистить</button>
+            </div>
+        </div>
+        
+        <div class="logs-table">
+            <div class="table-header">
+                <h3>История входов</h3>
+            </div>
+            <div id="logs-content">
+                <div class="no-data">Загрузка...</div>
+            </div>
+        </div>
+        
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const logsPerPage = 20;
+        
+        function loadStats() {
+            fetch('/api/admin/stats')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('total-logins').textContent = data.stats.total_logins;
+                        document.getElementById('successful-logins').textContent = data.stats.successful_logins;
+                        document.getElementById('failed-logins').textContent = data.stats.failed_logins;
+                        document.getElementById('unique-ips').textContent = data.stats.unique_ips;
+                    }
+                })
+                .catch(error => console.error('Ошибка загрузки статистики:', error));
+        }
+        
+        function loadLogs(page = 1) {
+            const filters = {
+                page: page,
+                limit: logsPerPage,
+                status: document.getElementById('status-filter').value,
+                role: document.getElementById('role-filter').value,
+                date_from: document.getElementById('date-from').value,
+                date_to: document.getElementById('date-to').value
+            };
+            
+            const queryString = new URLSearchParams(filters).toString();
+            
+            fetch(`/api/admin/logs?${queryString}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        displayLogs(data.logs);
+                        displayPagination(data.total, data.page, data.pages);
+                    } else {
+                        document.getElementById('logs-content').innerHTML = 
+                            '<div class="no-data">Ошибка загрузки логов</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки логов:', error);
+                    document.getElementById('logs-content').innerHTML = 
+                        '<div class="no-data">Ошибка соединения</div>';
+                });
+        }
+        
+        function displayLogs(logs) {
+            if (logs.length === 0) {
+                document.getElementById('logs-content').innerHTML = 
+                    '<div class="no-data">Логи не найдены</div>';
+                return;
+            }
+            
+            const table = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Пароль</th>
+                            <th>Роль</th>
+                            <th>IP адрес</th>
+                            <th>Статус</th>
+                            <th>User Agent</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${logs.map(log => `
+                            <tr>
+                                <td>${new Date(log.login_time).toLocaleString('ru-RU')}</td>
+                                <td>${log.password}</td>
+                                <td>
+                                    <span class="role-${log.role === 'админ' ? 'admin' : 'worker'}">
+                                        ${log.role}
+                                    </span>
+                                </td>
+                                <td>${log.ip_address || 'Неизвестно'}</td>
+                                <td>
+                                    <span class="${log.success ? 'success' : 'failed'}">
+                                        ${log.success ? '✓ Успешно' : '✗ Неудачно'}
+                                    </span>
+                                </td>
+                                <td title="${log.user_agent || ''}">
+                                    ${(log.user_agent || '').substring(0, 50)}${(log.user_agent || '').length > 50 ? '...' : ''}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            document.getElementById('logs-content').innerHTML = table;
+        }
+        
+        function displayPagination(total, currentPage, totalPages) {
+            if (totalPages <= 1) {
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+            
+            let paginationHTML = '';
+            
+            // Предыдущая страница
+            if (currentPage > 1) {
+                paginationHTML += `<button onclick="loadLogs(${currentPage - 1})">‹ Предыдущая</button>`;
+            }
+            
+            // Номера страниц
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHTML += `<button class="${i === currentPage ? 'active' : ''}" 
+                    onclick="loadLogs(${i})">${i}</button>`;
+            }
+            
+            // Следующая страница
+            if (currentPage < totalPages) {
+                paginationHTML += `<button onclick="loadLogs(${currentPage + 1})">Следующая ›</button>`;
+            }
+            
+            document.getElementById('pagination').innerHTML = paginationHTML;
+        }
+        
+        function applyFilters() {
+            currentPage = 1;
+            loadLogs(currentPage);
+        }
+        
+        function clearFilters() {
+            document.getElementById('status-filter').value = '';
+            document.getElementById('role-filter').value = '';
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            applyFilters();
+        }
+        
+        // Загружаем данные при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadLogs(currentPage);
+        });
+    </script>
+</body>
+</html>
