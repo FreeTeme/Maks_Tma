@@ -1150,9 +1150,9 @@
                         <canvas id="mini-chart" width="280" height="80"></canvas>
                         <div class="mini-chart-label">Тренд цены (последние 30 дней)</div>
                     </div>
-                    <button class="btn analyze" id="load-general-analysis" style="width: 100%; margin-top: 10px;">
+                    <!-- <button class="btn analyze" id="load-general-analysis" style="width: 100%; margin-top: 10px;">
                         <i class="fas fa-chart-pie"></i> Анализ выбранных свечей
-                    </button>
+                    </button> -->
                 </div>
                 
                 <!-- Недавние паттерны -->
@@ -1917,6 +1917,7 @@
                     }
                     
                     this.renderResults(data);
+                    this.displaySimpleAnalysis(data);
                     this.drawPatternMarkers(data.matched_patterns);
                     if (!data.matched_patterns || data.matched_patterns.length === 0) this.toast('Совпадения не найдены');
                     this.toast('Анализ завершён');
@@ -1925,6 +1926,7 @@
                     const chartControls = document.getElementById('chart-controls');
                     if (chartControls) chartControls.classList.add('visible');
                     this.switchToAnalysisMode();
+
                 } catch (e) {
                     if (e.name === 'AbortError') {
                         this.toast('Превышено время ожидания. Попробуйте выбрать меньший период.');
@@ -1936,6 +1938,7 @@
                     if (btn) btn.disabled = this.selectedIndices.size === 0;
                     loader.style.display = 'none';
                 }
+
             }
 
 			renderResults(result) {
@@ -2427,296 +2430,182 @@
 			}
 
 			// ===== Общий анализ паттернов =====
-			async loadGeneralAnalysis() {
-				const btn = document.getElementById('load-general-analysis');
-				if (btn) btn.disabled = true;
-				
-				// Показываем загрузку
-				this.showGeneralAnalysisLoading();
-				
-				try {
-					// Проверяем, что данные загружены
-					if (!this.allCandles || this.allCandles.length === 0) {
-						throw new Error('Данные графика не загружены');
-					}
-					
-					console.log('Загружаем общий анализ через /analyze_pattern...');
-					
-					// Проверяем, есть ли выбранные свечи для анализа
-					if (this.selectedIndices.size === 0) {
-						throw new Error('Сначала выберите свечи для анализа');
-					}
-					
-					// Берем выбранные свечи для анализа
-					const order = [...this.selectedIndices].sort((a,b) => a-b);
-					const selectedCandles = order.map(i => this.allCandles[i]);
-					
-					const payload = {
-						num_candles: selectedCandles.length,
-						candles: selectedCandles.map(candle => ({
-							open_time: candle.open_time,
-							close_time: candle.close_time,
-							open_price: candle.open_price,
-							close_price: candle.close_price,
-							high: candle.high,
-							low: candle.low,
-							volume: candle.volume
-						})),
-						timeframe: this.currentTimeframe,
-						no_cache: true  // Отключаем кэширование для общего анализа
-					};
-					
-					console.log('Отправляем запрос:', payload);
-					
-					const response = await fetch('/api/pattern/analyze', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify(payload)
-					});
-					
-					console.log('Response status:', response.status);
-					
-					if (!response.ok) {
-						if (response.status === 408) {
-							throw new Error('Превышено время ожидания анализа. Попробуйте позже.');
-						} else if (response.status === 500) {
-							throw new Error('Ошибка сервера при анализе. Попробуйте позже.');
-						} else {
-							throw new Error(`Ошибка сервера: ${response.status}`);
-						}
-					}
-					
-					const data = await response.json();
-					console.log('Response data:', data);
-					
-					if (!data.success) {
-						throw new Error(data.message || 'Ошибка загрузки анализа');
-					}
-					
-									// Отображаем простую статистику из результата
-				this.displaySimpleAnalysis(data);
-				this.toast('Анализ выбранных свечей завершен');
-				
-				} catch (error) {
-					console.error('Ошибка загрузки общего анализа:', error);
-					this.toast('Ошибка: ' + error.message);
-					// Скрываем загрузку при ошибке
-					this.hideGeneralAnalysisLoading();
-				} finally {
-					if (btn) btn.disabled = false;
-				}
-			}
+            async loadGeneralAnalysis() {
+                const btn = document.getElementById('load-general-analysis');
+                if (btn) btn.disabled = true;
+                
+                // Показываем загрузку
+                this.showGeneralAnalysisLoading();
+                
+                try {
+                    // Проверяем, что данные загружены
+                    if (!this.allCandles || this.allCandles.length === 0) {
+                        throw new Error('Данные графика не загружены');
+                    }
+                    
+                    // Проверяем, есть ли выбранные свечи для анализа
+                    if (this.selectedIndices.size === 0) {
+                        throw new Error('Сначала выберите свечи для анализа');
+                    }
+                    
+                    // Просто запускаем обычный анализ - он уже содержит всю нужную статистику
+                    await this.analyze();
+                    
+                } catch (error) {
+                    console.error('Ошибка загрузки общего анализа:', error);
+                    this.toast('Ошибка: ' + error.message);
+                    // Скрываем загрузку при ошибке
+                    this.hideGeneralAnalysisLoading();
+                } finally {
+                    if (btn) btn.disabled = false;
+                }
+            }
 
-			createGeneralAnalysisData(analysisResult) {
-				// Создаем общую статистику из результата анализа паттернов
-				const totalCandles = this.allCandles.length;
-				const firstDate = this.allCandles[0] ? new Date(this.allCandles[0].open_time).toISOString().slice(0, 10) : 'N/A';
-				const lastDate = this.allCandles[totalCandles-1] ? new Date(this.allCandles[totalCandles-1].open_time).toISOString().slice(0, 10) : 'N/A';
-				
-				// Вычисляем статистику рынка
-				const volumes = this.allCandles.map(c => parseFloat(c.volume));
-				const prices = this.allCandles.map(c => parseFloat(c.close_price));
-				const highs = this.allCandles.map(c => parseFloat(c.high));
-				const lows = this.allCandles.map(c => parseFloat(c.low));
-				
-				// Вычисляем волатильность
-				const returns = [];
-				for (let i = 1; i < prices.length; i++) {
-					returns.push((prices[i] - prices[i-1]) / prices[i-1]);
-				}
-				const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
-				
-				// Анализируем направление паттернов из найденных совпадений
-				const matchedPatterns = analysisResult.matched_patterns || [];
-				let bullishCount = 0;
-				let bearishCount = 0;
-				
-				matchedPatterns.forEach(pattern => {
-					if (pattern.length > 0) {
-						const firstCandle = pattern[0];
-						const lastCandle = pattern[pattern.length - 1];
-						const priceChange = (lastCandle.close - firstCandle.open) / firstCandle.open;
-						if (priceChange > 0) {
-							bullishCount++;
-						} else {
-							bearishCount++;
-						}
-					}
-				});
-				
-				// Создаем недавние паттерны из найденных совпадений
-				const recentPatterns = matchedPatterns.slice(-10).map((pattern, index) => {
-					if (pattern.length === 0) return null;
-					
-					const firstCandle = pattern[0];
-					const lastCandle = pattern[pattern.length - 1];
-					const priceChange = (lastCandle.close - firstCandle.open) / firstCandle.open * 100;
-					const volumeChange = (lastCandle.volume - firstCandle.volume) / firstCandle.volume * 100;
-					
-					return {
-						start_date: firstCandle.date.slice(0, 10),
-						end_date: lastCandle.date.slice(0, 10),
-						price_change: priceChange,
-						volume_change: volumeChange,
-						direction: priceChange >= 0 ? 'bullish' : 'bearish',
-						strength: Math.abs(priceChange),
-						candles: pattern
-					};
-				}).filter(p => p !== null);
-				
-				return {
-					success: true,
-					timeframe: this.currentTimeframe,
-					total_candles: totalCandles,
-					date_range: {
-						start: firstDate,
-						end: lastDate
-					},
-					market_statistics: {
-						total_volume: volumes.reduce((sum, v) => sum + v, 0),
-						avg_volume: volumes.reduce((sum, v) => sum + v, 0) / volumes.length,
-						price_range: {
-							min: Math.min(...lows),
-							max: Math.max(...highs),
-							current: prices[prices.length - 1]
-						},
-						volatility: volatility
-					},
-					pattern_statistics: {
-						bullish_patterns: bullishCount,
-						bearish_patterns: bearishCount,
-						avg_body_size: 0, // Можно вычислить если нужно
-						avg_volume_ratio: 0 // Можно вычислить если нужно
-					},
-					recent_patterns: recentPatterns
-				};
-			}
+            displaySimpleAnalysis(data) {
+                // Скрываем загрузку при отображении результатов
+                this.hideGeneralAnalysisLoading();
+                
+                console.log('Отображаем данные анализа:', data);
+                
+                if (!data.performance_stats) {
+                    console.warn('Нет данных performance_stats в ответе');
+                    return;
+                }
+                
+                const perfStats = data.performance_stats;
+                
+                // Общая информация о данных
+                safeSetTextContent('total-candles', this.allCandles.length.toLocaleString());
+                
+                // Период данных
+                const firstDate = new Date(this.allCandles[0].open_time).toLocaleDateString();
+                const lastDate = new Date(this.allCandles[this.allCandles.length-1].open_time).toLocaleDateString();
+                safeSetTextContent('data-period', `${firstDate} — ${lastDate}`);
+                
+                // Волатильность
+                const prices = this.allCandles.map(c => parseFloat(c.close_price));
+                const returns = [];
+                for (let i = 1; i < prices.length; i++) {
+                    returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+                }
+                const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
+                safeSetTextContent('volatility', volatility.toFixed(2) + '%');
+                
+                // Средний объем
+                const volumes = this.allCandles.map(c => parseFloat(c.volume));
+                const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
+                safeSetTextContent('avg-volume', this.formatVolume(avgVolume));
+                
+                // Статистика паттернов из performance_stats
+                const bullishPercentage = perfStats.bullish_percentage || 0;
+                const bearishPercentage = perfStats.bearish_percentage || 0;
+                
+                const bullishCountValue = Math.round((bullishPercentage / 100) * (perfStats.valid_patterns || 0));
+                const bearishCountValue = Math.round((bearishPercentage / 100) * (perfStats.valid_patterns || 0));
+                
+                safeSetTextContent('bullish-count', bullishCountValue);
+                safeSetTextContent('bearish-count', bearishCountValue);
+                
+                // Анимируем прогресс-бары
+                setTimeout(() => {
+                    const bullishBar = document.getElementById('bullish-bar');
+                    const bearishBar = document.getElementById('bearish-bar');
+                    
+                    if (bullishBar) bullishBar.style.width = bullishPercentage + '%';
+                    if (bearishBar) bearishBar.style.width = bearishPercentage + '%';
+                }, 100);
+                
+                // Отображаем статистику производительности
+                this.displayPerformanceStats(perfStats, data.statistics);
+                
+                this.toast('Анализ выбранных свечей завершен');
+            }
 
-			displaySimpleAnalysis(data) {
-				// Скрываем загрузку при отображении результатов
-				this.hideGeneralAnalysisLoading();
-				
-				// Отображаем данные напрямую из performance_stats и statistics
-				console.log('Отображаем данные:', data);
-				console.log('performance_stats:', data.performance_stats);
-				console.log('statistics:', data.statistics);
-				
-				// Общая информация
-				safeSetTextContent('total-candles', this.allCandles.length.toLocaleString());
-				
-				// Период данных
-				const firstDate = new Date(this.allCandles[0].open_time).toLocaleDateString();
-				const lastDate = new Date(this.allCandles[this.allCandles.length-1].open_time).toLocaleDateString();
-				safeSetTextContent('data-period', `${firstDate} — ${lastDate}`);
-				
-				// Простая волатильность из данных
-				const prices = this.allCandles.map(c => parseFloat(c.close_price));
-				const returns = [];
-				for (let i = 1; i < prices.length; i++) {
-					returns.push((prices[i] - prices[i-1]) / prices[i-1]);
-				}
-				const volatility = returns.length > 0 ? Math.sqrt(returns.reduce((sum, r) => sum + r*r, 0) / returns.length) * 100 : 0;
-				safeSetTextContent('volatility', volatility.toFixed(2) + '%');
-				
-				// Средний объем
-				const volumes = this.allCandles.map(c => parseFloat(c.volume));
-				const avgVolume = volumes.reduce((sum, v) => sum + v, 0) / volumes.length;
-				safeSetTextContent('avg-volume', this.formatVolume(avgVolume));
-				
-				// Используем данные из performance_stats
-				const perfStats = data.performance_stats || {};
-				const bullishPercentage = perfStats.bullish_percentage || 0;
-				const bearishPercentage = perfStats.bearish_percentage || 0;
-				
-				// Обновляем прогресс-бары с реальными данными
-				const bullishCountValue = Math.round(bullishPercentage * (perfStats.total_patterns || 0) / 100);
-				const bearishCountValue = Math.round(bearishPercentage * (perfStats.total_patterns || 0) / 100);
-				
-				safeSetTextContent('bullish-count', bullishCountValue);
-				safeSetTextContent('bearish-count', bearishCountValue);
-				
-				// Анимируем прогресс-бары
-				setTimeout(() => {
-					const bullishBar = document.getElementById('bullish-bar');
-					const bearishBar = document.getElementById('bearish-bar');
-					
-					if (bullishBar) bullishBar.style.width = bullishPercentage + '%';
-					if (bearishBar) bearishBar.style.width = bearishPercentage + '%';
-				}, 100);
-				
-				// Отображаем дополнительную статистику в карточке
-				this.displayPerformanceStats(perfStats, data.statistics);
-				
-				// Отображаем найденные паттерны
-				const matchedPatterns = data.matched_patterns || [];
-				this.displayRecentPatterns(matchedPatterns.slice(-5));
-				
-				// Создаем мини-график
-				this.createMiniChart(data);
-			}
-
-			displayPerformanceStats(perfStats, statistics) {
-				// Создаем дополнительную карточку с детальной статистикой
-				console.log('displayPerformanceStats вызвана с данными:', perfStats);
-				let performanceCard = document.getElementById('performance-stats-card');
-				if (!performanceCard) {
-					// Создаем карточку если её нет
-					const sidePanel = document.getElementById('side-panel');
-					const generalCard = document.getElementById('general-analysis-card');
-					
-					performanceCard = document.createElement('div');
-					performanceCard.id = 'performance-stats-card';
-					performanceCard.className = 'card';
-					performanceCard.innerHTML = `
-						<h3>Статистика производительности</h3>
-						<div class="performance-stats" id="performance-stats-content"></div>
-					`;
-					
-					// Вставляем после карточки общего анализа
-					generalCard.parentNode.insertBefore(performanceCard, generalCard.nextSibling);
-				}
-				
-				const content = document.getElementById('performance-stats-content');
-				content.innerHTML = `
-					<div class="stat-list">
-						<div class="stat">
-							<span>Найдено паттернов</span>
-							<span class="val" style="color: var(--accent);">${perfStats.total_patterns || 0}</span>
-						</div>
-						<div class="stat">
-							<span>Успешность</span>
-							<span class="val" style="color: var(--green);">${perfStats.success_rate || 0}%</span>
-						</div>
-						<div class="stat">
-							<span>Медианное изменение</span>
-							<span class="val" style="color: ${(perfStats.median_change || 0) >= 0 ? 'var(--green)' : 'var(--red)'}">
-								${(perfStats.median_change || 0) >= 0 ? '+' : ''}${(perfStats.median_change || 0).toFixed(2)}%
-							</span>
-						</div>
-						<div class="stat">
-							<span>Лучшие 20%</span>
-							<span class="val" style="color: var(--green);">+${(perfStats.top_20_percent_median || 0).toFixed(2)}%</span>
-						</div>
-						<div class="stat">
-							<span>Худшие 20%</span>
-							<span class="val" style="color: var(--red);">${(perfStats.bottom_20_percent_median || 0).toFixed(2)}%</span>
-						</div>
-					</div>
-					<div class="performance-summary">
-						<div class="summary-item">
-							<span class="summary-label">Бычьи паттерны:</span>
-							<span class="summary-value bullish">${perfStats.bullish_percentage || 0}%</span>
-						</div>
-						<div class="summary-item">
-							<span class="summary-label">Медвежьи паттерны:</span>
-							<span class="summary-value bearish">${perfStats.bearish_percentage || 0}%</span>
-						</div>
-					</div>
-				`;
-				
-				performanceCard.style.display = 'block';
-			}
-
+            displayPerformanceStats(perfStats, statistics) {
+                console.log('displayPerformanceStats вызвана с данными:', perfStats);
+                
+                let performanceCard = document.getElementById('performance-stats-card');
+                if (!performanceCard) {
+                    // Создаем карточку если её нет
+                    const sidePanel = document.getElementById('side-panel');
+                    const generalCard = document.getElementById('general-analysis-card');
+                    
+                    performanceCard = document.createElement('div');
+                    performanceCard.id = 'performance-stats-card';
+                    performanceCard.className = 'card';
+                    performanceCard.innerHTML = `
+                        <h3>Статистика производительности</h3>
+                        <div class="performance-stats" id="performance-stats-content"></div>
+                    `;
+                    
+                    // Вставляем после карточки общего анализа
+                    generalCard.parentNode.insertBefore(performanceCard, generalCard.nextSibling);
+                }
+                
+                const content = document.getElementById('performance-stats-content');
+                
+                // Проверяем, есть ли валидные данные
+                if (!perfStats || perfStats.valid_patterns === 0) {
+                    content.innerHTML = `
+                        <div style="text-align: center; color: var(--muted); padding: 20px;">
+                            Недостаточно данных для статистики
+                        </div>
+                    `;
+                    performanceCard.style.display = 'block';
+                    return;
+                }
+                
+                content.innerHTML = `
+                    <div class="stat-list">
+                        <div class="stat">
+                            <span>Найдено паттернов</span>
+                            <span class="val" style="color: var(--accent);">${perfStats.total_patterns || 0}</span>
+                        </div>
+                        <div class="stat">
+                            <span>Валидных паттернов</span>
+                            <span class="val" style="color: var(--green);">${perfStats.valid_patterns || 0}</span>
+                        </div>
+                        <div class="stat">
+                            <span>Успешность</span>
+                            <span class="val" style="color: var(--green);">${perfStats.success_rate || 0}%</span>
+                        </div>
+                        <div class="stat">
+                            <span>Медианное изменение</span>
+                            <span class="val" style="color: ${(perfStats.median_change || 0) >= 0 ? 'var(--green)' : 'var(--red)'}">
+                                ${(perfStats.median_change || 0) >= 0 ? '+' : ''}${(perfStats.median_change || 0).toFixed(2)}%
+                            </span>
+                        </div>
+                        ${perfStats.top_20_percent_median ? `
+                        <div class="stat">
+                            <span>Лучшие 20%</span>
+                            <span class="val" style="color: var(--green);">+${(perfStats.top_20_percent_median).toFixed(2)}%</span>
+                        </div>
+                        ` : ''}
+                        ${perfStats.bottom_20_percent_median ? `
+                        <div class="stat">
+                            <span>Худшие 20%</span>
+                            <span class="val" style="color: var(--red);">${(perfStats.bottom_20_percent_median).toFixed(2)}%</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="performance-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Бычьи паттерны:</span>
+                            <span class="summary-value bullish">${perfStats.bullish_percentage || 0}%</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Медвежьи паттерны:</span>
+                            <span class="summary-value bearish">${perfStats.bearish_percentage || 0}%</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Нейтральные паттерны:</span>
+                            <span class="summary-value">${perfStats.neutral_percentage || 0}%</span>
+                        </div>
+                    </div>
+                `;
+                
+                performanceCard.style.display = 'block';
+            }
 			showGeneralAnalysisLoading() {
 				const generalStats = document.getElementById('general-stats');
 				if (generalStats) {
@@ -2744,51 +2633,6 @@
 				}
 			}
 
-			displayGeneralAnalysis(data) {
-				// Обновляем основную статистику
-				const totalCandles = document.getElementById('total-candles');
-				if (totalCandles) totalCandles.textContent = data.total_candles.toLocaleString();
-				
-				const dataPeriod = document.getElementById('data-period');
-				if (dataPeriod) dataPeriod.textContent = `${data.date_range.start} — ${data.date_range.end}`;
-				
-				const volatility = document.getElementById('volatility');
-				if (volatility) volatility.textContent = data.market_statistics.volatility.toFixed(2) + '%';
-				
-				const avgVolume = document.getElementById('avg-volume');
-				if (avgVolume) avgVolume.textContent = this.formatVolume(data.market_statistics.avg_volume);
-				
-				// Обновляем распределение паттернов
-				const bullishCount = data.pattern_statistics.bullish_patterns;
-				const bearishCount = data.pattern_statistics.bearish_patterns;
-				const total = bullishCount + bearishCount;
-				
-				const bullishCountEl = document.getElementById('bullish-count');
-				if (bullishCountEl) bullishCountEl.textContent = bullishCount.toLocaleString();
-				
-				const bearishCountEl = document.getElementById('bearish-count');
-				if (bearishCountEl) bearishCountEl.textContent = bearishCount.toLocaleString();
-				
-				// Анимируем прогресс-бары
-				setTimeout(() => {
-					const bullishBar = document.getElementById('bullish-bar');
-					const bearishBar = document.getElementById('bearish-bar');
-					
-					if (total > 0) {
-						const bullishPercent = (bullishCount / total) * 100;
-						const bearishPercent = (bearishCount / total) * 100;
-						
-						if (bullishBar) bullishBar.style.width = bullishPercent + '%';
-						if (bearishBar) bearishBar.style.width = bearishPercent + '%';
-					}
-				}, 100);
-				
-				// Отображаем недавние паттерны
-				this.displayRecentPatterns(data.recent_patterns);
-				
-				// Создаем мини-график
-				this.createMiniChart(data);
-			}
 
 			displayRecentPatterns(patterns) {
 				const recentPatternsCard = document.getElementById('recent-patterns-card');
