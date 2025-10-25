@@ -51,44 +51,46 @@
             background: linear-gradient(180deg, rgba(17,22,28,0.85), rgba(17,22,28,0.65));
             backdrop-filter: blur(6px);
             flex-shrink: 0;
+            flex-wrap: wrap; /* Добавляем перенос на мобильных */
+            gap: 10px; /* Добавляем отступы между элементами */
         }
-        .brand { display: flex; align-items: center; gap: 10px; }
-        .back-btn {
-            background: #1a222c;
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 6px 8px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.15s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
+
+        .brand { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            flex-shrink: 0;
         }
-        .back-btn:hover {
-            background: #212a34;
-            color: var(--accent);
-        }
-        .brand .logo {
-            width: 24px; height: 24px; border-radius: 6px;
-            background: linear-gradient(135deg, #ffb547, #f7931a);
-            box-shadow: 0 2px 8px rgba(247,147,26,0.35);
-        }
-        .brand .title { 
-            font-weight: 700; 
-            letter-spacing: 0.2px; 
-            font-size: 15px;
-        }
+
         .kpis { 
             display: flex; 
             gap: 12px; 
             align-items: center;
             font-size: 12px;
+            flex-shrink: 0;
         }
-        .kpi { font-size: 11px; color: var(--muted); }
-        .kpi strong { color: var(--text); margin-left: 4px; }
+
+        /* Добавляем контейнер для выбора символа */
+        .symbol-selector {
+            margin-left: 15px;
+            flex-shrink: 0;
+        }
+
+        .symbol-select {
+            background: #1a222c;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .symbol-select option {
+            background: var(--bg-2);
+            color: var(--text);
+        }
 
         .main {
             flex: 1;
@@ -1037,12 +1039,9 @@
     <div class="app">
         <div class="topbar">
             <div class="brand">
-                <button class="back-btn" onclick="history.back()" title="Назад">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
                 <div class="logo"></div>
                 <!-- В разделе .brand, после .title -->
-                <div class="title" id="page-title">BTC/USDT — Поиск паттернов</div>
+                <div class="title" id="page-title">Поиск паттернов</div>
                 <div class="symbol-selector">
                     <select id="symbol-select" class="symbol-select">
                         <option value="BTC#USDT">BTC/USDT</option>
@@ -1058,10 +1057,6 @@
                         <option value="TON#USDT">TON/USDT</option>
                     </select>
                 </div>
-            </div>
-            <div class="kpis">
-                <div class="kpi">ТФ:<strong>1D</strong></div>
-                <div class="kpi">Данные:<strong>2017→</strong></div>
             </div>
         </div>
 
@@ -1079,7 +1074,7 @@
                             <button id="toggle-volume-btn" class="btn" title="Показать/скрыть объем">
                                 <i class="fas fa-chart-bar"></i> Объем
                             </button>
-                            <button id="reset-view-btn" class="btn">Сброс</button>
+                            <!-- <button id="reset-view-btn" class="btn">Сброс</button> -->
                             <button id="analyze-btn" class="btn analyze" disabled>
                                 <i class="fas fa-chart-line"></i> Анализ
                             </button>
@@ -1752,20 +1747,20 @@
 				this.updateSelectedIndicator();
 			}
 			
-			updateSelectedIndicator() {
-				let indicator = document.querySelector('.selected-candles-indicator');
-				if (this.selectedIndices.size > 0) {
-					if (!indicator) {
-						indicator = document.createElement('div');
-						indicator.className = 'selected-candles-indicator';
-						document.body.appendChild(indicator);
-					}
-					indicator.textContent = `Выбрано: ${this.selectedIndices.size} свечей`;
-					indicator.style.display = 'block';
-				} else if (indicator) {
-					indicator.style.display = 'none';
-				}
-			}
+			// updateSelectedIndicator() {
+			// 	let indicator = document.querySelector('.selected-candles-indicator');
+			// 	if (this.selectedIndices.size > 0) {
+			// 		if (!indicator) {
+			// 			indicator = document.createElement('div');
+			// 			indicator.className = 'selected-candles-indicator';
+			// 			document.body.appendChild(indicator);
+			// 		}
+			// 		indicator.textContent = `Выбрано: ${this.selectedIndices.size} свечей`;
+			// 		indicator.style.display = 'block';
+			// 	} else if (indicator) {
+			// 		indicator.style.display = 'none';
+			// 	}
+			// }
 			
 			// Принудительное восстановление выделения выбранных свечей
 			forceRestoreSelection() {
