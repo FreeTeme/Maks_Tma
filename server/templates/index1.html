@@ -21,12 +21,7 @@
             </div>
         </div>
 
-        <!-- Баланс -->
-        <div class="balance">
-            <h1 id="balanceText">${{ balance }}</h1>
-            <!-- Добавьте этот код в header после баланса -->
-            
-        </div>
+        <!-- Баланс убран -->
         <!-- Кнопка меню -->
         <div class="menu-toggle" id="menuToggle">
             <i class="fas fa-bars"></i>
@@ -48,9 +43,6 @@
         </p>
         <p id="userIdText">
             <i class="fa-solid fa-fingerprint" style="color: #4c8cff;"></i> My ID: <span id="user_id">{{ user_id }}</span>
-        </p>
-        <p id="balanceText">
-            <i class="fa-solid fa-wallet" style="color: #4c8cff;"></i> My Balance: $<span id="balance">{{ balance }}</span>
         </p>
         <button class="close-button" id="closeButton">Close</button>
     </div>
@@ -179,36 +171,7 @@
 </body>
 </html>
 <script>
-    // Обновление баланса
-function updateBalanceDisplay(amount) {
-    const balanceElement = document.getElementById('balanceText');
-    const balanceElement2 = document.getElementById('balance');
-
-    if (!balanceElement) {
-        console.error('Balance element not found');
-        return;
-    }
-
-    let currentBalance = parseFloat(balanceElement.textContent.replace('$', '').replace(',', '')) || 0;
-    currentBalance += amount;
-
-    balanceElement.classList.add('balance-update');
-    if (balanceElement2) {
-        balanceElement2.classList.add('balance-update');
-    }
-
-    balanceElement.textContent = `$${currentBalance.toFixed(2)}`;
-    if (balanceElement2) {
-        balanceElement2.textContent = currentBalance.toFixed(2);
-    }
-
-    setTimeout(() => {
-        balanceElement.classList.remove('balance-update');
-        if (balanceElement2) {
-            balanceElement2.classList.remove('balance-update');
-        }
-    }, 500);
-}
+    // Функция обновления баланса убрана
 
 // Обработчик клика по карточке Social
 async function handleSocialCardClick(event) {
@@ -256,7 +219,7 @@ async function handleSocialCardClick(event) {
             card.appendChild(bonusEl);
             setTimeout(() => bonusEl.remove(), 1000);
 
-            updateBalanceDisplay(bonus);
+            // updateBalanceDisplay(bonus); // Убрано
 
             setTimeout(() => {
                 card.style.transition = 'opacity 0.3s';
@@ -595,7 +558,7 @@ function initMiningSection() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                updateBalanceDisplay(20);
+                // updateBalanceDisplay(20); // Убрано
             }
         })
         .catch(error => console.error('Error:', error));
