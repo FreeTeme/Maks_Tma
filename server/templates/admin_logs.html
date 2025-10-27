@@ -217,6 +217,147 @@
         .logout-btn:hover {
             background: rgba(255,255,255,0.3);
         }
+
+
+        .passwords-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.section-header h3 {
+    color: #333;
+    margin: 0;
+}
+
+.btn-success {
+    background: #28a745;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-secondary {
+    background: #6c757d;
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+}
+
+.password-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.btn-danger {
+    background: #dc3545;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.status-active {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.status-inactive {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* Модальное окно */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 1rem;
+    top: 1rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #aaa;
+}
+
+.close:hover {
+    color: #000;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, 
+.form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.form-group small {
+    color: #666;
+    font-size: 0.875rem;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-group input {
+    width: auto;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
     </style>
 </head>
 <body>
@@ -245,6 +386,55 @@
                 <div class="stat-label">Уникальных IP</div>
             </div>
         </div>
+
+        <!-- Добавить после блока .stats -->
+<div class="passwords-section">
+    <div class="section-header">
+        <h3>📝 Управление паролями</h3>
+        <button class="btn btn-success" onclick="showAddPasswordModal()">
+            + Добавить пароль
+        </button>
+    </div>
+    
+    <div class="passwords-table">
+        <div class="table-header">
+            <h4>Список паролей работников</h4>
+        </div>
+        <div id="passwords-content">
+            <div class="no-data">Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно добавления/редактирования пароля -->
+<div id="passwordModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closePasswordModal()">&times;</span>
+        <h3 id="modalTitle">Добавить пароль</h3>
+        <form id="passwordForm">
+            <input type="hidden" id="passwordId">
+            <div class="form-group">
+                <label for="passwordInput">Пароль:</label>
+                <input type="text" id="passwordInput" required minlength="4" maxlength="10">
+                <small>Минимум 4 символа</small>
+            </div>
+            <div class="form-group">
+                <label for="roleSelect">Роль:</label>
+                <select id="roleSelect" required>
+                    <option value="работник">Работник</option>
+                </select>
+            </div>
+            <div class="form-group checkbox-group">
+                <input type="checkbox" id="isActive" checked>
+                <label for="isActive">Активный</label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Отмена</button>
+                <button type="submit" class="btn btn-primary">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
         
         <div class="controls">
             <h3>Фильтры</h3>
@@ -429,6 +619,179 @@
             loadStats();
             loadLogs(currentPage);
         });
+
+
+
+        // Управление паролями
+function loadPasswords() {
+    fetch('/api/admin/passwords')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayPasswords(data.passwords);
+            } else {
+                document.getElementById('passwords-content').innerHTML = 
+                    '<div class="no-data">Ошибка загрузки паролей</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка загрузки паролей:', error);
+            document.getElementById('passwords-content').innerHTML = 
+                '<div class="no-data">Ошибка соединения</div>';
+        });
+}
+
+function displayPasswords(passwords) {
+    if (passwords.length === 0) {
+        document.getElementById('passwords-content').innerHTML = 
+            '<div class="no-data">Пароли не найдены</div>';
+        return;
+    }
+    
+    const table = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Пароль</th>
+                    <th>Роль</th>
+                    <th>Статус</th>
+                    <th>Дата создания</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${passwords.map(pwd => `
+                    <tr>
+                        <td>${pwd.password}</td>
+                        <td>
+                            <span class="role-${pwd.role === 'админ' ? 'admin' : 'worker'}">
+                                ${pwd.role}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="${pwd.is_active ? 'status-active' : 'status-inactive'}">
+                                ${pwd.is_active ? 'Активен' : 'Неактивен'}
+                            </span>
+                        </td>
+                        <td>${new Date(pwd.created_at).toLocaleDateString('ru-RU')}</td>
+                        <td>
+                            <div class="password-actions">
+                                <button class="btn btn-sm" onclick="editPassword(${pwd.id}, '${pwd.password}', ${pwd.is_active})">
+                                    ✏️
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deletePassword(${pwd.id})">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    
+    document.getElementById('passwords-content').innerHTML = table;
+}
+
+function showAddPasswordModal() {
+    document.getElementById('modalTitle').textContent = 'Добавить пароль';
+    document.getElementById('passwordForm').reset();
+    document.getElementById('passwordId').value = '';
+    document.getElementById('passwordInput').value = '';
+    document.getElementById('roleSelect').value = 'работник';
+    document.getElementById('isActive').checked = true;
+    document.getElementById('passwordModal').style.display = 'block';
+}
+
+function editPassword(id, password, isActive) {
+    document.getElementById('modalTitle').textContent = 'Редактировать пароль';
+    document.getElementById('passwordId').value = id;
+    document.getElementById('passwordInput').value = password;
+    document.getElementById('roleSelect').value = 'работник';
+    document.getElementById('isActive').checked = isActive;
+    document.getElementById('passwordModal').style.display = 'block';
+}
+
+function closePasswordModal() {
+    document.getElementById('passwordModal').style.display = 'none';
+}
+
+function deletePassword(passwordId) {
+    if (!confirm('Вы уверены, что хотите удалить этот пароль?')) {
+        return;
+    }
+    
+    fetch(`/api/admin/passwords/${passwordId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Пароль успешно удален');
+            loadPasswords();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка удаления пароля:', error);
+        alert('Ошибка соединения');
+    });
+}
+
+// Обработчик формы
+document.getElementById('passwordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const passwordId = document.getElementById('passwordId').value;
+    const password = document.getElementById('passwordInput').value.trim();
+    const role = document.getElementById('roleSelect').value;
+    const isActive = document.getElementById('isActive').checked;
+    
+    const url = passwordId ? `/api/admin/passwords/${passwordId}` : '/api/admin/passwords';
+    const method = passwordId ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            password: password,
+            role: role,
+            is_active: isActive
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            closePasswordModal();
+            loadPasswords();
+        } else {
+            alert('Ошибка: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка сохранения пароля:', error);
+        alert('Ошибка соединения');
+    });
+});
+
+// Закрытие модального окна при клике вне его
+window.onclick = function(event) {
+    const modal = document.getElementById('passwordModal');
+    if (event.target === modal) {
+        closePasswordModal();
+    }
+}
+
+// Обновить загрузку страницы
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    loadLogs(currentPage);
+    loadPasswords(); // Добавить эту строку
+});
     </script>
 </body>
 </html>

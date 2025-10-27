@@ -474,7 +474,7 @@ body {
   .hamburger-menu.active span:nth-child(1) {
     transform: rotate(45deg);
     position: absolute;
-    top: 50%;
+    top: 30%;
   }
   .hamburger-menu.active span:nth-child(2) {
     opacity: 0;
@@ -482,7 +482,7 @@ body {
   .hamburger-menu.active span:nth-child(3) {
     transform: rotate(-45deg);
     position: absolute;
-    top: 50%;
+    top: 30%;
   }
 
   .hamburger-menu.cross i {

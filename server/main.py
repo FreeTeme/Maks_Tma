@@ -30,6 +30,9 @@ CORS(app)
 app.secret_key = 'supersecretkey'
 DATABASE = '../bot/referrals.db'
 
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+
 # Register the staking Blueprint
 app.register_blueprint(staking_bp, url_prefix='/api')
 # Register the pattern analysis Blueprint
@@ -980,6 +983,157 @@ def check_admin():
         'is_admin': is_admin,
         'role': session.get('user_role', 'неизвестно')
     })
+
+
+
+
+@app.route('/api/admin/passwords')
+@require_admin
+def get_passwords():
+    """Получение списка всех паролей (кроме админского)"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT id, password, role, is_active, created_at 
+            FROM auth_passwords 
+            WHERE role != 'админ'
+            ORDER BY created_at DESC
+        ''')
+        passwords = cursor.fetchall()
+        conn.close()
+        
+        passwords_list = []
+        for pwd in passwords:
+            passwords_list.append({
+                'id': pwd['id'],
+                'password': pwd['password'],
+                'role': pwd['role'],
+                'is_active': bool(pwd['is_active']),
+                'created_at': pwd['created_at']
+            })
+        
+        return jsonify({'success': True, 'passwords': passwords_list})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/admin/passwords', methods=['POST'])
+@require_admin
+def add_password():
+    """Добавление нового пароля"""
+    try:
+        data = request.get_json()
+        password = data.get('password', '').strip()
+        role = data.get('role', 'работник')
+        
+        if not password:
+            return jsonify({'success': False, 'message': 'Пароль не может быть пустым'}), 400
+        
+        if len(password) < 4:
+            return jsonify({'success': False, 'message': 'Пароль должен содержать минимум 4 символа'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем, не существует ли уже такой пароль
+        cursor.execute('SELECT id FROM auth_passwords WHERE password = ?', (password,))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Такой пароль уже существует'}), 400
+        
+        cursor.execute('''
+            INSERT INTO auth_passwords (password, role) 
+            VALUES (?, ?)
+        ''', (password, role))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Пароль успешно добавлен'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/admin/passwords/<int:password_id>', methods=['PUT'])
+@require_admin
+def update_password(password_id):
+    """Обновление пароля"""
+    try:
+        data = request.get_json()
+        new_password = data.get('password', '').strip()
+        is_active = data.get('is_active', True)
+        
+        if not new_password:
+            return jsonify({'success': False, 'message': 'Пароль не может быть пустым'}), 400
+        
+        if len(new_password) < 4:
+            return jsonify({'success': False, 'message': 'Пароль должен содержать минимум 4 символа'}), 400
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем, что пароль не админский
+        cursor.execute('SELECT role FROM auth_passwords WHERE id = ?', (password_id,))
+        password_data = cursor.fetchone()
+        
+        if not password_data:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Пароль не найден'}), 404
+        
+        if password_data['role'] == 'админ':
+            conn.close()
+            return jsonify({'success': False, 'message': 'Нельзя изменять админ пароль'}), 403
+        
+        # Проверяем, не существует ли уже такой пароль (кроме текущего)
+        cursor.execute('SELECT id FROM auth_passwords WHERE password = ? AND id != ?', (new_password, password_id))
+        if cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'message': 'Такой пароль уже существует'}), 400
+        
+        cursor.execute('''
+            UPDATE auth_passwords 
+            SET password = ?, is_active = ?
+            WHERE id = ?
+        ''', (new_password, 1 if is_active else 0, password_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Пароль успешно обновлен'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/admin/passwords/<int:password_id>', methods=['DELETE'])
+@require_admin
+def delete_password(password_id):
+    """Удаление пароля"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Проверяем, что пароль не админский
+        cursor.execute('SELECT role FROM auth_passwords WHERE id = ?', (password_id,))
+        password_data = cursor.fetchone()
+        
+        if not password_data:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Пароль не найден'}), 404
+        
+        if password_data['role'] == 'админ':
+            conn.close()
+            return jsonify({'success': False, 'message': 'Нельзя удалять админ пароль'}), 403
+        
+        cursor.execute('DELETE FROM auth_passwords WHERE id = ?', (password_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Пароль успешно удален'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+
+
+    
 
 @app.route('/api/admin/logs')
 @require_admin
