@@ -346,10 +346,10 @@ def calculate_median_statistics(price_changes, directions):
     # Медиана топ-20% и нижних-20%
     sorted_changes = sorted(valid_changes, reverse=True)
     top_20_count = max(1, len(sorted_changes) // 5)
-    top_20_median = float(np.median(sorted_changes[:top_20_count]))
-    
+    top_20_median = float(sorted_changes[0])  # максимальное значение
+
     bottom_20_count = max(1, len(sorted_changes) // 5)
-    bottom_20_median = float(np.median(sorted_changes[-bottom_20_count:]))
+    bottom_20_median = float(sorted_changes[-1])  # минимальное значение
     
     success_rate = round((bullish_count / total) * 100, 1) if total > 0 else 0
     
