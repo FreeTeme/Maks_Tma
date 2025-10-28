@@ -900,6 +900,11 @@
                 overflow: hidden;
             }
             
+            /* Скрываем кнопку анализа на десктопе */
+            #nav-analysis-overlay {
+                display: none !important;
+            }
+            
             .panel {
                 margin: 0;
             }
@@ -1100,9 +1105,9 @@
                             <i class="fas fa-search"></i>
                             <span>К выбранным</span>
                         </button>
-                        <button class="control-btn" id="nav-volume-overlay">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Объем</span>
+                        <button class="control-btn" id="nav-analysis-overlay">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Анализ</span>
                         </button>
                         <button class="control-btn" id="nav-patterns">
                             <i class="fas fa-shapes"></i>
@@ -1650,7 +1655,7 @@
 				const navPrev = document.getElementById('nav-prev'); if (navPrev) navPrev.addEventListener('click', () => this.gotoMatch(-1));
 				const navNext = document.getElementById('nav-next'); if (navNext) navNext.addEventListener('click', () => this.gotoMatch(1));
 				const navToSelected = document.getElementById('nav-to-selected'); if (navToSelected) navToSelected.addEventListener('click', () => this.zoomToSelected());
-				const navVolumeOverlay = document.getElementById('nav-volume-overlay'); if (navVolumeOverlay) navVolumeOverlay.addEventListener('click', () => this.toggleVolume());
+				const navAnalysisOverlay = document.getElementById('nav-analysis-overlay'); if (navAnalysisOverlay) navAnalysisOverlay.addEventListener('click', () => this.toggleAnalysisPanel());
 				const navPatterns = document.getElementById('nav-patterns'); if (navPatterns) navPatterns.addEventListener('click', () => this.showPatternsModal());
 				const toggleControlsBtn = document.getElementById('toggle-controls-btn'); if (toggleControlsBtn) toggleControlsBtn.addEventListener('click', () => this.toggleChartControls());
 				
@@ -1825,12 +1830,83 @@
 				}
 				
 				// Обновляем кнопку в chart controls overlay
-				const navVolumeOverlay = document.getElementById('nav-volume-overlay');
-				if (navVolumeOverlay) {
-					navVolumeOverlay.innerHTML = `<i class="${iconClass}"></i><span>${this.volumeVisible ? 'Объем' : 'Объем'}</span>`;
+				const navAnalysisOverlay = document.getElementById('nav-analysis-overlay');
+				if (navAnalysisOverlay) {
+					navAnalysisOverlay.innerHTML = `<i class="fas fa-chart-line"></i><span>Анализ</span>`;
 				}
 				
 				this.toast(this.volumeVisible ? 'Объем показан' : 'Объем скрыт');
+			}
+
+			toggleAnalysisPanel() {
+				// Проверяем размер экрана
+				if (window.innerWidth <= 768) {
+					// Мобильная версия - показываем модальное окно
+					this.showAnalysisModal();
+				} else {
+					// Десктопная версия - переключаем боковую панель
+					const sidePanel = document.getElementById('side-panel');
+					
+					if (sidePanel) {
+						const isVisible = sidePanel.classList.contains('active');
+						
+						if (isVisible) {
+							// Скрываем панель
+							sidePanel.classList.remove('active');
+							this.toast('Анализ скрыт');
+						} else {
+							// Показываем панель
+							sidePanel.classList.add('active');
+							this.toast('Анализ показан');
+						}
+					}
+				}
+			}
+
+			showAnalysisModal() {
+				// Создаем модальное окно для анализа если его нет
+				let modal = document.getElementById('analysis-modal');
+				if (!modal) {
+					modal = document.createElement('div');
+					modal.id = 'analysis-modal';
+					modal.className = 'modal';
+					modal.innerHTML = `
+						<div class="modal-content">
+							<div class="modal-header">
+								<div class="modal-title">Подробный анализ</div>
+								<button class="close-modal">&times;</button>
+							</div>
+							<div class="modal-body" id="analysis-modal-body">
+								<!-- Содержимое будет скопировано из боковой панели -->
+							</div>
+						</div>
+					`;
+					document.body.appendChild(modal);
+					
+					// Добавляем обработчики событий
+					modal.querySelector('.close-modal').addEventListener('click', () => this.hideAnalysisModal());
+					modal.addEventListener('click', (e) => {
+						if (e.target.id === 'analysis-modal') {
+							this.hideAnalysisModal();
+						}
+					});
+				}
+				
+				// Копируем содержимое из боковой панели
+				const sidePanel = document.getElementById('side-panel');
+				const modalBody = document.getElementById('analysis-modal-body');
+				if (sidePanel && modalBody) {
+					modalBody.innerHTML = sidePanel.innerHTML;
+				}
+				
+				modal.style.display = 'block';
+			}
+
+			hideAnalysisModal() {
+				const modal = document.getElementById('analysis-modal');
+				if (modal) {
+					modal.style.display = 'none';
+				}
 			}
 
             async analyze() {
