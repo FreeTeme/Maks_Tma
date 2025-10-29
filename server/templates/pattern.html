@@ -1359,16 +1359,30 @@
                     return;
                 }
                 
-                if (!this.lastKnownTimestamp) {
-                    console.warn('❌ Нет lastKnownTimestamp, пропускаем обновление');
-                    return;
-                }
+                // Проверяем свежесть данных
+                const freshness = this.checkDataFreshness();
                 
                 this.isUpdating = true;
                 console.log('🔍 Проверка обновлений...');
                 
                 try {
-                    // 1. Проверяем наличие обновлений
+                    // ЕСЛИ ДАННЫЕ СИЛЬНО УСТАРЕЛИ - ПРИНУДИТЕЛЬНО ОБНОВЛЯЕМ СЕРВЕР
+                    if (freshness === 'stale') {
+                        console.log('🔄 Данные сильно устарели, принудительно обновляем серверные данные...');
+                        
+                        try {
+                            const refreshResult = await this.forceRefreshServerData();
+                            console.log('✅ Серверные данные обновлены:', refreshResult);
+                            
+                            // После обновления сервера сбрасываем lastKnownTimestamp для принудительной проверки
+                            this.lastKnownTimestamp = null;
+                            
+                        } catch (refreshError) {
+                            console.error('❌ Ошибка обновления серверных данных:', refreshError);
+                            // Продолжаем работу даже если не удалось обновить сервер
+                        }
+                    }
+                    
                     const updateCheck = await this.checkForUpdates();
                     console.log('📊 Результат проверки:', updateCheck);
                     
@@ -1379,11 +1393,9 @@
                     
                     console.log(`🆕 Найдено ${updateCheck.new_candles_count} новых свечей`);
                     
-                    // 2. Загружаем только новые данные
                     const newData = await this.loadIncrementalData();
                     
                     if (newData && newData.has_updates && newData.new_candles && newData.new_candles.length > 0) {
-                        // 3. Обновляем график
                         await this.updateChartWithNewData(newData.new_candles);
                         this.lastKnownTimestamp = newData.latest_timestamp;
                         
@@ -1399,7 +1411,7 @@
                     this.isUpdating = false;
                 }
             }
-
+            
             // Проверка обновлений
             async checkForUpdates() {
                 try {
@@ -1517,21 +1529,22 @@
                 const now = new Date();
                 const diffMs = now - lastKnown;
                 const diffHours = diffMs / (1000 * 60 * 60);
+                const diffDays = diffHours / 24;
                 
-                console.log(`⏰ Свежесть данных: ${diffHours.toFixed(1)} часов с последнего обновления`);
+                console.log(`⏰ Свежесть данных: ${diffHours.toFixed(1)} часов (${diffDays.toFixed(1)} дней) с последнего обновления`);
                 
-                // Критерии свежести в зависимости от таймфрейма
+                // БОЛЕЕ АГРЕССИВНЫЕ КРИТЕРИИ - если данные старше 1 дня, считаем устаревшими
                 let freshnessThreshold;
                 switch(this.timeframe) {
-                    case '1h': freshnessThreshold = 2; break;   // 2 часа для часовых
-                    case '4h': freshnessThreshold = 6; break;   // 6 часов для 4-часовых
-                    case '1d': freshnessThreshold = 24; break;  // 24 часа для дневных
-                    case '1w': freshnessThreshold = 72; break;  // 72 часа для недельных
+                    case '1h': freshnessThreshold = 1; break;    // 1 час для часовых
+                    case '4h': freshnessThreshold = 4; break;    // 4 часа для 4-часовых
+                    case '1d': freshnessThreshold = 24; break;   // 24 часа для дневных
+                    case '1w': freshnessThreshold = 24; break;   // 24 часа для недельных (обновляем хотя бы раз в день)
                     default: freshnessThreshold = 24;
                 }
                 
                 if (diffHours > freshnessThreshold) {
-                    console.warn(`⚠️ Данные устарели более чем на ${freshnessThreshold} часов!`);
+                    console.warn(`⚠️ Данные устарели более чем на ${freshnessThreshold} часов! Требуется принудительное обновление.`);
                     return 'stale';
                 } else if (diffHours > freshnessThreshold / 2) {
                     console.log('ℹ️ Данные немного устарели');
@@ -1540,56 +1553,40 @@
                     console.log('✅ Данные актуальны');
                     return 'fresh';
                 }
-            }
+            }         
             
-            async smartUpdate() {
-                if (this.isUpdating) {
-                    console.log('⏳ Обновление уже выполняется, пропускаем...');
-                    return;
-                }
-                
-                // Проверяем свежесть данных - ТЕПЕРЬ ЭТОТ МЕТОД СУЩЕСТВУЕТ
-                const freshness = this.checkDataFreshness();
-                
-                this.isUpdating = true;
-                console.log('🔍 Проверка обновлений...');
+            async forceRefreshServerData() {
+                console.log('🔄 Принудительное обновление данных на сервере...');
                 
                 try {
-                    // Если данные сильно устарели, принудительно проверяем обновления
-                    if (freshness === 'stale') {
-                        console.log('🔄 Данные сильно устарели, принудительно проверяем обновления...');
+                    const response = await fetch('/api/pattern/force_data_refresh', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            symbol: this.symbol,
+                            timeframe: this.timeframe
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
                     
-                    const updateCheck = await this.checkForUpdates();
-                    console.log('📊 Результат проверки:', updateCheck);
+                    const result = await response.json();
                     
-                    if (!updateCheck.has_updates) {
-                        console.log('✅ Данные актуальны');
-                        return;
-                    }
-                    
-                    console.log(`🆕 Найдено ${updateCheck.new_candles_count} новых свечей`);
-                    
-                    const newData = await this.loadIncrementalData();
-                    
-                    if (newData && newData.has_updates && newData.new_candles && newData.new_candles.length > 0) {
-                        await this.updateChartWithNewData(newData.new_candles);
-                        this.lastKnownTimestamp = newData.latest_timestamp;
-                        
-                        console.log(`✅ График обновлен с ${newData.new_candles.length} новыми свечами`);
-                        this.showUpdateNotification(newData.new_candles.length);
+                    if (result.success) {
+                        console.log('✅ Серверные данные обновлены:', result);
+                        return result;
                     } else {
-                        console.log('ℹ️ Новых данных нет');
+                        throw new Error(result.message);
                     }
                     
                 } catch (error) {
-                    console.error('❌ Ошибка автообновления:', error);
-                } finally {
-                    this.isUpdating = false;
+                    console.error('❌ Ошибка при обновлении серверных данных:', error);
+                    throw error;
                 }
             }
-
-        }	
+    }	
         
         class PatternChart {
             constructor() {
