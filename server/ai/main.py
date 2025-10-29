@@ -768,3 +768,58 @@ def get_latest_candle(symbol: str, timeframe: str) -> Optional[Dict]:
     except Exception as e:
         print(f"Error getting latest candle: {e}")
         return None
+    
+def check_data_freshness(symbol: str, timeframe: str) -> Dict:
+    """Проверяет свежесть данных и обновляет при необходимости"""
+    normalized_symbol = normalize_symbol(symbol)
+    
+    try:
+        # Загружаем текущие данные
+        current_data = get_ohlcv_data(timeframe, normalized_symbol)
+        
+        if current_data.empty:
+            print(f"❌ Нет данных для {normalized_symbol}, загружаем заново...")
+            return {'needs_update': True, 'reason': 'No data available'}
+        
+        # Получаем последнюю дату в данных
+        latest_date = current_data['date'].max()
+        now = datetime.now()
+        
+        print(f"🔍 Проверка свежести: {normalized_symbol} {timeframe}")
+        print(f"📅 Последняя дата в данных: {latest_date}")
+        print(f"⏰ Текущее время: {now}")
+        
+        # Определяем допустимый возраст данных в зависимости от таймфрейма
+        if timeframe == '1h':
+            max_age = timedelta(hours=2)  # 2 часа для часовых данных
+        elif timeframe == '4h':
+            max_age = timedelta(hours=6)  # 6 часов для 4-часовых
+        elif timeframe == '1d':
+            max_age = timedelta(days=1)   # 1 день для дневных
+        elif timeframe == '1w':
+            max_age = timedelta(days=3)   # 3 дня для недельных
+        else:
+            max_age = timedelta(days=1)   # по умолчанию 1 день
+        
+        data_age = now - latest_date
+        print(f"⏳ Возраст данных: {data_age}")
+        
+        if data_age > max_age:
+            print(f"🔄 Данные устарели (возраст: {data_age}), требуется обновление")
+            return {
+                'needs_update': True, 
+                'reason': f'Data is {data_age} old, max allowed is {max_age}',
+                'latest_date': latest_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'current_time': now.strftime('%Y-%m-%dT%H:%M:%SZ')
+            }
+        else:
+            print("✅ Данные актуальны")
+            return {
+                'needs_update': False,
+                'latest_date': latest_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'data_age_hours': round(data_age.total_seconds() / 3600, 1)
+            }
+            
+    except Exception as e:
+        print(f"❌ Ошибка проверки свежести: {e}")
+        return {'needs_update': True, 'reason': f'Error: {str(e)}'}

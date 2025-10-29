@@ -1508,6 +1508,87 @@
                     this.updateTimer = null;
                 }
             }
+
+
+            checkDataFreshness() {
+                if (!this.lastKnownTimestamp) return 'unknown';
+                
+                const lastKnown = new Date(this.lastKnownTimestamp);
+                const now = new Date();
+                const diffMs = now - lastKnown;
+                const diffHours = diffMs / (1000 * 60 * 60);
+                
+                console.log(`⏰ Свежесть данных: ${diffHours.toFixed(1)} часов с последнего обновления`);
+                
+                // Критерии свежести в зависимости от таймфрейма
+                let freshnessThreshold;
+                switch(this.timeframe) {
+                    case '1h': freshnessThreshold = 2; break;   // 2 часа для часовых
+                    case '4h': freshnessThreshold = 6; break;   // 6 часов для 4-часовых
+                    case '1d': freshnessThreshold = 24; break;  // 24 часа для дневных
+                    case '1w': freshnessThreshold = 72; break;  // 72 часа для недельных
+                    default: freshnessThreshold = 24;
+                }
+                
+                if (diffHours > freshnessThreshold) {
+                    console.warn(`⚠️ Данные устарели более чем на ${freshnessThreshold} часов!`);
+                    return 'stale';
+                } else if (diffHours > freshnessThreshold / 2) {
+                    console.log('ℹ️ Данные немного устарели');
+                    return 'outdated';
+                } else {
+                    console.log('✅ Данные актуальны');
+                    return 'fresh';
+                }
+            }
+            
+            async smartUpdate() {
+                if (this.isUpdating) {
+                    console.log('⏳ Обновление уже выполняется, пропускаем...');
+                    return;
+                }
+                
+                // Проверяем свежесть данных - ТЕПЕРЬ ЭТОТ МЕТОД СУЩЕСТВУЕТ
+                const freshness = this.checkDataFreshness();
+                
+                this.isUpdating = true;
+                console.log('🔍 Проверка обновлений...');
+                
+                try {
+                    // Если данные сильно устарели, принудительно проверяем обновления
+                    if (freshness === 'stale') {
+                        console.log('🔄 Данные сильно устарели, принудительно проверяем обновления...');
+                    }
+                    
+                    const updateCheck = await this.checkForUpdates();
+                    console.log('📊 Результат проверки:', updateCheck);
+                    
+                    if (!updateCheck.has_updates) {
+                        console.log('✅ Данные актуальны');
+                        return;
+                    }
+                    
+                    console.log(`🆕 Найдено ${updateCheck.new_candles_count} новых свечей`);
+                    
+                    const newData = await this.loadIncrementalData();
+                    
+                    if (newData && newData.has_updates && newData.new_candles && newData.new_candles.length > 0) {
+                        await this.updateChartWithNewData(newData.new_candles);
+                        this.lastKnownTimestamp = newData.latest_timestamp;
+                        
+                        console.log(`✅ График обновлен с ${newData.new_candles.length} новыми свечами`);
+                        this.showUpdateNotification(newData.new_candles.length);
+                    } else {
+                        console.log('ℹ️ Новых данных нет');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Ошибка автообновления:', error);
+                } finally {
+                    this.isUpdating = false;
+                }
+            }
+
         }	
         
         class PatternChart {
@@ -1538,6 +1619,7 @@
                     localStorage.removeItem('savedSymbol');
                 }
 				this.chartUpdater = new SmartChartUpdater(this);
+                this.freshnessChecked = false;
                 this.initChart();
                 this.loadData();
 				this.bindUI();
@@ -1555,6 +1637,7 @@
                 
                 console.log(`🔄 Смена символа: ${this.currentSymbol} -> ${newSymbol}`);
                 this.chartUpdater.stop();
+                this.freshnessChecked = false;
                 
                 // Сохраняем новый символ
                 this.currentSymbol = newSymbol;
@@ -1821,6 +1904,11 @@
                         this.redrawOverlay();
                     }, 100);
 
+                    if (!this.freshnessChecked && this.allCandles.length > 0) {
+                        this.freshnessChecked = true;
+                        await this.checkDataFreshness();
+                    }
+
                     if (this.allCandles.length > 0) {
                         console.log('🚀 Запуск автообновления после загрузки данных');
                         this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
@@ -1829,6 +1917,81 @@
                 } catch (e) {
                     console.error(e);
                     alert('Не удалось загрузить исторические данные.');
+                }
+            }
+
+            async checkDataFreshness() {
+                console.log('🔍 Проверка свежести данных...');
+                
+                const loader = this.ensureLoader();
+                loader.style.display = 'flex';
+                
+                try {
+                    const response = await fetch(
+                        `/api/pattern/check_freshness?symbol=${encodeURIComponent(this.currentSymbol)}&timeframe=${this.currentTimeframe}&auto_update=true`
+                    );
+                    
+                    const result = await response.json();
+                    console.log('📊 Результат проверки свежести:', result);
+                    
+                    if (result.success) {
+                        if (result.needs_update && result.auto_updated) {
+                            console.log('🔄 Данные были автоматически обновлены');
+                            this.toast(`Данные обновлены! +${result.fresh_data_count} новых записей`);
+                            
+                            // Перезагружаем данные на графике
+                            await this.reloadChartData();
+                            
+                        } else if (result.needs_update && !result.auto_updated) {
+                            console.log('⚠️ Данные устарели, но не были обновлены автоматически');
+                            this.toast('Данные устарели, нажмите "Обновить данные"');
+                        } else {
+                            console.log(`✅ Данные актуальны (возраст: ${result.data_age_hours} часов)`);
+                        }
+                    } else {
+                        console.error('❌ Ошибка проверки свежести:', result.message);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Ошибка при проверке свежести:', error);
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+
+            async reloadChartData() {
+                console.log('🔄 Перезагрузка данных графика...');
+                
+                const loader = this.ensureLoader();
+                loader.style.display = 'flex';
+                
+                try {
+                    // Сохраняем текущее состояние выделения
+                    const hadSelection = this.selectedIndices.size > 0;
+                    const selectedIndices = [...this.selectedIndices];
+                    
+                    // Перезагружаем данные
+                    await this.loadData();
+                    
+                    // Восстанавливаем выделение если оно было
+                    if (hadSelection) {
+                        this.selectedIndices.clear();
+                        selectedIndices.forEach(idx => {
+                            if (idx < this.allCandles.length) {
+                                this.selectedIndices.add(idx);
+                            }
+                        });
+                        this.updateSelected();
+                        console.log(`✅ Восстановлено выделение: ${this.selectedIndices.size} свечей`);
+                    }
+                    
+                    this.toast('График обновлен с актуальными данными');
+                    
+                } catch (error) {
+                    console.error('❌ Ошибка перезагрузки графика:', error);
+                    this.toast('Ошибка обновления графика');
+                } finally {
+                    loader.style.display = 'none';
                 }
             }
 
@@ -2636,6 +2799,7 @@
                 console.log(`🔄 Смена таймфрейма: ${this.currentTimeframe} -> ${newTimeframe}`);
 				// Сохраняем новый таймфрейм
 				this.chartUpdater.stop();
+                this.freshnessChecked = false;
                 this.currentTimeframe = newTimeframe;
                 
 				

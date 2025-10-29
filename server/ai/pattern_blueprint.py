@@ -4,12 +4,13 @@ import pandas as pd
 import time
 from .main import (
     analyze_selected_pattern, 
-    api_get_ohlcv_data,  # Используем новые API функции
+    api_get_ohlcv_data,  
     api_get_data_bounds,
     get_supported_symbols,
     normalize_symbol,
-    check_data_updates,        # ДОБАВЬТЕ эту строку
-    get_latest_ohlcv 
+    check_data_updates,        
+    get_latest_ohlcv,
+    check_data_freshness  
 )
 
 # Создаем Blueprint для анализа паттернов
@@ -301,4 +302,58 @@ def force_refresh():
         return jsonify({
             'success': False, 
             'message': f'Error refreshing data: {str(e)}'
+        }), 500
+
+@pattern_bp.route('/check_freshness', methods=['GET'])
+def check_freshness():
+    """Проверяет свежесть данных и при необходимости обновляет"""
+    try:
+        symbol = request.args.get('symbol', 'BTCUSDT')
+        timeframe = request.args.get('timeframe', '1d')
+        auto_update = request.args.get('auto_update', 'true').lower() == 'true'
+        
+        # Используем функцию из main.py
+        freshness_check = check_data_freshness(symbol, timeframe)
+        
+        # Если данные устарели и auto_update=true, обновляем автоматически
+        if auto_update and freshness_check.get('needs_update'):
+            print(f"🔄 Автоматическое обновление данных для {symbol} {timeframe}")
+            
+            # Очищаем кэш
+            from main import CACHE_DIR
+            normalized_symbol = normalize_symbol(symbol)
+            cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
+            cleared_count = 0
+            
+            for cache_file in CACHE_DIR.glob("*.pkl"):
+                if any(pattern in cache_file.name for pattern in cache_patterns):
+                    try:
+                        cache_file.unlink()
+                        cleared_count += 1
+                        print(f"🗑️ Удален кэш: {cache_file.name}")
+                    except Exception as e:
+                        print(f"❌ Ошибка удаления кэша {cache_file.name}: {e}")
+            
+            # Загружаем свежие данные
+            from main import get_ohlcv_data
+            fresh_data = get_ohlcv_data(timeframe, symbol)
+            
+            freshness_check['auto_updated'] = True
+            freshness_check['cleared_cache_entries'] = cleared_count
+            freshness_check['fresh_data_count'] = len(fresh_data) if not fresh_data.empty else 0
+            
+            if not fresh_data.empty:
+                latest_date = fresh_data['date'].max()
+                freshness_check['new_latest_date'] = latest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        return jsonify({
+            'success': True,
+            **freshness_check
+        })
+        
+    except Exception as e:
+        print(f"❌ Error in check_freshness: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': f'Error checking freshness: {str(e)}'
         }), 500
