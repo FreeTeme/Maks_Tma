@@ -6,3 +6,4 @@ server/venv/
 server/ai/__pycache__/
 server/cache/
 server/pattern_cache/
+bot/referrals.db

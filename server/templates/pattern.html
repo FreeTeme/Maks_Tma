@@ -1038,6 +1038,14 @@
             background: var(--bg-2);
             color: var(--text);
         }
+
+        .update-status {
+            font-size: 12px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
     </style>
 </head>
 <body>
@@ -1063,6 +1071,9 @@
                     </select>
                 </div>
             </div>
+            <div id="update-status" class="update-status" style="display: none;">
+                <i class="fas fa-sync fa-spin"></i> Обновление...
+            </div>
         </div>
 
         <div class="main">
@@ -1086,6 +1097,9 @@
                             <button id="clear-btn" class="btn clear">
                                 <i class="fas fa-trash"></i> Очистить
                             </button>
+                            <!-- <button id="test-update-btn" class="btn" style="background: #8b5cf6;">
+                                <i class="fas fa-bolt"></i> Тест обновления
+                            </button> -->
                         </div>
                     </div>
                 </div>
@@ -1260,36 +1274,243 @@
 
     <script>
 		// Вспомогательная функция для безопасного обновления textContent
-		function safeSetTextContent(elementId, text) {
-			const element = document.getElementById(elementId);
-			if (element) {
-				element.textContent = text;
-			} else {
-				console.warn(`Элемент с ID '${elementId}' не найден`);
-			}
-		}
+        function safeSetTextContent(elementId, text) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = text;
+            }
+        }
 
-		// Безопасная функция для обновления innerHTML
-		function safeSetInnerHTML(elementId, html) {
-			const element = document.getElementById(elementId);
-			if (element) {
-				element.innerHTML = html;
-			} else {
-				console.warn(`Элемент с ID '${elementId}' не найден`);
-			}
-		}
+        function safeSetInnerHTML(elementId, html) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.innerHTML = html;
+            }
+        }
 
-		// Безопасная функция для установки стилей
-		function safeSetStyle(elementId, property, value) {
-			const element = document.getElementById(elementId);
-			if (element) {
-				element.style[property] = value;
-			} else {
-				console.warn(`Элемент с ID '${elementId}' не найден`);
-			}
-		}
+        function safeSetStyle(elementId, property, value) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style[property] = value;
+            }
+        }
 
-		class PatternChart {
+        class SmartChartUpdater {
+            constructor(chartInstance) {
+                this.chart = chartInstance;
+                this.lastKnownTimestamp = null;
+                this.updateIntervals = {
+                    '1h': 30000,    // 30 секунд для тестирования
+                    '4h': 60000,    // 1 минута для тестирования  
+                    '1d': 120000,   // 2 минуты для тестирования
+                    '1w': 300000    // 5 минут для тестирования
+                };
+                this.isUpdating = false;
+                this.updateTimer = null;
+                this.symbol = 'BTC#USDT';
+                this.timeframe = '1d';
+            }
+
+            // Инициализация обновлений
+            initialize(symbol, timeframe) {
+                console.log(`🔄 Инициализация автообновления: ${symbol}, ${timeframe}`);
+                this.symbol = symbol;
+                this.timeframe = timeframe;
+                
+                // Устанавливаем последний известный таймстамп
+                if (this.chart.allCandles && this.chart.allCandles.length > 0) {
+                    const lastCandle = this.chart.allCandles[this.chart.allCandles.length - 1];
+                    this.lastKnownTimestamp = lastCandle.open_time;
+                    console.log(`📅 Последняя свеча: ${this.lastKnownTimestamp}`);
+                } else {
+                    // Если нет свечей, устанавливаем вчерашнюю дату как точку отсчета
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    this.lastKnownTimestamp = yesterday.toISOString();
+                    console.log(`📅 Установлена дата по умолчанию: ${this.lastKnownTimestamp}`);
+                }
+                
+                this.startAutoUpdates();
+            }
+
+            // Запуск автоматических обновлений
+            startAutoUpdates() {
+                if (this.updateTimer) {
+                    clearInterval(this.updateTimer);
+                }
+                
+                const interval = this.updateIntervals[this.timeframe] || 30000;
+                console.log(`⏰ Запуск автообновления каждые ${interval}ms`);
+                
+                // Первая проверка через 5 секунд после загрузки
+                setTimeout(() => {
+                    this.smartUpdate();
+                }, 5000);
+                
+                this.updateTimer = setInterval(() => {
+                    this.smartUpdate();
+                }, interval);
+            }
+
+            // Умное обновление
+            async smartUpdate() {
+                if (this.isUpdating) {
+                    console.log('⏳ Обновление уже выполняется, пропускаем...');
+                    return;
+                }
+                
+                if (!this.lastKnownTimestamp) {
+                    console.warn('❌ Нет lastKnownTimestamp, пропускаем обновление');
+                    return;
+                }
+                
+                this.isUpdating = true;
+                console.log('🔍 Проверка обновлений...');
+                
+                try {
+                    // 1. Проверяем наличие обновлений
+                    const updateCheck = await this.checkForUpdates();
+                    console.log('📊 Результат проверки:', updateCheck);
+                    
+                    if (!updateCheck.has_updates) {
+                        console.log('✅ Данные актуальны');
+                        return;
+                    }
+                    
+                    console.log(`🆕 Найдено ${updateCheck.new_candles_count} новых свечей`);
+                    
+                    // 2. Загружаем только новые данные
+                    const newData = await this.loadIncrementalData();
+                    
+                    if (newData && newData.has_updates && newData.new_candles && newData.new_candles.length > 0) {
+                        // 3. Обновляем график
+                        await this.updateChartWithNewData(newData.new_candles);
+                        this.lastKnownTimestamp = newData.latest_timestamp;
+                        
+                        console.log(`✅ График обновлен с ${newData.new_candles.length} новыми свечами`);
+                        this.showUpdateNotification(newData.new_candles.length);
+                    } else {
+                        console.log('ℹ️ Новых данных нет');
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Ошибка автообновления:', error);
+                } finally {
+                    this.isUpdating = false;
+                }
+            }
+
+            // Проверка обновлений
+            async checkForUpdates() {
+                try {
+                    const url = `/api/pattern/check_updates?symbol=${encodeURIComponent(this.symbol)}&timeframe=${this.timeframe}&last_known=${encodeURIComponent(this.lastKnownTimestamp)}`;
+                    console.log('🔗 URL проверки:', url);
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('❌ Ошибка проверки обновлений:', error);
+                    return { has_updates: false, error: error.message };
+                }
+            }
+
+            // Загрузка инкрементальных данных
+            async loadIncrementalData() {
+                try {
+                    const url = `/api/pattern/incremental_update?symbol=${encodeURIComponent(this.symbol)}&timeframe=${this.timeframe}&last_known=${encodeURIComponent(this.lastKnownTimestamp)}`;
+                    console.log('🔗 URL загрузки:', url);
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error('❌ Ошибка загрузки инкрементальных данных:', error);
+                    return { has_updates: false, error: error.message };
+                }
+            }
+
+            // Обновление графика новыми данными
+            async updateChartWithNewData(newCandles) {
+                if (!this.chart || !this.chart.allCandles) {
+                    console.error('❌ График не инициализирован');
+                    return;
+                }
+                
+                console.log(`🔄 Добавляем ${newCandles.length} новых свечей`);
+                
+                // Добавляем новые свечи к существующим данным
+                let addedCount = 0;
+                newCandles.forEach(newCandle => {
+                    const exists = this.chart.allCandles.some(candle => 
+                        candle.open_time === newCandle.open_time
+                    );
+                    
+                    if (!exists) {
+                        this.chart.allCandles.push(newCandle);
+                        addedCount++;
+                        console.log(`➕ Добавлена свеча: ${newCandle.open_time}`);
+                    }
+                });
+                
+                if (addedCount === 0) {
+                    console.log('ℹ️ Все свечи уже существуют');
+                    return;
+                }
+                
+                // Сортируем по дате
+                this.chart.allCandles.sort((a, b) => new Date(a.open_time) - new Date(b.open_time));
+                
+                // Обновляем график
+                const k = this.chart.allCandles.map(c => ({
+                    time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                    open: parseFloat(c.open_price),
+                    high: parseFloat(c.high),
+                    low: parseFloat(c.low),
+                    close: parseFloat(c.close_price),
+                }));
+                
+                this.chart.candleSeries.setData(k);
+                
+                // Обновляем объем если он видим
+                if (this.chart.volumeVisible) {
+                    const v = this.chart.allCandles.map(c => ({
+                        time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                        value: parseFloat(c.volume),
+                        color: (parseFloat(c.close_price) >= parseFloat(c.open_price)) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
+                    }));
+                    this.chart.volumeSeries.setData(v);
+                }
+                
+                // Перерисовываем оверлей
+                this.chart.redrawOverlay();
+                
+                console.log('✅ График успешно обновлен');
+            }
+
+            // Визуальное уведомление
+            showUpdateNotification(newCandlesCount) {
+                // Используем существующий toast
+                if (this.chart.toast) {
+                    this.chart.toast(`📈 Обновлено: ${newCandlesCount} новых свечей`);
+                }
+            }
+
+            // Остановка обновлений
+            stop() {
+                if (this.updateTimer) {
+                    console.log('⏹️ Остановка автообновлений');
+                    clearInterval(this.updateTimer);
+                    this.updateTimer = null;
+                }
+            }
+        }	
+        
+        class PatternChart {
             constructor() {
                 this.chart = null;
                 this.candleSeries = null;
@@ -1316,7 +1537,7 @@
                 if (savedSymbol) {
                     localStorage.removeItem('savedSymbol');
                 }
-				
+				this.chartUpdater = new SmartChartUpdater(this);
                 this.initChart();
                 this.loadData();
 				this.bindUI();
@@ -1331,6 +1552,9 @@
 
             async switchSymbol(newSymbol) {
                 if (newSymbol === this.currentSymbol) return;
+                
+                console.log(`🔄 Смена символа: ${this.currentSymbol} -> ${newSymbol}`);
+                this.chartUpdater.stop();
                 
                 // Сохраняем новый символ
                 this.currentSymbol = newSymbol;
@@ -1351,6 +1575,7 @@
                     // Перезагружаем данные с новым символом
                     await this.loadData();
                     
+                    
                     // Обновляем UI
                     safeSetTextContent('matches-found', '0');
                     safeSetTextContent('pattern-length', '0');
@@ -1363,6 +1588,10 @@
                     this.toast('Ошибка загрузки данных: ' + e.message);
                 } finally {
                     loader.style.display = 'none';
+                }
+
+                if (this.allCandles.length > 0) {
+                    this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
                 }
             }
 
@@ -1591,12 +1820,18 @@
                         }
                         this.redrawOverlay();
                     }, 100);
+
+                    if (this.allCandles.length > 0) {
+                        console.log('🚀 Запуск автообновления после загрузки данных');
+                        this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
+                    }
                     
                 } catch (e) {
                     console.error(e);
                     alert('Не удалось загрузить исторические данные.');
                 }
             }
+
 			generateData(startDate = new Date('2018-01-01T00:00:00Z'), endDate = new Date()) {
 				const out = [];
 				let d = new Date(startDate);
@@ -1637,6 +1872,19 @@
                             this.switchSymbol(e.target.value);
                         });
                     }
+                
+                const testUpdateBtn = document.getElementById('test-update-btn');
+                if (testUpdateBtn) {
+                    testUpdateBtn.addEventListener('click', () => {
+                        console.log('🧪 Тестовый запуск обновления');
+                        if (this.chartUpdater) {
+                            this.chartUpdater.smartUpdate();
+                        } else {
+                            console.error('❌ chartUpdater не инициализирован');
+                        }
+                    });
+                }
+
                 document.querySelectorAll('[data-tf]').forEach(b => b.addEventListener('click', (e) => {
 					document.querySelectorAll('[data-tf]').forEach(x => x.classList.remove('active'));
                         e.target.classList.add('active');
@@ -1714,6 +1962,17 @@
 
 			updateSelected() {
 				safeSetTextContent('selected-count', this.selectedIndices.size);
+
+                const indicator = document.getElementById('selected-indicator');
+                if (indicator) {
+                    if (this.selectedIndices.size > 0) {
+                        safeSetTextContent('selected-count-indicator', this.selectedIndices.size);
+                        indicator.style.display = 'block';
+                    } else {
+                        indicator.style.display = 'none';
+                    }
+                }
+
 				const analyzeBtn = document.getElementById('analyze-btn'); 
 				if (analyzeBtn) analyzeBtn.disabled = this.selectedIndices.size === 0;
 				
@@ -2374,8 +2633,11 @@
 			}
 
 			async switchTimeframe(newTimeframe) {
+                console.log(`🔄 Смена таймфрейма: ${this.currentTimeframe} -> ${newTimeframe}`);
 				// Сохраняем новый таймфрейм
-				this.currentTimeframe = newTimeframe;
+				this.chartUpdater.stop();
+                this.currentTimeframe = newTimeframe;
+                
 				
 				// Очищаем только паттерны, но сохраняем выбранные свечи если они есть
 				const hadSelection = this.selectedIndices.size > 0;
@@ -2427,6 +2689,9 @@
 				} finally {
 					loader.style.display = 'none';
 				}
+                if (this.allCandles.length > 0) {
+                    this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
+                }
 			}
 
 			switchToAnalysisMode() {

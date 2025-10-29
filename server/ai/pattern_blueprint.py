@@ -1,3 +1,4 @@
+from datetime import timedelta
 from flask import Blueprint, request, jsonify
 import pandas as pd
 import time
@@ -6,7 +7,9 @@ from .main import (
     api_get_ohlcv_data,  # Используем новые API функции
     api_get_data_bounds,
     get_supported_symbols,
-    normalize_symbol
+    normalize_symbol,
+    check_data_updates,        # ДОБАВЬТЕ эту строку
+    get_latest_ohlcv 
 )
 
 # Создаем Blueprint для анализа паттернов
@@ -152,6 +155,150 @@ def force_update():
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
-# Убираем ненужные эндпоинты
-# @pattern_bp.route('/update_status', methods=['GET']) - больше не нужен
-# Функции get_data_freshness и force_data_refresh больше не используются
+# pattern_blueprint.py - добавляем новые эндпоинты
+
+# pattern_blueprint.py - обновите эндпоинты
+
+@pattern_bp.route('/check_updates', methods=['GET'])
+def check_updates():
+    """Проверяет наличие новых данных без полной загрузки"""
+    try:
+        symbol = request.args.get('symbol', 'BTCUSDT')
+        timeframe = request.args.get('timeframe', '1d')
+        last_known = request.args.get('last_known')
+        
+        if not last_known:
+            return jsonify({
+                'success': False, 
+                'message': 'last_known parameter is required'
+            }), 400
+        
+        # Используем функцию из main.py
+        result = check_data_updates(symbol, timeframe, last_known)
+        
+        return jsonify({
+            'success': True,
+            **result
+        })
+        
+    except Exception as e:
+        print(f"Error in check_updates: {str(e)}")  # Добавьте логирование
+        return jsonify({
+            'success': False, 
+            'message': f'Error checking updates: {str(e)}'
+        }), 500
+
+@pattern_bp.route('/incremental_update', methods=['GET'])
+def incremental_update():
+    """Возвращает только новые данные с момента последнего обновления"""
+    try:
+        symbol = request.args.get('symbol', 'BTCUSDT')
+        timeframe = request.args.get('timeframe', '1d')
+        last_known = request.args.get('last_known')
+        
+        if not last_known:
+            return jsonify({
+                'success': False, 
+                'message': 'last_known parameter is required'
+            }), 400
+        
+        # Используем функцию из main.py
+        new_data = get_latest_ohlcv(symbol, timeframe, last_known)
+        
+        if new_data.empty:
+            return jsonify({
+                'success': True, 
+                'has_updates': False,
+                'message': 'No new data available'
+            })
+        
+        # Конвертируем в формат для фронтенда
+        records = []
+        for _, row in new_data.iterrows():
+            open_time = row['date']
+            
+            # Определяем close_time в зависимости от таймфрейма
+            if timeframe == '1h':
+                close_time = open_time + timedelta(hours=1)
+            elif timeframe == '4h':
+                close_time = open_time + timedelta(hours=4)
+            elif timeframe == '1d':
+                close_time = open_time + timedelta(days=1)
+            elif timeframe == '1w':
+                close_time = open_time + timedelta(weeks=1)
+            else:
+                close_time = open_time + timedelta(days=1)
+            
+            records.append({
+                'open_time': open_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'close_time': close_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'open_price': float(row['open']),
+                'close_price': float(row['close']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'volume': float(row['volume']),
+                'timeframe': timeframe,
+                'symbol': symbol
+            })
+        
+        # Получаем самую свежую дату для следующей проверки
+        latest_timestamp = new_data['date'].max().strftime('%Y-%m-%dT%H:%M:%SZ')
+        
+        return jsonify({
+            'success': True,
+            'has_updates': True,
+            'new_candles': records,
+            'latest_timestamp': latest_timestamp,
+            'retrieved_count': len(records),
+            'symbol': symbol,
+            'timeframe': timeframe
+        })
+        
+    except Exception as e:
+        print(f"Error in incremental_update: {str(e)}")  # Добавьте логирование
+        return jsonify({
+            'success': False, 
+            'message': f'Error fetching incremental data: {str(e)}'
+        }), 500
+    
+@pattern_bp.route('/force_refresh', methods=['POST'])
+def force_refresh():
+    """Принудительное обновление всех данных для символа"""
+    try:
+        data = request.get_json() or {}
+        symbol = data.get('symbol', 'BTCUSDT')
+        timeframe = data.get('timeframe', '1d')
+        
+        normalized_symbol = normalize_symbol(symbol)
+        
+        # Очищаем кэш для этой пары
+        keys_to_remove = [key for key in data_cache.keys() if normalized_symbol in key or symbol in key]
+        for key in keys_to_remove:
+            del data_cache[key]
+        
+        # Также очищаем файловый кэш
+        from main import CACHE_DIR
+        cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
+        for cache_file in CACHE_DIR.glob("*.pkl"):
+            if any(pattern in cache_file.name for pattern in cache_patterns):
+                try:
+                    cache_file.unlink()
+                except:
+                    pass
+        
+        # Загружаем свежие данные
+        from main import get_ohlcv_data
+        fresh_data = get_ohlcv_data(timeframe, normalized_symbol)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Data refreshed for {normalized_symbol}',
+            'cleared_cache_entries': len(keys_to_remove),
+            'fresh_data_count': len(fresh_data) if not fresh_data.empty else 0
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'message': f'Error refreshing data: {str(e)}'
+        }), 500

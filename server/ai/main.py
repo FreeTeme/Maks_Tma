@@ -89,6 +89,9 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
     # Проверяем кэш
     cached_data = load_from_cache(cache_key)
     if cached_data is not None:
+        # Убедимся, что даты без часового пояса
+        cached_data = cached_data.copy()
+        cached_data['date'] = pd.to_datetime(cached_data['date']).dt.tz_localize(None)
         return cached_data
     
     base_url = 'https://api.binance.com/api/v3/klines'
@@ -168,6 +171,9 @@ def get_ohlcv_data(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFra
     cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
     cached_data = load_from_cache(cache_key)
     if cached_data is not None:
+        # Убедимся, что даты без часового пояса
+        cached_data = cached_data.copy()
+        cached_data['date'] = pd.to_datetime(cached_data['date']).dt.tz_localize(None)
         return cached_data
     
     # Загружаем данные с 2017 года
@@ -623,3 +629,142 @@ def fetch_binance_ohlcv(start_date: str, end_date: str, timeframe: str = '1d', s
 
 def build_features(df: pd.DataFrame, timeframe: str = '1d') -> pd.DataFrame:
     return build_features_fast(df, timeframe)
+
+# main.py - добавляем после существующих функций
+
+def check_data_updates(symbol: str, timeframe: str, last_known_date: str) -> Dict:
+    """Проверяет наличие новых данных без полной загрузки"""
+    normalized_symbol = normalize_symbol(symbol)
+    
+    try:
+        # Загружаем полные данные для проверки
+        full_data = get_ohlcv_data(timeframe, normalized_symbol)
+        
+        if full_data.empty:
+            return {'has_updates': False, 'message': 'No data available'}
+        
+        # Убедимся, что даты в правильном формате и без часового пояса
+        full_data = full_data.copy()
+        full_data['date'] = pd.to_datetime(full_data['date']).dt.tz_localize(None)
+        
+        latest_date = full_data['date'].max()
+        
+        # Преобразуем last_known_date и убираем часовой пояс
+        last_known_dt = pd.to_datetime(last_known_date)
+        if last_known_dt.tz is not None:
+            last_known_dt = last_known_dt.tz_localize(None)
+        
+        print(f"🔍 Проверка обновлений: last_known={last_known_dt} (tz: {last_known_dt.tz}), latest_in_db={latest_date} (tz: {latest_date.tz})")
+        
+        # Проверяем есть ли данные новее last_known_date
+        newer_data = full_data[full_data['date'] > last_known_dt]
+        
+        print(f"📊 Найдено новых записей: {len(newer_data)}")
+        
+        if newer_data.empty:
+            return {
+                'has_updates': False,
+                'latest_date': latest_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                'message': 'Data is up to date'
+            }
+        
+        return {
+            'has_updates': True,
+            'latest_date': latest_date.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'new_candles_count': len(newer_data),
+            'last_known_date': last_known_date,
+            'symbol': normalized_symbol,
+            'timeframe': timeframe
+        }
+        
+    except Exception as e:
+        print(f"❌ Ошибка в check_data_updates: {str(e)}")
+        import traceback
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        return {'has_updates': False, 'message': f'Error checking updates: {str(e)}'}
+
+
+def get_latest_ohlcv(symbol: str, timeframe: str, last_known_date: str) -> pd.DataFrame:
+    """Получает только самые свежие данные начиная с последней известной даты"""
+    normalized_symbol = normalize_symbol(symbol)
+    
+    try:
+        # Добавляем запас в 3 периода чтобы захватить возможные пропуски
+        if timeframe == '1h':
+            margin = timedelta(hours=3)
+        elif timeframe == '4h':
+            margin = timedelta(hours=12)
+        elif timeframe == '1d':
+            margin = timedelta(days=3)
+        elif timeframe == '1w':
+            margin = timedelta(weeks=2)
+        else:
+            margin = timedelta(days=3)
+        
+        # Преобразуем last_known_date и убираем часовой пояс для расчетов
+        last_known_dt = pd.to_datetime(last_known_date)
+        if last_known_dt.tz is not None:
+            last_known_dt = last_known_dt.tz_localize(None)
+        
+        start_date = (last_known_dt - margin).strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"📥 Загрузка инкрементальных данных {normalized_symbol} {timeframe} с {start_date} по {end_date}")
+        
+        new_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
+        
+        # Убедимся, что даты в правильном формате и без часового пояса
+        if not new_data.empty:
+            new_data = new_data.copy()
+            new_data['date'] = pd.to_datetime(new_data['date']).dt.tz_localize(None)
+            
+            # Фильтруем только данные новее last_known_date
+            new_data = new_data[new_data['date'] > last_known_dt]
+            print(f"✅ Отфильтровано {len(new_data)} новых свечей")
+        
+        return new_data
+        
+    except Exception as e:
+        print(f"❌ Ошибка при загрузке инкрементальных данных: {e}")
+        import traceback
+        print(f"📋 Traceback: {traceback.format_exc()}")
+        return pd.DataFrame()
+
+def merge_ohlcv_data(existing_df: pd.DataFrame, new_df: pd.DataFrame) -> pd.DataFrame:
+    """Объединяет существующие данные с новыми, убирая дубликаты"""
+    if existing_df.empty:
+        return new_df
+    if new_df.empty:
+        return existing_df
+    
+    # Объединяем и убираем дубликаты по дате
+    combined = pd.concat([existing_df, new_df], ignore_index=True)
+    combined = combined.sort_values('date').drop_duplicates(subset=['date'], keep='last')
+    
+    return combined.reset_index(drop=True)
+
+# main.py
+def get_latest_candle(symbol: str, timeframe: str) -> Optional[Dict]:
+    """Возвращает самую последнюю свечу для символа"""
+    try:
+        normalized_symbol = normalize_symbol(symbol)
+        df = get_ohlcv_data(timeframe, normalized_symbol)
+        
+        if df.empty:
+            return None
+            
+        latest = df.iloc[-1]
+        
+        return {
+            'open_time': latest['date'].strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'open_price': float(latest['open']),
+            'close_price': float(latest['close']),
+            'high': float(latest['high']),
+            'low': float(latest['low']),
+            'volume': float(latest['volume']),
+            'symbol': normalized_symbol,
+            'timeframe': timeframe
+        }
+    except Exception as e:
+        print(f"Error getting latest candle: {e}")
+        return None

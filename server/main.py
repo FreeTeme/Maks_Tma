@@ -22,7 +22,6 @@ sys.path.append(server_dir)
 
 # Импортируем Blueprint для анализа паттернов
 from ai.pattern_blueprint import pattern_bp
-from ai.data_updater import data_updater
 import atexit
 
 app = Flask(__name__)
@@ -909,24 +908,8 @@ load_ohlcv_data()
 # - /api/update_settings
 
 # Добавляем в импорты app.py
-from ai.data_updater import data_updater
 import atexit
 
-# Добавляем после инициализации приложения
-@app.before_request
-def startup():
-    """Запускается при старте приложения"""
-    try:
-        # Запуск фонового обновления
-        data_updater.start()
-        print("Приложение запущено, фоновое обновление данных активировано")
-    except Exception as e:
-        print(f"Ошибка при запуске приложения: {e}")
-
-@atexit.register
-def shutdown():
-    """Останавливаем при завершении приложения"""
-    data_updater.stop()
 
 # Админ маршруты
 @app.route('/admin/logs')
