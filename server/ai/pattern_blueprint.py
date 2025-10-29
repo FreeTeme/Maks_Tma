@@ -2,7 +2,9 @@ from datetime import timedelta
 from flask import Blueprint, request, jsonify
 import pandas as pd
 import time
-from .main import (
+from pathlib import Path
+from ai.main import CACHE_DIR
+from ai.main import (
     analyze_selected_pattern, 
     api_get_ohlcv_data,  
     api_get_data_bounds,
@@ -10,12 +12,18 @@ from .main import (
     normalize_symbol,
     check_data_updates,        
     get_latest_ohlcv,
-    check_data_freshness  
+    check_data_freshness,
+    get_ohlcv_data, 
+    save_to_cache, 
+    get_cache_key
 )
+
 
 # Создаем Blueprint для анализа паттернов
 pattern_bp = Blueprint('pattern', __name__, url_prefix='/api/pattern')
 
+CACHE_DIR = Path("pattern_cache")
+CACHE_DIR.mkdir(exist_ok=True)
 # Упрощенный кэш
 data_cache = {}
 CACHE_TIMEOUT = 300  # 5 минут
@@ -139,26 +147,43 @@ def analyze_pattern():
 
 @pattern_bp.route('/force_update', methods=['POST'])
 def force_update():
-    """Принудительное обновление данных"""
+    """Альтернативный метод принудительного обновления данных"""
     try:
         symbol = request.args.get('symbol', 'BTCUSDT')
+        timeframe = request.args.get('timeframe', '1d')
         
-        # Очищаем кэш для этой пары
-        keys_to_remove = [key for key in data_cache.keys() if symbol in key]
-        for key in keys_to_remove:
-            del data_cache[key]
-            
+        print(f"🔄 Альтернативное обновление данных: {symbol}, {timeframe}")
+        
+        normalized_symbol = normalize_symbol(symbol)
+        
+        # Очищаем кэш
+        cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
+        cleared_count = 0
+        
+        for cache_file in CACHE_DIR.glob("*.pkl"):
+            if any(pattern in cache_file.name for pattern in cache_patterns):
+                try:
+                    cache_file.unlink()
+                    cleared_count += 1
+                except:
+                    pass
+        
+        # Загружаем свежие данные
+        fresh_data = get_ohlcv_data(timeframe, normalized_symbol)
+        
         return jsonify({
-            'success': True, 
-            'message': f'Кэш очищен для {symbol}',
-            'cleared_entries': len(keys_to_remove)
+            'success': True,
+            'message': f'Data force updated for {normalized_symbol}',
+            'cleared_cache_entries': cleared_count,
+            'fresh_data_count': len(fresh_data) if not fresh_data.empty else 0
         })
+        
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-# pattern_blueprint.py - добавляем новые эндпоинты
-
-# pattern_blueprint.py - обновите эндпоинты
+        print(f"❌ Ошибка в force_update: {str(e)}")
+        return jsonify({
+            'success': False, 
+            'message': f'Error in force update: {str(e)}'
+        }), 500
 
 @pattern_bp.route('/check_updates', methods=['GET'])
 def check_updates():
@@ -278,7 +303,7 @@ def force_refresh():
             del data_cache[key]
         
         # Также очищаем файловый кэш
-        from main import CACHE_DIR
+        from ai.main import CACHE_DIR
         cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
         for cache_file in CACHE_DIR.glob("*.pkl"):
             if any(pattern in cache_file.name for pattern in cache_patterns):
@@ -288,7 +313,7 @@ def force_refresh():
                     pass
         
         # Загружаем свежие данные
-        from main import get_ohlcv_data
+        from ai.main import get_ohlcv_data
         fresh_data = get_ohlcv_data(timeframe, normalized_symbol)
         
         return jsonify({
@@ -320,7 +345,6 @@ def check_freshness():
             print(f"🔄 Автоматическое обновление данных для {symbol} {timeframe}")
             
             # Очищаем кэш
-            from main import CACHE_DIR
             normalized_symbol = normalize_symbol(symbol)
             cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
             cleared_count = 0
@@ -358,45 +382,84 @@ def check_freshness():
             'message': f'Error checking freshness: {str(e)}'
         }), 500
     
-@pattern_bp.route('/force_data_refresh', methods=['POST'])
-def force_data_refresh():
-    """Принудительное обновление данных для символа"""
+@pattern_bp.route('/refresh_data', methods=['POST'])
+def refresh_data():
+    """Надежное обновление данных - основной эндпоинт"""
     try:
         data = request.get_json() or {}
         symbol = data.get('symbol', 'BTCUSDT')
         timeframe = data.get('timeframe', '1d')
         
+        print(f"🔄 ЗАПУСК ОБНОВЛЕНИЯ ДАННЫХ: {symbol} {timeframe}")
+        
         normalized_symbol = normalize_symbol(symbol)
         
-        # Очищаем кэш для этой пары
-        from main import CACHE_DIR
-        cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
-        cleared_count = 0
+        # 1. ОЧИСТКА КЭША - используем локальный CACHE_DIR
+        cache_files = []
+        patterns = [
+            f"*ohlcv*{normalized_symbol}*",
+            f"*full_data*{normalized_symbol}*", 
+            f"*{normalized_symbol}*{timeframe}*"
+        ]
         
-        for cache_file in CACHE_DIR.glob("*.pkl"):
-            if any(pattern in cache_file.name for pattern in cache_patterns):
-                try:
+        cleared_count = 0
+        for pattern in patterns:
+            for cache_file in CACHE_DIR.glob(pattern):
+                if cache_file not in cache_files:
+                    cache_files.append(cache_file)
+        
+        for cache_file in cache_files:
+            try:
+                if cache_file.exists():
                     cache_file.unlink()
                     cleared_count += 1
                     print(f"🗑️ Удален кэш: {cache_file.name}")
-                except Exception as e:
-                    print(f"❌ Ошибка удаления кэша {cache_file.name}: {e}")
+            except Exception as e:
+                print(f"⚠️ Не удалось удалить {cache_file.name}: {e}")
         
-        # Загружаем свежие данные
-        from main import get_ohlcv_data
-        fresh_data = get_ohlcv_data(timeframe, normalized_symbol)
+        print(f"✅ Очищено файлов кэша: {cleared_count}")
+        
+        # 2. ПЕРЕЗАГРУЗКА ДАННЫХ
+        from ai.main import fetch_binance_ohlcv_fast
+        from datetime import datetime, timedelta
+        
+        # Загружаем данные с запасом
+        start_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
+        end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"📥 Загрузка данных с {start_date} по {end_date}")
+        fresh_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
+        
+        if fresh_data.empty:
+            print("⚠️ Не удалось загрузить данные, пробуем полную загрузку...")
+            fresh_data = fetch_binance_ohlcv_fast("2017-01-01", end_date, timeframe, normalized_symbol)
+        
+        print(f"✅ Загружено записей: {len(fresh_data)}")
+        
+        if not fresh_data.empty:
+            latest_date = fresh_data['date'].max()
+            print(f"📅 Актуальная дата: {latest_date}")
+            
+            # Сохраняем в кэш используя функции из main
+            cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
+            save_to_cache(cache_key, fresh_data)
+            print("💾 Данные сохранены в кэш")
         
         return jsonify({
             'success': True,
-            'message': f'Data refreshed for {normalized_symbol}',
+            'message': f'Data successfully refreshed for {normalized_symbol}',
             'cleared_cache_entries': cleared_count,
-            'fresh_data_count': len(fresh_data) if not fresh_data.empty else 0,
-            'latest_date': fresh_data['date'].max().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else 'No data'
+            'fresh_data_count': len(fresh_data),
+            'latest_date': fresh_data['date'].max().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else 'No data',
+            'data_loaded': not fresh_data.empty
         })
         
     except Exception as e:
-        print(f"❌ Error in force_data_refresh: {str(e)}")
+        print(f"❌ КРИТИЧЕСКАЯ ОШИБКА В refresh_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False, 
-            'message': f'Error refreshing data: {str(e)}'
+            'message': f'Refresh failed: {str(e)}',
+            'error_details': str(e)
         }), 500
