@@ -1875,6 +1875,11 @@ class PatternChart {
             
             console.log(`📅 Диапазон данных: ${dsStart.toISOString().slice(0,10)} - ${nextDay.toISOString().slice(0,10)}`);
             
+            // ОЧИСТКА ПРЕДЫДУЩИХ ДАННЫХ
+            this.allCandles = [];
+            this.candleSeries.setData([]);
+            this.volumeSeries.setData([]);
+            
             // Загружаем реальные свечи с сервера
             const api = await fetch(
                 `/api/pattern/ohlcv?source=binance` +
@@ -2798,6 +2803,7 @@ class PatternChart {
         }
     }
 
+    // Смена символа
     async switchSymbol(newSymbol) {
         if (newSymbol === this.currentSymbol) return;
         
@@ -2811,36 +2817,51 @@ class PatternChart {
         
         this.currentSymbol = newSymbol;
         
-        // Очищаем текущие данные
+        // Очищаем ВСЕ данные
         this.clearSelection();
         this.patternMarkers.clear();
         this.matchedHighlightPoints = [];
         this.matchedRanges = [];
         this.currentMatchIndex = -1;
         
+        // Очищаем график
+        this.candleSeries.setData([]);
+        this.volumeSeries.setData([]);
+        
         // Показываем загрузку
         const loader = this.ensureLoader();
         loader.style.display = 'flex';
         
         try {
-            // Перезагружаем данные с новым символом
+            // Обновляем заголовок страницы
+            const symbolDisplay = newSymbol.replace('#', '/');
+            document.getElementById('page-title').textContent = `${symbolDisplay} — Поиск паттернов`;
+            
+            // ПЕРЕЗАГРУЖАЕМ ДАННЫЕ С НОВЫМ СИМВОЛОМ
             await this.loadData();
             
-            // Обновляем UI
+            // Сбрасываем UI
             safeSetTextContent('matches-found', '0');
             safeSetTextContent('pattern-length', '0');
             safeSetTextContent('accuracy', '0%');
             safeSetStyle('pattern-info-card', 'display', 'none');
             safeSetInnerHTML('matches', '');
+            safeSetInnerHTML('general-analysis-card', '');
             
-            this.toast(`Загружены данные для ${newSymbol.replace('#', '/')}`);
+            this.toast(`Загружены данные для ${symbolDisplay}`);
+            
+            // ЗАПУСКАЕМ СИСТЕМУ ОБНОВЛЕНИЙ ДЛЯ НОВОГО СИМВОЛА
+            this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
+            
         } catch (e) {
+            console.error('❌ Ошибка смены символа:', e);
             this.toast('Ошибка загрузки данных: ' + e.message);
         } finally {
             loader.style.display = 'none';
         }
     }
-
+ 
+    // Смена таймфрейма
     async switchTimeframe(newTimeframe) {
         console.log(`🔄 Смена таймфрейма: ${this.currentTimeframe} -> ${newTimeframe}`);
         
@@ -2852,41 +2873,34 @@ class PatternChart {
         
         this.currentTimeframe = newTimeframe;
         
-        // Очищаем только паттерны, но сохраняем выбранные свечи если они есть
-        const hadSelection = this.selectedIndices.size > 0;
+        // Очищаем ВСЕ данные
+        this.clearSelection();
         this.patternMarkers.clear();
         this.matchedHighlightPoints = [];
         this.matchedRanges = [];
         this.currentMatchIndex = -1;
         
-        // Очищаем выбранные свечи только если их не было
-        if (!hadSelection) {
-            this.selectedIndices.clear();
-            this.selectedMarkers.clear();
-            this.selectedHighlightPoints = [];
-        }
+        // Очищаем график
+        this.candleSeries.setData([]);
+        this.volumeSeries.setData([]);
         
         // Показываем загрузку
         const loader = this.ensureLoader();
         loader.style.display = 'flex';
         
         try {
-            // Перезагружаем данные с новым таймфреймом
+            // ПЕРЕЗАГРУЖАЕМ ДАННЫЕ С НОВЫМ ТАЙМФРЕЙМОМ
             await this.loadData();
             
-            // Обновляем UI
+            // Сбрасываем UI
             safeSetTextContent('matches-found', '0');
             safeSetTextContent('pattern-length', '0');
             safeSetTextContent('accuracy', '0%');
             safeSetStyle('pattern-info-card', 'display', 'none');
             safeSetInnerHTML('matches', '');
+            safeSetInnerHTML('general-analysis-card', '');
             
-            // Восстанавливаем выделение выбранных свечей если они были
-            if (hadSelection) {
-                this.updateSelected();
-            }
-            
-            // Обновляем отображение таймфрейма в header
+            // Обновляем отображение таймфрейма
             const timeframeMap = {
                 '1h': '1ч',
                 '4h': '4ч', 
@@ -2897,13 +2911,17 @@ class PatternChart {
             if (kpiTF) kpiTF.textContent = timeframeMap[newTimeframe] || newTimeframe;
             
             this.toast(`Загружены данные для таймфрейма ${timeframeMap[newTimeframe] || newTimeframe}`);
+            
+            // ЗАПУСКАЕМ СИСТЕМУ ОБНОВЛЕНИЙ ДЛЯ НОВОГО ТАЙМФРЕЙМА
+            this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
+            
         } catch (e) {
+            console.error('❌ Ошибка смены таймфрейма:', e);
             this.toast('Ошибка загрузки данных: ' + e.message);
         } finally {
             loader.style.display = 'none';
         }
     }
-
     switchToAnalysisMode() {
         this.isAnalysisMode = true;
         this.chart.applyOptions({
