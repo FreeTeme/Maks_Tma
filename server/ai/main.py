@@ -325,16 +325,15 @@ def calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, sy
     return price_changes, stats
 
 def calculate_median_statistics(price_changes, directions):
-    """Расчет медианной статистики по всем паттернам"""
+    """Расчет медианной статистики по всем паттернам с разделением на группы"""
     if not price_changes:
         return {
             'median_change': 0,
             'bullish_percentage': 0,
             'bearish_percentage': 0,
-            'neutral_percentage': 0,
-            'top_20_percent_median': 0,
-            'bottom_20_percent_median': 0,
             'success_rate': 0,
+            'median_bullish': 0,
+            'median_bearish': 0,
             'total_patterns': 0
         }
     
@@ -347,13 +346,13 @@ def calculate_median_statistics(price_changes, directions):
             'median_change': 0,
             'bullish_percentage': 0,
             'bearish_percentage': 0,
-            'neutral_percentage': 0,
-            'top_20_percent_median': 0,
-            'bottom_20_percent_median': 0,
             'success_rate': 0,
+            'median_bullish': 0,
+            'median_bearish': 0,
             'total_patterns': len(price_changes)
         }
     
+    # Общая медиана всех изменений цен
     median_change = float(np.median(valid_changes))
     
     # Статистика направлений
@@ -362,30 +361,53 @@ def calculate_median_statistics(price_changes, directions):
     bearish_count = sum(1 for d in valid_directions if d == -1)
     neutral_count = sum(1 for d in valid_directions if d == 0)
     
-    bullish_percentage = round((bullish_count / total) * 100, 1) if total > 0 else 0
-    bearish_percentage = round((bearish_count / total) * 100, 1) if total > 0 else 0
-    neutral_percentage = round((neutral_count / total) * 100, 1) if total > 0 else 0
+    # Распределяем нейтральные паттерны между бычьими и медвежьими
+    if neutral_count > 0:
+        # Распределяем поровну
+        half_neutral = neutral_count // 2
+        bullish_count += half_neutral
+        bearish_count += neutral_count - half_neutral
     
-    # Медиана топ-20% и нижних-20%
-    sorted_changes = sorted(valid_changes, reverse=True)
-    top_20_count = max(1, len(sorted_changes) // 5)
-    top_20_median = float(sorted_changes[0])  # максимальное значение
-
-    bottom_20_count = max(1, len(sorted_changes) // 5)
-    bottom_20_median = float(sorted_changes[-1])  # минимальное значение
+    # Пересчитываем проценты
+    total_non_neutral = bullish_count + bearish_count
+    bullish_percentage = round((bullish_count / total_non_neutral) * 100, 1) if total_non_neutral > 0 else 0
+    bearish_percentage = round((bearish_count / total_non_neutral) * 100, 1) if total_non_neutral > 0 else 0
     
+    # Success rate считается от общего количества валидных паттернов
     success_rate = round((bullish_count / total) * 100, 1) if total > 0 else 0
+    
+    # Разделяем изменения цен по группам (без учета распределения нейтральных)
+    bullish_changes = [valid_changes[i] for i, d in enumerate(valid_directions) if d == 1]
+    bearish_changes = [valid_changes[i] for i, d in enumerate(valid_directions) if d == -1]
+    
+    # Рассчитываем медианы для групп
+    if len(bullish_changes) >= 3:
+        median_bullish = float(np.median(bullish_changes))
+    elif len(bullish_changes) > 0:
+        # Для малых групп используем среднее арифметическое
+        median_bullish = float(np.mean(bullish_changes))
+    else:
+        median_bullish = 0
+    
+    if len(bearish_changes) >= 3:
+        median_bearish = float(np.median(bearish_changes))
+    elif len(bearish_changes) > 0:
+        # Для малых групп используем среднее арифметическое
+        median_bearish = float(np.mean(bearish_changes))
+    else:
+        median_bearish = 0
     
     return {
         'median_change': round(median_change, 2),
         'bullish_percentage': bullish_percentage,
         'bearish_percentage': bearish_percentage,
-        'neutral_percentage': neutral_percentage,
-        'top_20_percent_median': round(top_20_median, 2),
-        'bottom_20_percent_median': round(bottom_20_median, 2),
         'success_rate': success_rate,
+        'median_bullish': round(median_bullish, 2),
+        'median_bearish': round(median_bearish, 2),
         'total_patterns': len(price_changes),
-        'valid_patterns': len(valid_changes)
+        'valid_patterns': len(valid_changes),
+        'bullish_count_actual': len(bullish_changes),  # Фактическое количество растущих
+        'bearish_count_actual': len(bearish_changes)   # Фактическое количество падающих
     }
 
 def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', 

@@ -2335,6 +2335,7 @@ class PatternChart {
     }
 
     // Отрисовка общей аналитики паттернов
+    // Отрисовка общей аналитики паттернов
     renderGeneralAnalysis(result) {
         console.log("📊 Начинаем отрисовку общей аналитики...", result);
         
@@ -2371,7 +2372,7 @@ class PatternChart {
             }
         }
 
-        // Заполняем карточку
+        // Заполняем карточку с новыми данными
         analysisCard.innerHTML = `
             <h3><i class="fas fa-chart-pie"></i> Общая аналитика паттернов</h3>
             <div class="performance-summary">
@@ -2386,12 +2387,12 @@ class PatternChart {
                     <span class="summary-value bullish">${performanceStats.success_rate || 0}%</span>
                 </div>
                 <div class="summary-item">
-                    <span class="summary-label">Максимальное значение</span>
-                    <span class="summary-value bullish">+${performanceStats.top_20_percent_median || 0}%</span>
+                    <span class="summary-label">Медиана растущих:</span>
+                    <span class="summary-value bullish">+${performanceStats.median_bullish || 0}%</span>
                 </div>
                 <div class="summary-item">
-                    <span class="summary-label">Минимальное значение:</span>
-                    <span class="summary-value bearish">${performanceStats.bottom_20_percent_median || 0}%</span>
+                    <span class="summary-label">Медиана падающих:</span>
+                    <span class="summary-value bearish">${performanceStats.median_bearish || 0}%</span>
                 </div>
                 <div class="summary-item">
                     <span class="summary-label">Всего паттернов:</span>
@@ -2415,13 +2416,6 @@ class PatternChart {
                     </div>
                     <span class="distribution-value">${performanceStats.bearish_percentage || 0}%</span>
                 </div>
-                <div class="distribution-item">
-                    <span class="distribution-label">Нейтральные</span>
-                    <div class="distribution-bar">
-                        <div class="distribution-fill neutral" style="width: ${performanceStats.neutral_percentage || 0}%"></div>
-                    </div>
-                    <span class="distribution-value">${performanceStats.neutral_percentage || 0}%</span>
-                </div>
             </div>
             
             <div class="footer-note" style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;">
@@ -2431,7 +2425,6 @@ class PatternChart {
 
         console.log("✅ Общая аналитика отрисована");
     }
-
     // Метод для показа ошибки
     showGeneralAnalysisError(message) {
         let analysisCard = document.getElementById('general-analysis-card');
