@@ -1776,8 +1776,8 @@ class PatternChart {
             timeScale: { 
                 borderColor: '#243142', 
                 rightOffset: 6, 
-                barSpacing: 60,
-                minBarSpacing: 15,
+                barSpacing: 14,
+                minBarSpacing: 3,
                 fixLeftEdge: false,
                 fixRightEdge: false,
                 lockVisibleTimeRangeOnResize: true,
@@ -1799,7 +1799,7 @@ class PatternChart {
             },
             kineticScroll: {
                 touch: true,
-                mouse: false
+                mouse: true
             }
         });
         
@@ -1812,6 +1812,27 @@ class PatternChart {
             wickDownColor: '#ff5050',
             priceLineVisible: false,
         });
+        
+        // Мягкое усиление чувствительности зума колесом (дополнительно к нативному поведению)
+        // Не блокируем событие, чтобы сохранить перетаскивание и встроенный зум/скролл
+        (function enhanceWheelZoom(chart, el) {
+            const extraFactor = 1.08; // лёгкое усиление (>1 — сильнее)
+            let lastTs = 0;
+            el.addEventListener('wheel', (evt) => {
+                // Ограничим частоту применения, чтобы не было двойной сверхреакции
+                const now = Date.now();
+                if (now - lastTs < 16) return; // ~60fps
+                lastTs = now;
+                const ts = chart.timeScale();
+                if (!ts || !ts.getBarSpacing) return;
+                const spacing = ts.getBarSpacing();
+                const direction = Math.sign(evt.deltaY) || 1;
+                const step = Math.min(3, Math.max(1, Math.abs(evt.deltaY) / 100));
+                const factor = direction > 0 ? (1 / Math.pow(extraFactor, step)) : Math.pow(extraFactor, step);
+                const next = Math.max(1, Math.min(160, spacing * factor));
+                chart.applyOptions({ timeScale: { barSpacing: next } });
+            }, { passive: true });
+        })(this.chart, el);
         
         this.volumeSeries = this.chart.addHistogramSeries({
             priceScaleId: '',
@@ -1933,7 +1954,7 @@ class PatternChart {
                     const range = this.chart.timeScale().getVisibleRange();
                     if (range) {
                         const totalRange = range.to - range.from;
-                        const visibleRange = totalRange * 0.1; // Показываем 10% данных
+                        const visibleRange = totalRange * 0.5; // Показываем 50% данных (более отдалённо)
                         this.chart.timeScale().setVisibleRange({
                             from: range.to - visibleRange,
                             to: range.to
@@ -2116,14 +2137,14 @@ class PatternChart {
             this.selectedMarkers.set(i, { 
                 time: t, 
                 position: 'aboveBar', 
-                color: '#ff6b35', 
+                color: '#3b82f6', 
                 shape: 'circle', 
                 text: `${index + 1}`, 
                 size: 1.5,
                 textColor: '#ffffff',
-                backgroundColor: '#ff6b35'
+                backgroundColor: '#3b82f6'
             });
-            this.selectedHighlightPoints.push({ time: t, color: '#ff6b35', index: index + 1 });
+            this.selectedHighlightPoints.push({ time: t, color: '#3b82f6', index: index + 1 });
         });
         this.applyMarkers();
         this.redrawOverlay();
@@ -2457,29 +2478,16 @@ class PatternChart {
 
     // Отрисовка маркеров паттернов
     drawPatternMarkers(matched) {
+        // Убираем маркеры-квадраты и номера: оставляем только линии на оверлее
         this.patternMarkers.clear();
-        const colors = ['#00d4aa', '#ff4757', '#3742fa', '#ffa502', '#2ed573', '#ff3838'];
         this.matchedHighlightPoints = [];
         (matched || []).forEach((pat, pIdx) => {
-            const col = colors[pIdx % colors.length];
-            const arr = [];
             for (let i=0;i<pat.length;i++) {
                 const t = Math.floor(new Date(pat[i].date).getTime()/1000);
-                arr.push({ 
-                    time: t, 
-                    position: 'belowBar', 
-                    color: col, 
-                    shape: 'square', 
-                    text: `${pIdx+1}`, 
-                    size: 1.8,
-                    textColor: '#ffffff',
-                    backgroundColor: col
-                });
-                this.matchedHighlightPoints.push({ time: t, color: col, patternIndex: pIdx + 1 });
+                this.matchedHighlightPoints.push({ time: t });
             }
-            this.patternMarkers.set(pIdx, arr);
         });
-        this.applyMarkers();
+        // Не добавляем паттерн-маркеры в setMarkers — только перерисовываем оверлей
         this.redrawOverlay();
         if (matched && matched.length && matched[0].length) {
             const f = matched[0][0];
@@ -2507,6 +2515,7 @@ class PatternChart {
         canvas.style.left = '0';
         canvas.style.top = '0';
         canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '5';
         canvas.width = host.clientWidth; canvas.height = host.clientHeight;
         host.appendChild(canvas);
         this.overlay = canvas;
@@ -2531,51 +2540,21 @@ class PatternChart {
         const barW = ts.getBarSpacing ? ts.getBarSpacing() : 12;
         const h = this.overlay.height;
         
-        // Рисуем найденные паттерны
+        // Рисуем найденные паттерны синими вертикальными линиями (менее заметно)
         for (const p of (this.matchedHighlightPoints || [])) {
             const x = ts.timeToCoordinate(p.time);
             if (x === null || x === undefined) continue;
-            
-            const gradient = ctx.createLinearGradient(x - barW*0.8, 0, x + barW*0.8, 0);
-            gradient.addColorStop(0, this.hexToRgba(p.color, 0.0));
-            gradient.addColorStop(0.5, this.hexToRgba(p.color, 0.25));
-            gradient.addColorStop(1, this.hexToRgba(p.color, 0.0));
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(Math.round(x - barW*0.8), 0, Math.round(barW*1.6), h);
-            
-            ctx.strokeStyle = this.hexToRgba(p.color, 0.8);
-            ctx.lineWidth = 2;
-            ctx.strokeRect(Math.round(x - barW*0.8)+1, 1, Math.round(barW*1.6)-2, h-2);
-            
-            const time = Date.now() / 1000;
-            const pulse = Math.sin(time * 3) * 0.1 + 0.9;
-            ctx.fillStyle = this.hexToRgba(p.color, 0.15 * pulse);
-            ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
-        }
-        
-        // Рисуем выбранные свечи
-        for (const p of (this.selectedHighlightPoints || [])) {
-            const x = ts.timeToCoordinate(p.time);
-            if (x === null || x === undefined) continue;
-            
-            const gradient = ctx.createLinearGradient(x - barW*0.7, 0, x + barW*0.7, 0);
-            gradient.addColorStop(0, 'rgba(255,107,53,0.0)');
-            gradient.addColorStop(0.5, 'rgba(255,107,53,0.4)');
-            gradient.addColorStop(1, 'rgba(255,107,53,0.0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(Math.round(x - barW*0.7), 0, Math.round(barW*1.4), h);
-            
-            ctx.strokeStyle = 'rgba(255,107,53,1.0)';
+            ctx.save();
+            ctx.strokeStyle = 'rgba(59,130,246,0.42)';
             ctx.lineWidth = 3;
-            ctx.strokeRect(Math.round(x - barW*0.7)+1.5, 1.5, Math.round(barW*1.4)-3, h-3);
-            
-            const time = Date.now() / 1000;
-            const pulse = Math.sin(time * 4) * 0.2 + 0.8;
-            ctx.fillStyle = `rgba(255,107,53,${0.3 * pulse})`;
-            ctx.fillRect(Math.round(x - barW*0.5), 0, Math.round(barW*1.0), h);
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(Math.round(x) + 0.5, 0);
+            ctx.lineTo(Math.round(x) + 0.5, h);
+            ctx.stroke();
+            ctx.restore();
         }
+        // Больше не выделяем выбранные вручную свечи полосами
     }
 
     hexToRgba(hex, a) {
@@ -2929,7 +2908,8 @@ class PatternChart {
         this.isAnalysisMode = true;
         this.chart.applyOptions({
             timeScale: {
-                minBarSpacing: 2
+                minBarSpacing: 2,
+                barSpacing: 12
             }
         });
         this.updateSelected();
