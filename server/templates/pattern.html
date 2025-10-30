@@ -1776,8 +1776,8 @@ class PatternChart {
             timeScale: { 
                 borderColor: '#243142', 
                 rightOffset: 6, 
-                barSpacing: 60,
-                minBarSpacing: 15,
+                barSpacing: 14,
+                minBarSpacing: 3,
                 fixLeftEdge: false,
                 fixRightEdge: false,
                 lockVisibleTimeRangeOnResize: true,
@@ -1799,7 +1799,7 @@ class PatternChart {
             },
             kineticScroll: {
                 touch: true,
-                mouse: false
+                mouse: true
             }
         });
         
@@ -1812,6 +1812,75 @@ class PatternChart {
             wickDownColor: '#ff5050',
             priceLineVisible: false,
         });
+        
+        // Улучшенный зум мышью: зум к курсору, более чувствительный, с панорамированием по Shift+колесику
+        (function enhanceWheelZoom(chart, el) {
+            const baseZoom = 1.08; // мягче
+            let lastTs = 0;
+            el.addEventListener('wheel', (evt) => {
+                const now = Date.now();
+                if (now - lastTs < 16) return; // ~60fps
+                lastTs = now;
+                const ts = chart.timeScale();
+                if (!ts) return;
+
+                // Блокируем прокрутку страницы, работаем сами
+                evt.preventDefault();
+
+                const range = ts.getVisibleRange && ts.getVisibleRange();
+                if (!range || typeof range.from !== 'number' || typeof range.to !== 'number') return;
+
+                const total = range.to - range.from;
+
+                // 1) Горизонтальная прокрутка: Shift+колесо ИЛИ колесо-влево/вправо (deltaX)
+                const isPanX = evt.shiftKey || (Math.abs(evt.deltaX) > Math.abs(evt.deltaY));
+                if (isPanX) {
+                    const raw = Math.abs(evt.deltaX) > Math.abs(evt.deltaY) ? evt.deltaX : evt.deltaY;
+                    const direction = Math.sign(raw) || 1; // + вправо, - влево
+                    const step = Math.min(2.5, Math.max(0.5, Math.abs(raw) / 180));
+                    const shift = total * 0.06 * step * direction;
+                    ts.setVisibleRange({ from: range.from + shift, to: range.to + shift });
+                    return;
+                }
+
+                // Зум к позиции курсора
+                const cursorX = (typeof evt.offsetX === 'number') ? evt.offsetX : 0;
+                let focusTime = undefined;
+                if (typeof ts.coordinateToTime === 'function') {
+                    focusTime = ts.coordinateToTime(cursorX);
+                }
+                if (typeof focusTime !== 'number') {
+                    // если не удалось получить точку фокуса — зум просто вокруг центра
+                    focusTime = (range.from + range.to) / 2;
+                }
+
+                // Вычисляем коэффициент зума с учётом скорости прокрутки и Ctrl/⌘ для ускорения
+                const magnitude = Math.min(2.0, Math.max(0.5, Math.abs(evt.deltaY) / 240));
+                const turbo = (evt.ctrlKey || evt.metaKey) ? 1.2 : 1.0;
+                const zoomFactor = Math.pow(baseZoom * turbo, magnitude);
+                const zoomIn = evt.deltaY < 0; // колёсико вверх — приближение
+
+                const left = Math.max(1e-6, focusTime - range.from);
+                const right = Math.max(1e-6, range.to - focusTime);
+
+                let newLeft, newRight;
+                if (zoomIn) {
+                    newLeft = left / zoomFactor;
+                    newRight = right / zoomFactor;
+                } else {
+                    newLeft = left * zoomFactor;
+                    newRight = right * zoomFactor;
+                }
+
+                // Ограничим минимальную ширину диапазона, чтобы не «залипать»
+                const minSpan = Math.max(2, total * 0.0005);
+                const newFrom = focusTime - newLeft;
+                const newTo = focusTime + newRight;
+                if ((newTo - newFrom) < minSpan) return;
+
+                ts.setVisibleRange({ from: newFrom, to: newTo });
+            }, { passive: false });
+        })(this.chart, el);
         
         this.volumeSeries = this.chart.addHistogramSeries({
             priceScaleId: '',
@@ -1938,7 +2007,7 @@ class PatternChart {
                     const range = this.chart.timeScale().getVisibleRange();
                     if (range) {
                         const totalRange = range.to - range.from;
-                        const visibleRange = totalRange * 0.1; // Показываем 10% данных
+                        const visibleRange = totalRange * 0.5; // Показываем 50% данных (более отдалённо)
                         this.chart.timeScale().setVisibleRange({
                             from: range.to - visibleRange,
                             to: range.to
@@ -2121,14 +2190,14 @@ class PatternChart {
             this.selectedMarkers.set(i, { 
                 time: t, 
                 position: 'aboveBar', 
-                color: '#ff6b35', 
+                color: '#3b82f6', 
                 shape: 'circle', 
                 text: `${index + 1}`, 
                 size: 1.5,
                 textColor: '#ffffff',
-                backgroundColor: '#ff6b35'
+                backgroundColor: '#3b82f6'
             });
-            this.selectedHighlightPoints.push({ time: t, color: '#ff6b35', index: index + 1 });
+            this.selectedHighlightPoints.push({ time: t, color: '#3b82f6', index: index + 1 });
         });
         this.applyMarkers();
         this.redrawOverlay();
@@ -2455,29 +2524,16 @@ class PatternChart {
 
     // Отрисовка маркеров паттернов
     drawPatternMarkers(matched) {
+        // Убираем маркеры-квадраты и номера: оставляем только линии на оверлее
         this.patternMarkers.clear();
-        const colors = ['#00d4aa', '#ff4757', '#3742fa', '#ffa502', '#2ed573', '#ff3838'];
         this.matchedHighlightPoints = [];
         (matched || []).forEach((pat, pIdx) => {
-            const col = colors[pIdx % colors.length];
-            const arr = [];
             for (let i=0;i<pat.length;i++) {
                 const t = Math.floor(new Date(pat[i].date).getTime()/1000);
-                arr.push({ 
-                    time: t, 
-                    position: 'belowBar', 
-                    color: col, 
-                    shape: 'square', 
-                    text: `${pIdx+1}`, 
-                    size: 1.8,
-                    textColor: '#ffffff',
-                    backgroundColor: col
-                });
-                this.matchedHighlightPoints.push({ time: t, color: col, patternIndex: pIdx + 1 });
+                this.matchedHighlightPoints.push({ time: t });
             }
-            this.patternMarkers.set(pIdx, arr);
         });
-        this.applyMarkers();
+        // Не добавляем паттерн-маркеры в setMarkers — только перерисовываем оверлей
         this.redrawOverlay();
         if (matched && matched.length && matched[0].length) {
             const f = matched[0][0];
@@ -2505,6 +2561,7 @@ class PatternChart {
         canvas.style.left = '0';
         canvas.style.top = '0';
         canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '5';
         canvas.width = host.clientWidth; canvas.height = host.clientHeight;
         host.appendChild(canvas);
         this.overlay = canvas;
@@ -2529,51 +2586,21 @@ class PatternChart {
         const barW = ts.getBarSpacing ? ts.getBarSpacing() : 12;
         const h = this.overlay.height;
         
-        // Рисуем найденные паттерны
+        // Рисуем найденные паттерны синими вертикальными линиями (менее заметно)
         for (const p of (this.matchedHighlightPoints || [])) {
             const x = ts.timeToCoordinate(p.time);
             if (x === null || x === undefined) continue;
-            
-            const gradient = ctx.createLinearGradient(x - barW*0.8, 0, x + barW*0.8, 0);
-            gradient.addColorStop(0, this.hexToRgba(p.color, 0.0));
-            gradient.addColorStop(0.5, this.hexToRgba(p.color, 0.25));
-            gradient.addColorStop(1, this.hexToRgba(p.color, 0.0));
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(Math.round(x - barW*0.8), 0, Math.round(barW*1.6), h);
-            
-            ctx.strokeStyle = this.hexToRgba(p.color, 0.8);
-            ctx.lineWidth = 2;
-            ctx.strokeRect(Math.round(x - barW*0.8)+1, 1, Math.round(barW*1.6)-2, h-2);
-            
-            const time = Date.now() / 1000;
-            const pulse = Math.sin(time * 3) * 0.1 + 0.9;
-            ctx.fillStyle = this.hexToRgba(p.color, 0.15 * pulse);
-            ctx.fillRect(Math.round(x - barW*0.6), 0, Math.round(barW*1.2), h);
-        }
-        
-        // Рисуем выбранные свечи
-        for (const p of (this.selectedHighlightPoints || [])) {
-            const x = ts.timeToCoordinate(p.time);
-            if (x === null || x === undefined) continue;
-            
-            const gradient = ctx.createLinearGradient(x - barW*0.7, 0, x + barW*0.7, 0);
-            gradient.addColorStop(0, 'rgba(255,107,53,0.0)');
-            gradient.addColorStop(0.5, 'rgba(255,107,53,0.4)');
-            gradient.addColorStop(1, 'rgba(255,107,53,0.0)');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(Math.round(x - barW*0.7), 0, Math.round(barW*1.4), h);
-            
-            ctx.strokeStyle = 'rgba(255,107,53,1.0)';
+            ctx.save();
+            ctx.strokeStyle = 'rgba(59,130,246,0.42)';
             ctx.lineWidth = 3;
-            ctx.strokeRect(Math.round(x - barW*0.7)+1.5, 1.5, Math.round(barW*1.4)-3, h-3);
-            
-            const time = Date.now() / 1000;
-            const pulse = Math.sin(time * 4) * 0.2 + 0.8;
-            ctx.fillStyle = `rgba(255,107,53,${0.3 * pulse})`;
-            ctx.fillRect(Math.round(x - barW*0.5), 0, Math.round(barW*1.0), h);
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(Math.round(x) + 0.5, 0);
+            ctx.lineTo(Math.round(x) + 0.5, h);
+            ctx.stroke();
+            ctx.restore();
         }
+        // Больше не выделяем выбранные вручную свечи полосами
     }
 
     hexToRgba(hex, a) {
@@ -2940,7 +2967,8 @@ class PatternChart {
         this.isAnalysisMode = true;
         this.chart.applyOptions({
             timeScale: {
-                minBarSpacing: 2
+                minBarSpacing: 2,
+                barSpacing: 12
             }
         });
         this.updateSelected();
