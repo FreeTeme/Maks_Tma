@@ -1813,25 +1813,73 @@ class PatternChart {
             priceLineVisible: false,
         });
         
-        // Мягкое усиление чувствительности зума колесом (дополнительно к нативному поведению)
-        // Не блокируем событие, чтобы сохранить перетаскивание и встроенный зум/скролл
+        // Улучшенный зум мышью: зум к курсору, более чувствительный, с панорамированием по Shift+колесику
         (function enhanceWheelZoom(chart, el) {
-            const extraFactor = 1.08; // лёгкое усиление (>1 — сильнее)
+            const baseZoom = 1.08; // мягче
             let lastTs = 0;
             el.addEventListener('wheel', (evt) => {
-                // Ограничим частоту применения, чтобы не было двойной сверхреакции
                 const now = Date.now();
                 if (now - lastTs < 16) return; // ~60fps
                 lastTs = now;
                 const ts = chart.timeScale();
-                if (!ts || !ts.getBarSpacing) return;
-                const spacing = ts.getBarSpacing();
-                const direction = Math.sign(evt.deltaY) || 1;
-                const step = Math.min(3, Math.max(1, Math.abs(evt.deltaY) / 100));
-                const factor = direction > 0 ? (1 / Math.pow(extraFactor, step)) : Math.pow(extraFactor, step);
-                const next = Math.max(1, Math.min(160, spacing * factor));
-                chart.applyOptions({ timeScale: { barSpacing: next } });
-            }, { passive: true });
+                if (!ts) return;
+
+                // Блокируем прокрутку страницы, работаем сами
+                evt.preventDefault();
+
+                const range = ts.getVisibleRange && ts.getVisibleRange();
+                if (!range || typeof range.from !== 'number' || typeof range.to !== 'number') return;
+
+                const total = range.to - range.from;
+
+                // 1) Горизонтальная прокрутка: Shift+колесо ИЛИ колесо-влево/вправо (deltaX)
+                const isPanX = evt.shiftKey || (Math.abs(evt.deltaX) > Math.abs(evt.deltaY));
+                if (isPanX) {
+                    const raw = Math.abs(evt.deltaX) > Math.abs(evt.deltaY) ? evt.deltaX : evt.deltaY;
+                    const direction = Math.sign(raw) || 1; // + вправо, - влево
+                    const step = Math.min(2.5, Math.max(0.5, Math.abs(raw) / 180));
+                    const shift = total * 0.06 * step * direction;
+                    ts.setVisibleRange({ from: range.from + shift, to: range.to + shift });
+                    return;
+                }
+
+                // Зум к позиции курсора
+                const cursorX = (typeof evt.offsetX === 'number') ? evt.offsetX : 0;
+                let focusTime = undefined;
+                if (typeof ts.coordinateToTime === 'function') {
+                    focusTime = ts.coordinateToTime(cursorX);
+                }
+                if (typeof focusTime !== 'number') {
+                    // если не удалось получить точку фокуса — зум просто вокруг центра
+                    focusTime = (range.from + range.to) / 2;
+                }
+
+                // Вычисляем коэффициент зума с учётом скорости прокрутки и Ctrl/⌘ для ускорения
+                const magnitude = Math.min(2.0, Math.max(0.5, Math.abs(evt.deltaY) / 240));
+                const turbo = (evt.ctrlKey || evt.metaKey) ? 1.2 : 1.0;
+                const zoomFactor = Math.pow(baseZoom * turbo, magnitude);
+                const zoomIn = evt.deltaY < 0; // колёсико вверх — приближение
+
+                const left = Math.max(1e-6, focusTime - range.from);
+                const right = Math.max(1e-6, range.to - focusTime);
+
+                let newLeft, newRight;
+                if (zoomIn) {
+                    newLeft = left / zoomFactor;
+                    newRight = right / zoomFactor;
+                } else {
+                    newLeft = left * zoomFactor;
+                    newRight = right * zoomFactor;
+                }
+
+                // Ограничим минимальную ширину диапазона, чтобы не «залипать»
+                const minSpan = Math.max(2, total * 0.0005);
+                const newFrom = focusTime - newLeft;
+                const newTo = focusTime + newRight;
+                if ((newTo - newFrom) < minSpan) return;
+
+                ts.setVisibleRange({ from: newFrom, to: newTo });
+            }, { passive: false });
         })(this.chart, el);
         
         this.volumeSeries = this.chart.addHistogramSeries({
