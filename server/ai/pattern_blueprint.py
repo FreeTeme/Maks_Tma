@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 import pandas as pd
 import time
@@ -15,7 +15,8 @@ from ai.main import (
     check_data_freshness,
     get_ohlcv_data, 
     save_to_cache, 
-    get_cache_key
+    get_cache_key,
+    fetch_binance_ohlcv_fast
 )
 
 
@@ -303,7 +304,6 @@ def force_refresh():
             del data_cache[key]
         
         # Также очищаем файловый кэш
-        from ai.main import CACHE_DIR
         cache_patterns = [f"ohlcv_{normalized_symbol}", f"full_data_{normalized_symbol}"]
         for cache_file in CACHE_DIR.glob("*.pkl"):
             if any(pattern in cache_file.name for pattern in cache_patterns):
@@ -394,7 +394,7 @@ def refresh_data():
         
         normalized_symbol = normalize_symbol(symbol)
         
-        # 1. ОЧИСТКА КЭША - используем локальный CACHE_DIR
+        # 1. ОЧИСТКА КЭША
         cache_files = []
         patterns = [
             f"*ohlcv*{normalized_symbol}*",
@@ -419,28 +419,30 @@ def refresh_data():
         
         print(f"✅ Очищено файлов кэша: {cleared_count}")
         
-        # 2. ПЕРЕЗАГРУЗКА ДАННЫХ
-        from ai.main import fetch_binance_ohlcv_fast
-        from datetime import datetime, timedelta
+        # 2. ПЕРЕЗАГРУЗКА ДАННЫХ - ЗАГРУЖАЕМ С 2017 ГОДА
+
         
-        # Загружаем данные с запасом
-        start_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
+        # Загружаем данные с 2017 года
+        start_date = "2017-01-01"
         end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         
         print(f"📥 Загрузка данных с {start_date} по {end_date}")
         fresh_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
         
         if fresh_data.empty:
-            print("⚠️ Не удалось загрузить данные, пробуем полную загрузку...")
-            fresh_data = fetch_binance_ohlcv_fast("2017-01-01", end_date, timeframe, normalized_symbol)
+            print("❌ Не удалось загрузить данные с 2017 года, пробуем альтернативный метод...")
+            # Пробуем загрузить с 2020 года как запасной вариант
+            start_date = "2020-01-01"
+            fresh_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
         
         print(f"✅ Загружено записей: {len(fresh_data)}")
         
         if not fresh_data.empty:
             latest_date = fresh_data['date'].max()
-            print(f"📅 Актуальная дата: {latest_date}")
+            earliest_date = fresh_data['date'].min()
+            print(f"📅 Диапазон данных: {earliest_date} - {latest_date}")
             
-            # Сохраняем в кэш используя функции из main
+            # Сохраняем в кэш
             cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
             save_to_cache(cache_key, fresh_data)
             print("💾 Данные сохранены в кэш")
@@ -450,6 +452,7 @@ def refresh_data():
             'message': f'Data successfully refreshed for {normalized_symbol}',
             'cleared_cache_entries': cleared_count,
             'fresh_data_count': len(fresh_data),
+            'earliest_date': fresh_data['date'].min().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else 'No data',
             'latest_date': fresh_data['date'].max().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else 'No data',
             'data_loaded': not fresh_data.empty
         })

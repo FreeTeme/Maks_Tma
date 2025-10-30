@@ -174,16 +174,33 @@ def get_ohlcv_data(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFra
         # Убедимся, что даты без часового пояса
         cached_data = cached_data.copy()
         cached_data['date'] = pd.to_datetime(cached_data['date']).dt.tz_localize(None)
-        return cached_data
+        
+        # Проверяем, есть ли данные с 2017 года
+        earliest_date = cached_data['date'].min()
+        if earliest_date > pd.to_datetime('2018-01-01'):
+            print(f"⚠️ В кэше данные только с {earliest_date.date()}, перезагружаем с 2017 года...")
+            # Удаляем устаревший кэш и загружаем заново
+            cache_file = CACHE_DIR / f"{cache_key}.pkl"
+            if cache_file.exists():
+                cache_file.unlink()
+        else:
+            return cached_data
     
     # Загружаем данные с 2017 года
     start_date = "2017-01-01"
     end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     
+    print(f"📥 Загрузка данных {normalized_symbol} {timeframe} с {start_date} по {end_date}")
     df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
     
     if not df.empty:
         df['date'] = df['date'].dt.tz_localize(None)
+        
+        # Проверяем диапазон данных
+        earliest = df['date'].min()
+        latest = df['date'].max()
+        print(f"📊 Загружен диапазон: {earliest.date()} - {latest.date()}")
+        
         save_to_cache(cache_key, df)
     
     return df
