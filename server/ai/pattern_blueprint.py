@@ -58,23 +58,29 @@ def api_ohlcv():
         timeframe = request.args.get('timeframe', '1d')
         symbol = request.args.get('symbol', 'BTCUSDT')
         
+        print(f"📥 Запрос OHLCV: {symbol} {timeframe}")
+        
         # Простой кэш
         cache_key = f"ohlcv_{symbol}_{timeframe}_{from_date}_{to_date}"
         
         if cache_key in data_cache:
             cached_data, timestamp = data_cache[cache_key]
             if time.time() - timestamp < CACHE_TIMEOUT:
+                print(f"✅ Возвращаем кэшированные данные: {symbol} {timeframe}")
                 return jsonify(cached_data)
         
         result = api_get_ohlcv_data(from_date, to_date, timeframe, symbol)
         
         if result['success']:
             data_cache[cache_key] = (result, time.time())
+            print(f"✅ Загружены новые данные: {symbol} {timeframe} - {len(result.get('candles', []))} свечей")
             return jsonify(result)
         else:
+            print(f"❌ Ошибка загрузки данных: {symbol} {timeframe} - {result.get('message')}")
             return jsonify({'success': False, 'message': result['message']}), 500
             
     except Exception as e:
+        print(f"❌ Критическая ошибка в api_ohlcv: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @pattern_bp.route('/analyze', methods=['POST'])
@@ -465,4 +471,103 @@ def refresh_data():
             'success': False, 
             'message': f'Refresh failed: {str(e)}',
             'error_details': str(e)
+        }), 500
+    
+@pattern_bp.route('/switch_data', methods=['POST'])
+def switch_data():
+    """Обновление данных при смене символа или таймфрейма"""
+    try:
+        data = request.get_json() or {}
+        symbol = data.get('symbol', 'BTCUSDT')
+        timeframe = data.get('timeframe', '1d')
+        
+        print(f"🔄 ПЕРЕКЛЮЧЕНИЕ ДАННЫХ: {symbol}, ТФ: {timeframe}")
+        
+        normalized_symbol = normalize_symbol(symbol)
+        
+        # ОЧИСТКА КЭША ДЛЯ НОВЫХ ДАННЫХ
+        cache_patterns = [
+            f"*ohlcv*{normalized_symbol}*",
+            f"*full_data*{normalized_symbol}*", 
+            f"*{normalized_symbol}*{timeframe}*"
+        ]
+        
+        cleared_count = 0
+        for pattern in cache_patterns:
+            for cache_file in CACHE_DIR.glob(pattern):
+                try:
+                    if cache_file.exists():
+                        cache_file.unlink()
+                        cleared_count += 1
+                        print(f"🗑️ Удален кэш: {cache_file.name}")
+                except Exception as e:
+                    print(f"⚠️ Не удалось удалить {cache_file.name}: {e}")
+        
+        # ЗАГРУЗКА ДАННЫХ С 2017 ГОДА
+        start_date = "2017-01-01"
+        end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        print(f"📥 Загрузка новых данных: {normalized_symbol} {timeframe} с {start_date} по {end_date}")
+        
+        fresh_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
+        
+        if fresh_data.empty:
+            print("❌ Не удалось загрузить данные, пробуем альтернативный метод...")
+            start_date = "2020-01-01"
+            fresh_data = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
+        
+        print(f"✅ Загружено записей: {len(fresh_data)}")
+        
+        # ПОДГОТОВКА ДАННЫХ ДЛЯ ФРОНТЕНДА
+        records = []
+        if not fresh_data.empty:
+            for _, row in fresh_data.iterrows():
+                open_time = row['date']
+                
+                # Определяем close_time в зависимости от таймфрейма
+                if timeframe == '1h':
+                    close_time = open_time + timedelta(hours=1)
+                elif timeframe == '4h':
+                    close_time = open_time + timedelta(hours=4)
+                elif timeframe == '1d':
+                    close_time = open_time + timedelta(days=1)
+                elif timeframe == '1w':
+                    close_time = open_time + timedelta(weeks=1)
+                else:
+                    close_time = open_time + timedelta(days=1)
+                
+                records.append({
+                    'open_time': open_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    'close_time': close_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                    'open_price': float(row['open']),
+                    'close_price': float(row['close']),
+                    'high': float(row['high']),
+                    'low': float(row['low']),
+                    'volume': float(row['volume']),
+                    'timeframe': timeframe,
+                    'symbol': symbol
+                })
+            
+            # Сохраняем в кэш
+            cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
+            save_to_cache(cache_key, fresh_data)
+            print("💾 Новые данные сохранены в кэш")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Data switched to {normalized_symbol} {timeframe}',
+            'candles': records,
+            'candles_count': len(records),
+            'earliest_date': fresh_data['date'].min().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else None,
+            'latest_date': fresh_data['date'].max().strftime('%Y-%m-%dT%H:%M:%SZ') if not fresh_data.empty else None,
+            'cleared_cache_entries': cleared_count
+        })
+        
+    except Exception as e:
+        print(f"❌ Ошибка переключения данных: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False, 
+            'message': f'Switch data failed: {str(e)}'
         }), 500
