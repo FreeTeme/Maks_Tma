@@ -3025,9 +3025,6 @@ class PatternChart {
         // Останавливаем старые обновления
         this.chartUpdater.stop();
         
-        // Сбрасываем флаг проверки свежести
-        this.dataInitiallyLoaded = false;
-        
         this.currentSymbol = newSymbol;
         
         // Очищаем ВСЕ данные
@@ -3046,12 +3043,12 @@ class PatternChart {
         loader.style.display = 'flex';
         
         try {
+            // Используем метод переключения данных
+            await this.switchDataWithAPI();
+            
             // Обновляем заголовок страницы
             const symbolDisplay = newSymbol.replace('#', '/');
             document.getElementById('page-title').textContent = `${symbolDisplay} — Поиск паттернов`;
-            
-            // ПЕРЕЗАГРУЖАЕМ ДАННЫЕ С НОВЫМ СИМВОЛОМ
-            await this.loadData();
             
             // Сбрасываем UI
             safeSetTextContent('matches-found', '0');
@@ -3063,26 +3060,22 @@ class PatternChart {
             
             this.toast(`Загружены данные для ${symbolDisplay}`);
             
-            // ЗАПУСКАЕМ СИСТЕМУ ОБНОВЛЕНИЙ ДЛЯ НОВОГО СИМВОЛА
-            this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
-            
         } catch (e) {
             console.error('❌ Ошибка смены символа:', e);
             this.toast('Ошибка загрузки данных: ' + e.message);
+            
+            // Пробуем загрузить обычным способом как запасной вариант
+            await this.loadData();
         } finally {
             loader.style.display = 'none';
         }
     }
- 
     // Смена таймфрейма
     async switchTimeframe(newTimeframe) {
         console.log(`🔄 Смена таймфрейма: ${this.currentTimeframe} -> ${newTimeframe}`);
         
         // Останавливаем старые обновления
         this.chartUpdater.stop();
-        
-        // Сбрасываем флаг проверки свежести
-        this.dataInitiallyLoaded = false;
         
         this.currentTimeframe = newTimeframe;
         
@@ -3102,8 +3095,8 @@ class PatternChart {
         loader.style.display = 'flex';
         
         try {
-            // ПЕРЕЗАГРУЖАЕМ ДАННЫЕ С НОВЫМ ТАЙМФРЕЙМОМ
-            await this.loadData();
+            // Используем метод переключения данных вместо обычной загрузки
+            await this.switchDataWithAPI();
             
             // Сбрасываем UI
             safeSetTextContent('matches-found', '0');
@@ -3114,27 +3107,101 @@ class PatternChart {
             safeSetInnerHTML('general-analysis-card', '');
             
             // Обновляем отображение таймфрейма
+            this.setActiveTimeframe();
+            
             const timeframeMap = {
                 '1h': '1ч',
                 '4h': '4ч', 
                 '1d': '1Д',
                 '1w': '1Н'
             };
-            const kpiTF = document.querySelector('.kpi strong');
-            if (kpiTF) kpiTF.textContent = timeframeMap[newTimeframe] || newTimeframe;
             
             this.toast(`Загружены данные для таймфрейма ${timeframeMap[newTimeframe] || newTimeframe}`);
-            
-            // ЗАПУСКАЕМ СИСТЕМУ ОБНОВЛЕНИЙ ДЛЯ НОВОГО ТАЙМФРЕЙМА
-            this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
             
         } catch (e) {
             console.error('❌ Ошибка смены таймфрейма:', e);
             this.toast('Ошибка загрузки данных: ' + e.message);
+            
+            // Пробуем загрузить обычным способом как запасной вариант
+            await this.loadData();
         } finally {
             loader.style.display = 'none';
         }
     }
+
+    // Новый метод для переключения данных через API
+    async switchDataWithAPI() {
+        console.log(`🔄 API переключение данных: ${this.currentSymbol}, ТФ: ${this.currentTimeframe}`);
+        
+        try {
+            const response = await fetch('/api/pattern/switch_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    symbol: this.currentSymbol,
+                    timeframe: this.currentTimeframe
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.message || 'Ошибка переключения данных');
+            }
+            
+            console.log(`✅ Данные переключены: ${result.candles_count} свечей`);
+            
+            // Обрабатываем полученные данные
+            this.allCandles = result.candles || [];
+            
+            if (this.allCandles.length === 0) {
+                throw new Error('Получен пустой набор данных');
+            }
+            
+            // Подготавливаем данные для графика
+            const candleData = this.allCandles.map(c => ({
+                time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                open: c.open_price,
+                high: c.high,
+                low: c.low,
+                close: c.close_price,
+            }));
+            
+            const volumeData = this.allCandles.map(c => ({
+                time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                value: c.volume,
+                color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
+            }));
+            
+            // Обновляем график
+            this.candleSeries.setData(candleData);
+            
+            if (this.volumeVisible) {
+                this.volumeSeries.setData(volumeData);
+            }
+            
+            // Устанавливаем границы датасета
+            this.datasetStart = new Date(this.allCandles[0].open_time);
+            this.datasetEnd = new Date(this.allCandles[this.allCandles.length - 1].open_time);
+            
+            console.log(`📊 Диапазон данных: ${this.datasetStart.toLocaleDateString()} - ${this.datasetEnd.toLocaleDateString()}`);
+            
+            // Подгоняем отображение
+            this.chart.timeScale().fitContent();
+            
+            // Запускаем систему обновлений для нового таймфрейма
+            this.chartUpdater.initialize(this.currentSymbol, this.currentTimeframe);
+            
+        } catch (error) {
+            console.error('❌ Ошибка переключения через API:', error);
+            throw error;
+        }
+    }
+        
     switchToAnalysisMode() {
         this.isAnalysisMode = true;
         this.chart.applyOptions({
