@@ -87,34 +87,59 @@
     <!-- Вкладка SOCIAL -->
     <div class="tab-content" id="defi-content">
         <!-- Фиксированные социальные ссылки -->
-        <div class="defi-buttons" id="social-fixed">
-            <div class="defi-btn" onclick="window.open('https:/youtube.com/@histobitoff?si=uWJrO8eMA4Y-iYyt', '_blank')" style="cursor: pointer;">
-                <img src="../static/img/yootube.png" alt="YouTube" class="defi-icon">
-                <div class="defi-info">
-                    <h3>Наш YouTube канал</h3>
-                    <hr />
-                    <p class="description">Подпишитесь, чтобы не пропустить новые видео</p>
-                </div>
-            </div>
-            <div class="defi-btn" onclick="window.open('https:/t.me/HistoBitOfficial', '_blank')" style="cursor: pointer;">
-                <img src="../static/img/tg.webp" alt="Telegram" class="defi-icon">
-                <div class="defi-info">
-                    <h3>Наш Telegram</h3>
-                    <hr />
-                    <p class="description">Новости, анонсы и общение</p>
-                </div>
-            </div>
-            <div class="defi-btn" onclick="window.open('https:/www.instagram.com/histobitofficial?igsh=MzhwZ2NrNnF4b2oy', '_blank')" style="cursor: pointer;">
-                <div class="defi-icon" style="display:flex;align-items:center;justify-content:center;background:#fff;color:#E1306C;font-size:26px;">
-                    <i class="fa-brands fa-instagram" style="color:#E1306C;"></i>
-                </div>
-                <div class="defi-info">
-                    <h3>Наш Instagram</h3>
-                    <hr />
-                    <p class="description">Фото, сторис и закулисье</p>
-                </div>
-            </div>
+      <div class="defi-buttons" id="social-fixed">
+    <div class="defi-btn" data-url="https://youtube.com/@histobitoff?si=uWJrO8eMA4Y-iYyt" style="cursor: pointer;">
+        <img src="../static/img/yootube.png" alt="YouTube" class="defi-icon">
+        <div class="defi-info">
+            <h3>Наш YouTube канал</h3>
+            <hr />
+            <p class="description">Подпишитесь, чтобы не пропустить новые видео</p>
         </div>
+    </div>
+    <div class="defi-btn" data-url="https://t.me/HistoBitOfficial" style="cursor: pointer;">
+        <img src="../static/img/tg.webp" alt="Telegram" class="defi-icon">
+        <div class="defi-info">
+            <h3>Наш Telegram</h3>
+            <hr />
+            <p class="description">Новости, анонсы и общение</p>
+        </div>
+    </div>
+    <div class="defi-btn" data-url="https://www.instagram.com/histobitofficial?igsh=MzhwZ2NrNnF4b2oy" style="cursor: pointer;">
+        <div class="defi-icon" style="display:flex;align-items:center;justify-content:center;background:#fff;color:#E1306C;font-size:26px;">
+            <i class="fa-brands fa-instagram" style="color:#E1306C;"></i>
+        </div>
+        <div class="defi-info">
+            <h3>Наш Instagram</h3>
+            <hr />
+            <p class="description">Фото, сторис и закулисье</p>
+        </div>
+    </div>
+</div>
+
+<script>
+// Функция для открытия ссылки
+function openSocialLink(url) {
+    if (window.Telegram?.WebApp?.openLink) {
+        // В Telegram - используем API
+        Telegram.WebApp.openLink(url);
+    } else {
+        // В обычном браузере
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
+}
+
+// Настройка обработчиков для всех кнопок
+document.addEventListener('DOMContentLoaded', function() {
+    const socialButtons = document.querySelectorAll('#social-fixed .defi-btn[data-url]');
+    
+    socialButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const url = this.getAttribute('data-url');
+            openSocialLink(url);
+        });
+    });
+});
+</script>
 
         <div class="defi-buttons" id="posts-container">
             {% for post in posts %}
