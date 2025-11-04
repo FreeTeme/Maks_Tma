@@ -2577,6 +2577,7 @@ class PatternChart {
 
     // Отрисовка общей аналитики паттернов
     // Отрисовка общей аналитики паттернов
+// Отрисовка общей аналитики паттернов
     renderGeneralAnalysis(result) {
         console.log("📊 Начинаем отрисовку общей аналитики...", result);
         
@@ -2599,7 +2600,6 @@ class PatternChart {
             // Вставляем карточку в начало side-panel
             const sidePanel = document.getElementById('side-panel');
             if (sidePanel) {
-                // Вставляем перед первой карточкой или в начало
                 const firstCard = sidePanel.querySelector('.card');
                 if (firstCard) {
                     sidePanel.insertBefore(analysisCard, firstCard);
@@ -2613,7 +2613,7 @@ class PatternChart {
             }
         }
 
-        // Заполняем карточку с новыми данными
+        // Заполняем карточку с новыми данными (макс/мин значения)
         analysisCard.innerHTML = `
             <h3><i class="fas fa-chart-pie"></i> Общая аналитика паттернов</h3>
             <div class="performance-summary">
@@ -2622,6 +2622,22 @@ class PatternChart {
                     <span class="summary-value ${performanceStats.median_change >= 0 ? 'bullish' : 'bearish'}">
                         ${performanceStats.median_change >= 0 ? '+' : ''}${performanceStats.median_change || 0}%
                     </span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Максимальный рост:</span>
+                    <span class="summary-value bullish">+${performanceStats.max_change || 0}%</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Максимальное падение:</span>
+                    <span class="summary-value bearish">${performanceStats.min_change || 0}%</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Лучший бычий:</span>
+                    <span class="summary-value bullish">+${performanceStats.max_bullish || 0}%</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Худший медвежий:</span>
+                    <span class="summary-value bearish">${performanceStats.max_bearish || 0}%</span>
                 </div>
                 <div class="summary-item">
                     <span class="summary-label">Успешность:</span>
