@@ -2575,8 +2575,6 @@ class PatternChart {
         console.log("✅ Результаты отрисованы");
     }
 
-    // Отрисовка общей аналитики паттернов
-    // Отрисовка общей аналитики паттернов
 // Отрисовка общей аналитики паттернов
     renderGeneralAnalysis(result) {
         console.log("📊 Начинаем отрисовку общей аналитики...", result);
@@ -2630,18 +2628,6 @@ class PatternChart {
                 <div class="summary-item">
                     <span class="summary-label">Максимальное падение:</span>
                     <span class="summary-value bearish">${performanceStats.min_change || 0}%</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Лучший бычий:</span>
-                    <span class="summary-value bullish">+${performanceStats.max_bullish || 0}%</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Худший медвежий:</span>
-                    <span class="summary-value bearish">${performanceStats.max_bearish || 0}%</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Успешность:</span>
-                    <span class="summary-value bullish">${performanceStats.success_rate || 0}%</span>
                 </div>
                 <div class="summary-item">
                     <span class="summary-label">Медиана растущих:</span>
