@@ -1282,7 +1282,7 @@
         }
 
 class SmartChartUpdater {
-    constructor(chartInstance) {
+constructor(chartInstance) {
         this.chart = chartInstance;
         this.lastKnownTimestamp = null;
         this.isUpdating = false;
@@ -1316,27 +1316,27 @@ class SmartChartUpdater {
         // КЭШИРОВАНИЕ ДАННЫХ ДЛЯ БЫСТРОГО ПЕРЕКЛЮЧЕНИЯ
         this.dataCache = new Map();
     }
-
+    
     // Инициализация обновлений
     initialize(symbol, timeframe) {
-        console.log(`🚀 БЫСТРАЯ ИНИЦИАЛИЗАЦИЯ: ${symbol}, ${timeframe}`);
-        
-        // ОСТАНАВЛИВАЕМ старые обновления
-        this.stop();
-        
-        this.symbol = symbol;
-        this.timeframe = timeframe;
-        
-        // СБРАСЫВАЕМ флаги для новой инициализации
-        this.hasPerformedInitialUpdate = false;
-        this.lastKnownTimestamp = null;
-        
-        // СРАЗУ запускаем быструю загрузку
-        this.performFastInitialUpdate();
-        
-        console.log(`🔄 Запущена инициализация для ${symbol} ${timeframe}`);
-    }
-
+            console.log(`🚀 БЫСТРАЯ ИНИЦИАЛИЗАЦИЯ: ${symbol}, ${timeframe}`);
+            
+            // ОСТАНАВЛИВАЕМ старые обновления
+            this.stop();
+            
+            this.symbol = symbol;
+            this.timeframe = timeframe;
+            
+            // СБРАСЫВАЕМ флаги для новой инициализации
+            this.hasPerformedInitialUpdate = false;
+            this.lastKnownTimestamp = null;
+            
+            // СРАЗУ запускаем быструю загрузку
+            this.performFastInitialUpdate();
+            
+            console.log(`🔄 Запущена инициализация для ${symbol} ${timeframe}`);
+        }
+    
     // УСКОРЕННАЯ ПЕРВИЧНАЯ ЗАГРУЗКА
     async performFastInitialUpdate() {
         if (this.hasPerformedInitialUpdate) return;
@@ -1362,8 +1362,8 @@ class SmartChartUpdater {
             this.hasPerformedInitialUpdate = true;
             this.startBackgroundUpdates();
         }
-    }
-    // БЫСТРАЯ ЗАГРУЗКА ДАННЫХ
+    }    // БЫСТРАЯ ЗАГРУЗКА ДАННЫХ
+    
     async loadDataFast() {
         console.log('⚡ ЗАГРУЗКА БЫСТРОЙ ПОРЦИИ...');
         
@@ -1407,18 +1407,28 @@ class SmartChartUpdater {
                 color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
             }));
             
+            // СОХРАНЯЕМ текущий диапазон (если есть)
+            const timeScale = this.chart.chart.timeScale();
+            const previousRange = timeScale.getVisibleRange();
+            
             this.chart.candleSeries.setData(candleData);
             if (this.chart.volumeVisible) {
                 this.chart.volumeSeries.setData(volumeData);
             }
             
-            // БЫСТРЫЙ zoom - ИСПРАВЛЕННАЯ СТРОКА:
-            this.chart.chart.timeScale().fitContent(); // добавил .chart
+            // ВОССТАНАВЛИВАЕМ диапазон, если он был, иначе fitContent
+            setTimeout(() => {
+                if (previousRange) {
+                    timeScale.setVisibleRange(previousRange);
+                } else {
+                    timeScale.fitContent();
+                }
+            }, 100);
             
             console.log(`✅ График показан: ${initialData.length} свечей`);
         }
-    }
-        // ОПРЕДЕЛЯЕМ СКОЛЬКО ДНЕЙ ГРУЗИТЬ ПЕРВОНАЧАЛЬНО
+    }        // ОПРЕДЕЛЯЕМ СКОЛЬКО ДНЕЙ ГРУЗИТЬ ПЕРВОНАЧАЛЬНО
+    
     getInitialLoadDays() {
         const initialDays = {
             '1h': 90,   // 90 дней для часового графика
@@ -1466,6 +1476,10 @@ class SmartChartUpdater {
                         this.chart.allCandles = [...this.chart.allCandles, ...newCandles];
                         this.chart.allCandles.sort((a, b) => new Date(a.open_time) - new Date(b.open_time));
                         
+                        // СОХРАНЯЕМ текущий видимый диапазон ПЕРЕД обновлением
+                        const timeScale = this.chart.chart.timeScale();
+                        const previousRange = timeScale.getVisibleRange();
+                        
                         // ОБНОВЛЯЕМ график после КАЖДОЙ порции
                         const candleData = this.chart.allCandles.map(c => ({
                             time: Math.floor(new Date(c.open_time).getTime() / 1000),
@@ -1476,6 +1490,13 @@ class SmartChartUpdater {
                         }));
                         
                         this.chart.candleSeries.setData(candleData);
+                        
+                        // ВОССТАНАВЛИВАЕМ видимый диапазон ПОСЛЕ обновления
+                        if (previousRange) {
+                            setTimeout(() => {
+                                timeScale.setVisibleRange(previousRange);
+                            }, 50);
+                        }
                         
                         totalLoaded += newCandles.length;
                         console.log(`✅ Добавлено ${newCandles.length} свечей (всего: ${this.chart.allCandles.length})`);
@@ -1491,7 +1512,8 @@ class SmartChartUpdater {
         } catch (error) {
             console.error('❌ Ошибка фоновой загрузки:', error);
         }
-    }
+    }    
+    
     // ВЫПОЛНЕНИЕ ЗАПРОСА OHLCV
     async fetchOHLCV(fromDate, toDate) {
         const nextDay = new Date(toDate);
@@ -1531,7 +1553,6 @@ class SmartChartUpdater {
             volume: Number(c.volume),
         }));
     }
-
     // ПРИМЕНЕНИЕ НАЧАЛЬНЫХ ДАННЫХ
     async applyInitialData(candles) {
         console.log(`🎯 Применяем ${candles.length} начальных свечей`);
@@ -2212,6 +2233,10 @@ class PatternChart {
     async applyDataToChart(candles) {
         if (!candles || candles.length === 0) return;
         
+        // ВСЕГДА определяем самую последнюю свечу
+        const lastCandle = candles[candles.length - 1];
+        const lastTime = Math.floor(new Date(lastCandle.open_time).getTime() / 1000);
+        
         // Подготавливаем данные для графика
         const candleData = candles.map(c => ({
             time: Math.floor(new Date(c.open_time).getTime() / 1000),
@@ -2234,16 +2259,32 @@ class PatternChart {
             this.volumeSeries.setData(volumeData);
         }
         
-        // Автоматически подгоняем масштаб
+        // ВСЕГДА показываем КОНЕЦ графика (последние свечи)
         setTimeout(() => {
             try {
-                this.chart.timeScale().fitContent();
+                // Настраиваем видимый диапазон чтобы показывать последние свечи
+                const timeScale = this.chart.timeScale();
+                const rangeSettings = {
+                    '1h': { back: 7 * 24 * 60 * 60 },   // 1 неделя
+                    '4h': { back: 14 * 24 * 60 * 60 },  // 2 недели
+                    '1d': { back: 30 * 24 * 60 * 60 },  // 1 месяц
+                    '1w': { back: 90 * 24 * 60 * 60 }   // 3 месяца
+                };
+                
+                const settings = rangeSettings[this.currentTimeframe] || rangeSettings['1d'];
+                
+                timeScale.setVisibleRange({
+                    from: lastTime - settings.back,
+                    to: lastTime + 24 * 60 * 60  // Немного вперед
+                });
+                
             } catch(e) {
-                console.warn('Ошибка при подгонке графика:', e);
+                console.warn('Ошибка при настройке видимого диапазона:', e);
+                this.chart.timeScale().fitContent();
             }
         }, 100);
-    }
-
+    } 
+    
     async fetchFullOHLCV() {
         const startDate = "2017-01-01";
         const endDate = new Date();
@@ -2273,17 +2314,17 @@ class PatternChart {
     async mergeWithExistingData(newCandles) {
         if (!newCandles || newCandles.length === 0) return;
         
-        // Создаем Map для быстрого поиска по времени
-        const existingMap = new Map();
-        this.allCandles.forEach(candle => {
-            const time = candle.open_time;
-            existingMap.set(time, candle);
-        });
+        // СОХРАНЯЕМ текущую позицию ДО обновления
+        const timeScale = this.chart.timeScale();
+        const currentRange = timeScale.getVisibleRange();
+        const lastCandleBefore = this.allCandles[this.allCandles.length - 1];
+        const lastTimeBefore = lastCandleBefore ? Math.floor(new Date(lastCandleBefore.open_time).getTime() / 1000) : null;
         
         // Добавляем только новые свечи
         let addedCount = 0;
         newCandles.forEach(newCandle => {
-            if (!existingMap.has(newCandle.open_time)) {
+            const exists = this.allCandles.some(candle => candle.open_time === newCandle.open_time);
+            if (!exists) {
                 this.allCandles.push(newCandle);
                 addedCount++;
             }
@@ -2293,12 +2334,64 @@ class PatternChart {
             // Сортируем по времени
             this.allCandles.sort((a, b) => new Date(a.open_time) - new Date(b.open_time));
             
-            // Обновляем график с новыми данными
-            await this.applyDataToChart(this.allCandles);
+            // ОБНОВЛЯЕМ график БЕЗ сброса позиции
+            await this.updateChartWithoutResettingPosition(currentRange, lastTimeBefore);
             
             console.log(`✅ Добавлено ${addedCount} исторических свечей`);
         }
     }
+
+    async updateChartWithoutResettingPosition(previousRange, previousLastTime) {
+        const candleData = this.allCandles.map(c => ({
+            time: Math.floor(new Date(c.open_time).getTime() / 1000),
+            open: c.open_price,
+            high: c.high,
+            low: c.low,
+            close: c.close_price,
+        }));
+        
+        const volumeData = this.allCandles.map(c => ({
+            time: Math.floor(new Date(c.open_time).getTime() / 1000),
+            value: c.volume,
+            color: (c.close_price >= c.open_price) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
+        }));
+        
+        // ВАЖНО: Используем setData только если это первая загрузка
+        if (this.candleSeries.data.length === 0) {
+            this.candleSeries.setData(candleData);
+            if (this.volumeVisible) {
+                this.volumeSeries.setData(volumeData);
+            }
+        } else {
+            // При догрузке используем update для каждой новой свечи
+            const existingTimes = new Set(this.candleSeries.data.map(d => d.time));
+            
+            for (const candle of candleData) {
+                if (!existingTimes.has(candle.time)) {
+                    this.candleSeries.update(candle);
+                    if (this.volumeVisible) {
+                        this.volumeSeries.update({
+                            time: candle.time,
+                            value: this.allCandles.find(c => Math.floor(new Date(c.open_time).getTime() / 1000) === candle.time).volume,
+                            color: (candle.close >= candle.open) ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'
+                        });
+                    }
+                }
+            }
+        }
+        
+        // ВОССТАНАВЛИВАЕМ позицию
+        setTimeout(() => {
+            try {
+                if (previousRange) {
+                    timeScale.setVisibleRange(previousRange);
+                }
+            } catch(e) {
+                console.warn('Ошибка восстановления позиции:', e);
+            }
+        }, 50);
+    }
+
     // Первичная проверка свежести данных
     async initialFreshnessCheck() {
         console.log('🔍 ПЕРВИЧНАЯ ПРОВЕРКА СВЕЖЕСТИ ДАННЫХ...');
