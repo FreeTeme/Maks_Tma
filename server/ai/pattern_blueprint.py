@@ -571,3 +571,41 @@ def switch_data():
             'success': False, 
             'message': f'Switch data failed: {str(e)}'
         }), 500
+    
+@pattern_bp.route('/ohlcv_fast', methods=['GET'])
+def api_ohlcv_fast():
+    """Быстрая загрузка OHLCV данных (только последние данные)"""
+    try:
+        timeframe = request.args.get('timeframe', '1d')
+        symbol = request.args.get('symbol', 'BTCUSDT')
+        
+        print(f"⚡ БЫСТРАЯ загрузка: {symbol} {timeframe}")
+        
+        # Определяем период для быстрой загрузки
+        end_date = datetime.now()
+        
+        if timeframe == '1h':
+            start_date = end_date - timedelta(days=180)  # 6 месяцев
+        elif timeframe == '4h':
+            start_date = end_date - timedelta(days=360)  # 1 год
+        else:
+            start_date = end_date - timedelta(days=720)  # 2 года
+        
+        # Используем существующую функцию, но с ограниченным диапазоном
+        result = api_get_ohlcv_data(
+            start_date=start_date.strftime('%Y-%m-%d'),
+            end_date=end_date.strftime('%Y-%m-%d'),
+            timeframe=timeframe,
+            symbol=symbol
+        )
+        
+        if result['success']:
+            print(f"✅ Быстрая загрузка: {symbol} {timeframe} - {len(result.get('candles', []))} свечей")
+        else:
+            print(f"❌ Ошибка быстрой загрузки: {symbol} {timeframe}")
+            
+        return jsonify(result)
+            
+    except Exception as e:
+        print(f"❌ Критическая ошибка в api_ohlcv_fast: {str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
