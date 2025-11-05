@@ -164,33 +164,54 @@ def fetch_binance_ohlcv_fast(start_date: str, end_date: str, timeframe: str = '1
     return df
 
 def get_ohlcv_data(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFrame:
-    """Упрощенное получение данных OHLCV"""
+    """Упрощенное получение данных OHLCV с оптимизацией для часовых таймфреймов"""
     normalized_symbol = normalize_symbol(symbol)
     
     # Проверяем кэш полных данных
     cache_key = get_cache_key("full_data", normalized_symbol, timeframe)
     cached_data = load_from_cache(cache_key)
     if cached_data is not None:
-        # Убедимся, что даты без часового пояса
         cached_data = cached_data.copy()
         cached_data['date'] = pd.to_datetime(cached_data['date']).dt.tz_localize(None)
         
-        # Проверяем, есть ли данные с 2017 года
-        earliest_date = cached_data['date'].min()
-        if earliest_date > pd.to_datetime('2018-01-01'):
-            print(f"⚠️ В кэше данные только с {earliest_date.date()}, перезагружаем с 2017 года...")
-            # Удаляем устаревший кэш и загружаем заново
-            cache_file = CACHE_DIR / f"{cache_key}.pkl"
-            if cache_file.exists():
-                cache_file.unlink()
+        # Для часовых данных проверяем достаточность диапазона
+        if timeframe == '1h':
+            earliest_date = cached_data['date'].min()
+            required_start = datetime.now() - timedelta(days=800)  # ~2.2 года для часовых
+            if earliest_date > required_start:
+                print(f"⚠️ В кэше часовые данные только с {earliest_date.date()}, перезагружаем...")
+                cache_file = CACHE_DIR / f"{cache_key}.pkl"
+                if cache_file.exists():
+                    cache_file.unlink()
+            else:
+                return cached_data
         else:
-            return cached_data
+            # Для других таймфреймов проверяем с 2017 года
+            earliest_date = cached_data['date'].min()
+            if earliest_date > pd.to_datetime('2018-01-01'):
+                print(f"⚠️ В кэше данные только с {earliest_date.date()}, перезагружаем с 2017 года...")
+                cache_file = CACHE_DIR / f"{cache_key}.pkl"
+                if cache_file.exists():
+                    cache_file.unlink()
+            else:
+                return cached_data
     
-    # Загружаем данные с 2017 года
-    start_date = "2017-01-01"
+    # Оптимизированная загрузка для разных таймфреймов
     end_date = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     
-    print(f"📥 Загрузка данных {normalized_symbol} {timeframe} с {start_date} по {end_date}")
+    if timeframe == '1h':
+        # Для часовых грузим только последние 2.5 года (~22K свечей)
+        start_date = (datetime.now() - timedelta(days=900)).strftime('%Y-%m-%d')
+        print(f"📥 Оптимизированная загрузка часовых данных: {normalized_symbol} с {start_date}")
+    elif timeframe == '4h':
+        # Для 4-часовых грузим 4 года (~8.7K свечей)
+        start_date = (datetime.now() - timedelta(days=1460)).strftime('%Y-%m-%d')
+        print(f"📥 Оптимизированная загрузка 4-часовых данных: {normalized_symbol} с {start_date}")
+    else:
+        # Для дневных и недельных грузим с 2017 года
+        start_date = "2017-01-01"
+        print(f"📥 Загрузка данных {normalized_symbol} {timeframe} с {start_date}")
+    
     df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, normalized_symbol)
     
     if not df.empty:
@@ -199,7 +220,7 @@ def get_ohlcv_data(timeframe: str = '1d', symbol: str = 'BTCUSDT') -> pd.DataFra
         # Проверяем диапазон данных
         earliest = df['date'].min()
         latest = df['date'].max()
-        print(f"📊 Загружен диапазон: {earliest.date()} - {latest.date()}")
+        print(f"📊 Загружен диапазон: {earliest.date()} - {latest.date()} ({len(df)} свечей)")
         
         save_to_cache(cache_key, df)
     
@@ -426,158 +447,6 @@ def calculate_median_statistics(price_changes, directions):
         'bullish_count_actual': len(bullish_changes),
         'bearish_count_actual': len(bearish_changes)
     }
-
-def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', 
-                           symbol: str = 'BTCUSDT', no_cache: bool = False) -> Dict:
-    """Оптимизированный анализ паттерна с поддержкой разных пар"""
-    normalized_symbol = normalize_symbol(symbol)
-    
-    try:
-        if not selected_candles or len(selected_candles) != num_candles:
-            return {"error": f"Number of candles mismatch: expected {num_candles}, got {len(selected_candles)}"}
-        
-        print(f"Анализ паттерна: {len(selected_candles)} свечей, Пара: {normalized_symbol}, ТФ: {timeframe}")
-        
-        # Загружаем исторические данные
-        ohlcv_df = get_ohlcv_data(timeframe, normalized_symbol)
-        if ohlcv_df.empty:
-            return {"error": f"Failed to load historical data for {normalized_symbol}"}
-        
-        # Строим признаки
-        features_df = build_features_fast(ohlcv_df, timeframe)
-        
-        # Получаем даты выбранных свечей
-        selected_dates = []
-        for candle in selected_candles:
-            try:
-                open_time = pd.to_datetime(candle['open_time'])
-                if open_time.tz is not None:
-                    open_time = open_time.tz_localize(None)
-                if timeframe == '1d':
-                    open_time = open_time.normalize()
-                selected_dates.append(open_time)
-            except Exception as e:
-                return {"error": f"Invalid date format: {candle['open_time']}"}
-        
-        # Находим индексы выбранных свечей в features_df
-        pat_idx = []
-        for selected_date in selected_dates:
-            time_diff = np.abs(features_df['date'] - selected_date)
-            closest_idx = time_diff.idxmin()
-            closest_date = features_df.loc[closest_idx, 'date']
-            closest_diff = time_diff.loc[closest_idx]
-            
-            max_diff = pd.Timedelta(days=1) if timeframe == '1d' else pd.Timedelta(hours=1)
-            if closest_diff <= max_diff:
-                pat_idx.append(closest_idx)
-            else:
-                return {"error": f"Could not find matching candle for date {selected_date}"}
-        
-        if len(pat_idx) != num_candles:
-            return {"error": f"Could not find all selected candles in historical data"}
-        
-        pat_idx.sort()
-        
-        # Получаем матрицу признаков паттерна
-        pattern_matrix = features_df.loc[pat_idx, ['body', 'vol_rel', 'upper', 'lower']].values
-        
-        # Ищем ВО ВСЕХ данных до начала паттерна
-        pattern_start_date = features_df.loc[pat_idx[0], 'date']
-        search_mask = (features_df['date'] < pattern_start_date)
-        search_indices = features_df.index[search_mask].tolist()
-        
-        feature_matrix = features_df[['body', 'vol_rel', 'upper', 'lower']].values
-        
-        identical_matches = []
-        similar_matches = []
-        matched_patterns = []
-        
-        # Ограничиваем количество проверяемых окон для скорости
-        max_windows = min(1500, len(search_indices))
-        step = max(1, len(search_indices) // max_windows)
-        
-        # Проверяем каждое окно-кандидат
-        for i in search_indices[::step]:
-            j = i + num_candles - 1
-            if j >= len(features_df):
-                continue
-                
-            candidate_features = feature_matrix[i:j+1]
-            match_type, _ = compare_patterns_correct(pattern_matrix, candidate_features)
-            
-            if match_type == "identical":
-                identical_matches.append((i, j))
-            elif match_type == "similar":
-                similar_matches.append((i, j))
-        
-        # Объединяем все совпадения
-        all_matches = identical_matches + similar_matches
-        
-        # Сохраняем данные найденных паттернов
-        for match in all_matches:
-            i, j = match
-            pattern_data = []
-            for k in range(num_candles):
-                candle_idx = i + k
-                candle_date = features_df.loc[candle_idx, 'date']
-                ohlcv_row = ohlcv_df[ohlcv_df['date'] == candle_date].iloc[0]
-                
-                pattern_data.append({
-                    'date': candle_date,
-                    'open': float(ohlcv_row['open']),
-                    'high': float(ohlcv_row['high']),
-                    'low': float(ohlcv_row['low']),
-                    'close': float(ohlcv_row['close']),
-                    'volume': float(ohlcv_row['volume']),
-                    'direction': 'bullish' if features_df.loc[candle_idx, 'direction'] > 0 else 'bearish',
-                    'timeframe': timeframe,
-                    'symbol': normalized_symbol
-                })
-            
-            matched_patterns.append(pattern_data)
-
-        print(f"Найдено {len(all_matches)} совпадений (идентичных: {len(identical_matches)}, похожих: {len(similar_matches)})")
-        
-        # Рассчитываем изменения цены
-        price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, normalized_symbol, candles_after=1)
-        
-        # Статистика
-        stat_counts = {
-            "Identical": len(identical_matches),
-            "Similar": len(similar_matches),
-            "Total": len(all_matches)
-        }
-        
-        total_found = len(all_matches)
-        stat_perc = {
-            "Identical": round((len(identical_matches) / total_found * 100) if total_found > 0 else 0, 1),
-            "Similar": round((len(similar_matches) / total_found * 100) if total_found > 0 else 0, 1),
-            "Total": 100.0 if total_found > 0 else 0
-        }
-        
-        return {
-            'success': True,
-            'pattern_info': {
-                'pattern_start': str(features_df.loc[pat_idx[0], 'date']),
-                'pattern_end': str(features_df.loc[pat_idx[-1], 'date']),
-                'pattern_len': num_candles,
-                'timeframe': timeframe,
-                'symbol': normalized_symbol
-            },
-            'statistics': {
-                'matches_found': len(all_matches),
-                'identical_count': len(identical_matches),
-                'similar_count': len(similar_matches),
-                'distribution_counts': stat_counts,
-                'distribution_percents': stat_perc
-            },
-            'matched_patterns': matched_patterns,
-            'price_changes': price_changes,
-            'performance_stats': performance_stats
-        }
-        
-    except Exception as e:
-        return {"error": f"Analysis error: {str(e)}"}
 
 # API функции
 def api_get_ohlcv_data(start_date: Optional[str] = None, end_date: Optional[str] = None, 
@@ -879,3 +748,234 @@ def check_data_freshness(symbol: str, timeframe: str) -> Dict:
     except Exception as e:
         print(f"❌ Ошибка проверки свежести: {e}")
         return {'needs_update': True, 'reason': f'Error: {str(e)}'}
+    
+# main.py - добавляем функцию подгрузки дополнительных данных
+
+def extend_data_for_patterns(matched_patterns: List[List[Dict]], ohlcv_df: pd.DataFrame, 
+                           timeframe: str, symbol: str) -> pd.DataFrame:
+    """Подгружает дополнительные данные вокруг найденных паттернов"""
+    if not matched_patterns:
+        return ohlcv_df
+    
+    normalized_symbol = normalize_symbol(symbol)
+    extended_dfs = [ohlcv_df]
+    
+    for pattern in matched_patterns:
+        if not pattern:
+            continue
+            
+        # Берем центральную свечу паттерна
+        center_idx = len(pattern) // 2
+        center_date = pattern[center_idx]['date']
+        
+        # Подгружаем данные вокруг этого паттерна
+        extended_df = fetch_additional_data_around_date(center_date, timeframe, normalized_symbol)
+        if not extended_df.empty:
+            extended_dfs.append(extended_df)
+    
+    # Объединяем все данные, убирая дубликаты
+    if len(extended_dfs) > 1:
+        combined_df = pd.concat(extended_dfs, ignore_index=True)
+        combined_df = combined_df.drop_duplicates(subset=['date']).sort_values('date').reset_index(drop=True)
+        print(f"✅ Объединено данных: {len(ohlcv_df)} + {sum(len(df) for df in extended_dfs[1:])} -> {len(combined_df)} свечей")
+        return combined_df
+    
+    return ohlcv_df
+
+def fetch_additional_data_around_date(center_date: datetime, timeframe: str, symbol: str, 
+                                    days_before: int = 60, days_after: int = 60) -> pd.DataFrame:
+    """Подгружает дополнительные данные вокруг указанной даты"""
+    cache_key = f"extended_{symbol}_{timeframe}_{center_date.strftime('%Y%m%d')}"
+    
+    # Проверяем кэш
+    cached = load_from_cache(cache_key)
+    if cached is not None:
+        return cached
+    
+    print(f"📥 Подгрузка данных вокруг {center_date.date()}")
+    
+    start_date = (center_date - timedelta(days=days_before)).strftime('%Y-%m-%d')
+    end_date = (center_date + timedelta(days=days_after)).strftime('%Y-%m-%d')
+    
+    extended_df = fetch_binance_ohlcv_fast(start_date, end_date, timeframe, symbol)
+    
+    # Кэшируем результат
+    save_to_cache(cache_key, extended_df)
+    
+    return extended_df
+
+# Модифицируем основную функцию анализа (минимальные изменения)
+def analyze_selected_pattern(selected_candles: List[Dict], num_candles: int, timeframe: str = '1d', 
+                           symbol: str = 'BTCUSDT', no_cache: bool = False) -> Dict:
+    """Анализ паттерна с прогрессивной подгрузкой данных"""
+    normalized_symbol = normalize_symbol(symbol)
+    
+    try:
+        if not selected_candles or len(selected_candles) != num_candles:
+            return {"error": f"Number of candles mismatch: expected {num_candles}, got {len(selected_candles)}"}
+        
+        print(f"Анализ паттерна: {len(selected_candles)} свечей, Пара: {normalized_symbol}, ТФ: {timeframe}")
+        
+        # Загружаем БАЗОВЫЕ исторические данные (как раньше)
+        ohlcv_df = get_ohlcv_data(timeframe, normalized_symbol)
+        if ohlcv_df.empty:
+            return {"error": f"Failed to load historical data for {normalized_symbol}"}
+        
+        print(f"📊 Базовые данные: {len(ohlcv_df)} свечей")
+        
+        # Строим признаки на базовых данных
+        features_df = build_features_fast(ohlcv_df, timeframe)
+        
+        # Получаем даты выбранных свечей
+        selected_dates = []
+        for candle in selected_candles:
+            try:
+                open_time = pd.to_datetime(candle['open_time'])
+                if open_time.tz is not None:
+                    open_time = open_time.tz_localize(None)
+                if timeframe == '1d':
+                    open_time = open_time.normalize()
+                selected_dates.append(open_time)
+            except Exception as e:
+                return {"error": f"Invalid date format: {candle['open_time']}"}
+        
+        # Находим индексы выбранных свечей в features_df
+        pat_idx = []
+        for selected_date in selected_dates:
+            time_diff = np.abs(features_df['date'] - selected_date)
+            closest_idx = time_diff.idxmin()
+            closest_date = features_df.loc[closest_idx, 'date']
+            closest_diff = time_diff.loc[closest_idx]
+            
+            max_diff = pd.Timedelta(days=1) if timeframe == '1d' else pd.Timedelta(hours=1)
+            if closest_diff <= max_diff:
+                pat_idx.append(closest_idx)
+            else:
+                return {"error": f"Could not find matching candle for date {selected_date}"}
+        
+        if len(pat_idx) != num_candles:
+            return {"error": f"Could not find all selected candles in historical data"}
+        
+        pat_idx.sort()
+        
+        # Получаем матрицу признаков паттерна
+        pattern_matrix = features_df.loc[pat_idx, ['body', 'vol_rel', 'upper', 'lower']].values
+        
+        # Ищем ВО ВСЕХ данных до начала паттерна (КАК РАНЬШЕ)
+        pattern_start_date = features_df.loc[pat_idx[0], 'date']
+        search_mask = (features_df['date'] < pattern_start_date)
+        search_indices = features_df.index[search_mask].tolist()
+        
+        feature_matrix = features_df[['body', 'vol_rel', 'upper', 'lower']].values
+        
+        identical_matches = []
+        similar_matches = []
+        matched_patterns = []
+        
+        # Ограничиваем количество проверяемых окон для скорости (КАК РАНЬШЕ)
+        max_windows = min(1500, len(search_indices))
+        step = max(1, len(search_indices) // max_windows)
+        
+        # Проверяем каждое окно-кандидат (КАК РАНЬШЕ)
+        for i in search_indices[::step]:
+            j = i + num_candles - 1
+            if j >= len(features_df):
+                continue
+                
+            candidate_features = feature_matrix[i:j+1]
+            match_type, _ = compare_patterns_correct(pattern_matrix, candidate_features)
+            
+            if match_type == "identical":
+                identical_matches.append((i, j))
+            elif match_type == "similar":
+                similar_matches.append((i, j))
+        
+        # Объединяем все совпадения
+        all_matches = identical_matches + similar_matches
+        
+        # Сохраняем данные найденных паттернов (КАК РАНЬШЕ)
+        for match in all_matches:
+            i, j = match
+            pattern_data = []
+            for k in range(num_candles):
+                candle_idx = i + k
+                candle_date = features_df.loc[candle_idx, 'date']
+                ohlcv_row = ohlcv_df[ohlcv_df['date'] == candle_date].iloc[0]
+                
+                pattern_data.append({
+                    'date': candle_date,
+                    'open': float(ohlcv_row['open']),
+                    'high': float(ohlcv_row['high']),
+                    'low': float(ohlcv_row['low']),
+                    'close': float(ohlcv_row['close']),
+                    'volume': float(ohlcv_row['volume']),
+                    'direction': 'bullish' if features_df.loc[candle_idx, 'direction'] > 0 else 'bearish',
+                    'timeframe': timeframe,
+                    'symbol': normalized_symbol
+                })
+            
+            matched_patterns.append(pattern_data)
+
+        print(f"Найдено {len(all_matches)} совпадений (идентичных: {len(identical_matches)}, похожих: {len(similar_matches)})")
+        
+        # 🔥 НОВОЕ: Подгружаем дополнительные данные вокруг найденных паттернов
+        if matched_patterns:
+            print("📥 Подгрузка дополнительных данных вокруг найденных паттернов...")
+            extended_ohlcv_df = extend_data_for_patterns(matched_patterns, ohlcv_df, timeframe, normalized_symbol)
+            
+            # Если получили дополнительные данные, перестраиваем признаки
+            if len(extended_ohlcv_df) > len(ohlcv_df):
+                print(f"🔄 Перестраиваем признаки на расширенных данных: {len(extended_ohlcv_df)} свечей")
+                extended_features_df = build_features_fast(extended_ohlcv_df, timeframe)
+                
+                # Обновляем ohlcv_df для расчета изменений цены
+                ohlcv_df = extended_ohlcv_df
+            else:
+                extended_features_df = features_df
+        else:
+            extended_features_df = features_df
+        
+        # Рассчитываем изменения цены (как раньше)
+        price_changes, performance_stats = calculate_price_changes_with_stats(matched_patterns, ohlcv_df, timeframe, normalized_symbol, candles_after=1)
+        
+        # Статистика (как раньше)
+        stat_counts = {
+            "Identical": len(identical_matches),
+            "Similar": len(similar_matches),
+            "Total": len(all_matches)
+        }
+        
+        total_found = len(all_matches)
+        stat_perc = {
+            "Identical": round((len(identical_matches) / total_found * 100) if total_found > 0 else 0, 1),
+            "Similar": round((len(similar_matches) / total_found * 100) if total_found > 0 else 0, 1),
+            "Total": 100.0 if total_found > 0 else 0
+        }
+        
+        return {
+            'success': True,
+            'pattern_info': {
+                'pattern_start': str(features_df.loc[pat_idx[0], 'date']),
+                'pattern_end': str(features_df.loc[pat_idx[-1], 'date']),
+                'pattern_len': num_candles,
+                'timeframe': timeframe,
+                'symbol': normalized_symbol
+            },
+            'statistics': {
+                'matches_found': len(all_matches),
+                'identical_count': len(identical_matches),
+                'similar_count': len(similar_matches),
+                'distribution_counts': stat_counts,
+                'distribution_percents': stat_perc
+            },
+            'matched_patterns': matched_patterns,
+            'price_changes': price_changes,
+            'performance_stats': performance_stats,
+            'data_info': {
+                'base_data_points': len(features_df),
+                'extended_data_points': len(extended_features_df) if 'extended_features_df' in locals() else len(features_df)
+            }
+        }
+        
+    except Exception as e:
+        return {"error": f"Analysis error: {str(e)}"}
