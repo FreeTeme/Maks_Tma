@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMA Strategy Tester</title>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f1419;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #1a222c;
+            border-radius: 10px;
+        }
+        
+        .controls {
+            background: #1a222c;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .control-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #8b99a8;
+        }
+        
+        select, input, button {
+            padding: 10px;
+            border: 1px solid #2d3748;
+            border-radius: 5px;
+            background: #0f1419;
+            color: white;
+        }
+        
+        button {
+            background: #3b82f6;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+        }
+        
+        .chart-container {
+            background: #1a222c;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            height: 500px;
+        }
+        
+        #chart {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .results {
+            background: #1a222c;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: #0f1419;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .profit { color: #22c55e; }
+        .loss { color: #ef4444; }
+        
+        .trade-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .trade-item {
+            background: #0f1419;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #3b82f6;
+            cursor: pointer;
+        }
+        
+        .trade-item:hover {
+            background: #2d3748;
+        }
+        
+        .trade-item.buy { border-left-color: #22c55e; }
+        .trade-item.sell { border-left-color: #ef4444; }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #2d3748;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .selected-info {
+            background: #3b82f6;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 SMA Strategy Tester</h1>
+            <p>Стратегия SMA(20) - TP 4%, SL 2%, удержание 4 свечи</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="symbolSelect">Торговая пара:</label>
+                    <select id="symbolSelect">
+                        <option value="BTCUSDT">BTC/USDT</option>
+                        <option value="ETHUSDT">ETH/USDT</option>
+                        <option value="XRPUSDT">XRP/USDT</option>
+                    </select>
+                </div>
+                
+                <div class="control-item">
+                    <label for="timeframeSelect">Таймфрейм:</label>
+                    <select id="timeframeSelect">
+                        <option value="1h">1 час</option>
+                    </select>
+                </div>
+                
+                <div class="control-item">
+                    <label for="startDate">Дата начала:</label>
+                    <input type="date" id="startDate" value="2022-02-28">
+                </div>
+                
+                <div class="control-item">
+                    <label for="endDate">Дата окончания:</label>
+                    <input type="date" id="endDate">
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="initialDeposit">Депозит ($):</label>
+                    <input type="number" id="initialDeposit" value="100000" min="1000" step="1000">
+                </div>
+                
+                <div class="control-item">
+                    <label for="tpPercent">Тейк-профит (%):</label>
+                    <input type="number" id="tpPercent" value="4" min="0.1" step="0.1">
+                </div>
+                
+                <div class="control-item">
+                    <label for="slPercent">Стоп-лосс (%):</label>
+                    <input type="number" id="slPercent" value="2" min="0.1" step="0.1">
+                </div>
+                
+                <div class="control-item">
+                    <label for="maxCandles">Макс. свечей:</label>
+                    <input type="number" id="maxCandles" value="4" min="1" max="10">
+                </div>
+            </div>
+            
+            <button id="runTestBtn">Запустить тестирование</button>
+            
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Выполняется тестирование...</p>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div id="chart"></div>
+        </div>
+        
+        <div class="results">
+            <h3>Результаты тестирования</h3>
+            <div id="resultsContent">
+                <p style="text-align: center; color: #8b99a8; padding: 40px;">
+                    Запустите тестирование для просмотра результатов
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SimpleStrategyTester {
+            constructor() {
+                this.chart = null;
+                this.candleSeries = null;
+                this.smaSeries = null;
+                this.markers = [];
+                this.currentTrades = [];
+                this.initChart();
+                this.bindEvents();
+                this.setDefaultDates();
+            }
+            
+            initChart() {
+                const chartElement = document.getElementById('chart');
+                this.chart = LightweightCharts.createChart(chartElement, {
+                    width: chartElement.clientWidth,
+                    height: chartElement.clientHeight,
+                    layout: {
+                        background: { color: '#0f1419' },
+                        textColor: '#d1d5db',
+                    },
+                    grid: {
+                        vertLines: { color: '#1f2937' },
+                        horzLines: { color: '#1f2937' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    timeScale: {
+                        timeVisible: true,
+                        secondsVisible: false,
+                    },
+                });
+                
+                this.candleSeries = this.chart.addCandlestickSeries();
+                this.smaSeries = this.chart.addLineSeries({
+                    color: '#3b82f6',
+                    lineWidth: 2,
+                });
+                
+                // Обработчик клика по свече
+                this.chart.subscribeClick((param) => {
+                    if (param.time) {
+                        this.onCandleClick(param.time);
+                    }
+                });
+            }
+            
+            setDefaultDates() {
+                const endDate = new Date();
+                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            }
+            
+            bindEvents() {
+                document.getElementById('runTestBtn').addEventListener('click', () => this.runTest());
+                
+                window.addEventListener('resize', () => {
+                    this.chart.applyOptions({
+                        width: document.getElementById('chart').clientWidth,
+                        height: document.getElementById('chart').clientHeight,
+                    });
+                });
+            }
+            
+            onCandleClick(time) {
+                // Можно добавить функционал выбора конкретной свечи для анализа
+                console.log('Clicked candle time:', time);
+            }
+            
+            async runTest() {
+                this.showLoading(true);
+                
+                try {
+                    const params = {
+                        symbol: document.getElementById('symbolSelect').value,
+                        timeframe: document.getElementById('timeframeSelect').value,
+                        start_date: document.getElementById('startDate').value,
+                        end_date: document.getElementById('endDate').value,
+                        initial_deposit: parseFloat(document.getElementById('initialDeposit').value),
+                        tp_percent: parseFloat(document.getElementById('tpPercent').value),
+                        sl_percent: parseFloat(document.getElementById('slPercent').value),
+                        max_candles: parseInt(document.getElementById('maxCandles').value)
+                    };
+                    
+                    const response = await fetch('/api/strategy/test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(params)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.displayResults(result);
+                        this.displayChartWithTrades(result);
+                    } else {
+                        alert('Ошибка: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Ошибка при тестировании: ' + error.message);
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            
+            displayChartWithTrades(result) {
+                // Загружаем данные для графика
+                this.loadChartData({
+                    symbol: document.getElementById('symbolSelect').value,
+                    timeframe: document.getElementById('timeframeSelect').value,
+                    start_date: document.getElementById('startDate').value,
+                    end_date: document.getElementById('endDate').value
+                });
+                
+                // Сохраняем сделки для отображения маркеров
+                this.currentTrades = result.trades || [];
+            }
+            
+            async loadChartData(params) {
+                try {
+                    const response = await fetch(`/api/pattern/ohlcv?symbol=${params.symbol}&timeframe=${params.timeframe}&from=${params.start_date}&to=${params.end_date}`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.displayChartData(result.candles);
+                    }
+                } catch (error) {
+                    console.error('Ошибка загрузки данных графика:', error);
+                }
+            }
+            
+            displayChartData(candles) {
+                const candleData = candles.map(c => ({
+                    time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                    open: c.open_price,
+                    high: c.high,
+                    low: c.low,
+                    close: c.close_price,
+                }));
+                
+                // Рассчитываем SMA 20
+                const smaData = this.calculateSMA(candleData, 20);
+                
+                this.candleSeries.setData(candleData);
+                this.smaSeries.setData(smaData);
+                
+                // Добавляем маркеры для сделок
+                this.addTradeMarkers();
+                
+                this.chart.timeScale().fitContent();
+            }
+            
+            calculateSMA(candleData, period) {
+                const smaData = [];
+                
+                for (let i = period - 1; i < candleData.length; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < period; j++) {
+                        sum += candleData[i - j].close;
+                    }
+                    
+                    smaData.push({
+                        time: candleData[i].time,
+                        value: sum / period
+                    });
+                }
+                
+                return smaData;
+            }
+            
+            addTradeMarkers() {
+                const markers = [];
+                
+                this.currentTrades.forEach((trade, index) => {
+                    // Маркер входа
+                    markers.push({
+                        time: Math.floor(new Date(trade.timestamp).getTime() / 1000),
+                        position: 'aboveBar',
+                        color: trade.type === 'BUY' ? '#22c55e' : '#ef4444',
+                        shape: 'circle',
+                        text: `${trade.type} ${index + 1}`,
+                    });
+                    
+                    // Маркер выхода
+                    const exitTime = new Date(trade.timestamp);
+                    if (trade.timeframe === '1h') {
+                        exitTime.setHours(exitTime.getHours() + trade.candles_held);
+                    }
+                    
+                    markers.push({
+                        time: Math.floor(exitTime.getTime() / 1000),
+                        position: 'belowBar',
+                        color: trade.pnl_pct > 0 ? '#22c55e' : '#ef4444',
+                        shape: trade.status === 'TP' ? 'arrowUp' : 
+                               trade.status === 'SL' ? 'arrowDown' : 'square',
+                        text: `${trade.pnl_pct > 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%`,
+                    });
+                });
+                
+                this.candleSeries.setMarkers(markers);
+            }
+            
+            displayResults(result) {
+                const stats = result.statistics;
+                const trades = result.trades || [];
+                
+                let html = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.total_return_percent >= 0 ? 'profit' : 'loss'}">
+                                ${stats.total_return_percent}%
+                            </div>
+                            <div class="stat-label">Общая доходность</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.total_trades}</div>
+                            <div class="stat-label">Всего сделок</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.win_rate >= 50 ? 'profit' : 'loss'}">
+                                ${stats.win_rate}%
+                            </div>
+                            <div class="stat-label">Процент прибыльных</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.avg_return_per_trade >= 0 ? 'profit' : 'loss'}">
+                                ${stats.avg_return_per_trade}%
+                            </div>
+                            <div class="stat-label">Средняя сделка</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value">$${stats.final_deposit.toLocaleString()}</div>
+                            <div class="stat-label">Финальный депозит</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.comparison_vs_bh >= 0 ? 'profit' : 'loss'}">
+                                ${stats.comparison_vs_bh}%
+                            </div>
+                            <div class="stat-label">vs Buy & Hold</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 10px 0;">Детали тестирования:</h4>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.profitable_trades}/${stats.losing_trades}</div>
+                            <div class="stat-label">Прибыльные/Убыточные</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.buy_trades_count}/${stats.sell_trades_count}</div>
+                            <div class="stat-label">Покупки/Продажи</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.max_drawdown >= 0 ? 'loss' : 'neutral'}">
+                                ${stats.max_drawdown}%
+                            </div>
+                            <div class="stat-label">Макс. просадка</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.avg_holding_time_candles}</div>
+                            <div class="stat-label">Ср. время удержания</div>
+                        </div>
+                    </div>
+                    
+                    <h4 style="margin: 20px 0 10px 0;">Сравнение с Buy & Hold:</h4>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value">$${stats.initial_deposit.toLocaleString()}</div>
+                            <div class="stat-label">Начальный депозит</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.buy_hold_return >= 0 ? 'profit' : 'loss'}">
+                                ${stats.buy_hold_return}%
+                            </div>
+                            <div class="stat-label">Доходность B&H</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value">$${stats.buy_hold_value.toLocaleString()}</div>
+                            <div class="stat-label">Стоимость B&H</div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-value ${stats.max_buy_hold_drawdown >= 0 ? 'loss' : 'neutral'}">
+                                ${stats.max_buy_hold_drawdown}%
+                            </div>
+                            <div class="stat-label">Просадка B&H</div>
+                        </div>
+                    </div>
+                `;
+                
+                if (trades.length > 0) {
+                    html += `
+                        <h4 style="margin: 20px 0 10px 0;">История сделок (${trades.length}):</h4>
+                        <div class="trade-list">
+                    `;
+                    
+                    trades.forEach((trade, index) => {
+                        html += `
+                            <div class="trade-item ${trade.type.toLowerCase()}" onclick="tester.showTradeDetails(${index})">
+                                <strong>${trade.type} #${index + 1}</strong> | 
+                                ${new Date(trade.timestamp).toLocaleDateString()} | 
+                                Вход: $${trade.entry_price.toFixed(2)} | 
+                                Выход: $${trade.exit_price.toFixed(2)} | 
+                                <span class="${trade.pnl_pct >= 0 ? 'profit' : 'loss'}">
+                                    ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%
+                                </span> |
+                                ${trade.status} (${trade.candles_held} свечей)
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                }
+                
+                document.getElementById('resultsContent').innerHTML = html;
+            }
+            
+            showTradeDetails(tradeIndex) {
+                const trade = this.currentTrades[tradeIndex];
+                if (!trade) return;
+                
+                alert(
+                    `Детали сделки #${tradeIndex + 1}:\n\n` +
+                    `Тип: ${trade.type}\n` +
+                    `Вход: ${new Date(trade.timestamp).toLocaleString()}\n` +
+                    `Цена входа: $${trade.entry_price.toFixed(2)}\n` +
+                    `Цена выхода: $${trade.exit_price.toFixed(2)}\n` +
+                    `P&L: ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}% ($${trade.pnl_amount.toFixed(2)})\n` +
+                    `Статус: ${trade.status}\n` +
+                    `Удержано: ${trade.candles_held} свечей\n` +
+                    `SMA значение: $${trade.sma_value.toFixed(2)}\n` +
+                    `Отклонение от SMA: ${trade.price_vs_sma.toFixed(2)}%`
+                );
+            }
+            
+            showLoading(show) {
+                document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+                document.getElementById('runTestBtn').disabled = show;
+            }
+        }
+        
+        // Инициализация при загрузке страницы
+        let tester;
+        document.addEventListener('DOMContentLoaded', () => {
+            tester = new SimpleStrategyTester();
+        });
+    </script>
+</body>
+</html>

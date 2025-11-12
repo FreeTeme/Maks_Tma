@@ -10,7 +10,7 @@ import pandas as pd
 import requests
 import numpy as np
 import time
-
+from analize.main import strategy_bp
 from ai.main import get_full_historical_data
 
 # Добавляем путь для импорта main.py
@@ -36,6 +36,8 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
 app.register_blueprint(staking_bp, url_prefix='/api')
 # Register the pattern analysis Blueprint
 app.register_blueprint(pattern_bp)
+
+app.register_blueprint(strategy_bp)
 
 def init_db():
     conn = sqlite3.connect(DATABASE)
@@ -1202,6 +1204,10 @@ def admin_logs_api():
         
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+@app.route('/strategy')
+def strategy_page():
+    return render_template('strategy.html')
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5010, debug=True)
