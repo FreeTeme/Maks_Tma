@@ -10,7 +10,7 @@ strategy_bp = Blueprint('strategy', __name__, url_prefix='/api/strategy')
 
 class TradingStrategyTester:
     def __init__(self):
-        self.base_url = "http://127.0.0.1:5010"
+        self.base_url = "https://app.histobit.twc1.net"
     
     def fetch_ohlcv_data(self, symbol: str, timeframe: str, start_date: str, end_date: str) -> pd.DataFrame:
         """Загрузка данных через локальное API"""
