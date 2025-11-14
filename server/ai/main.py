@@ -29,7 +29,8 @@ SYMBOL_MAP = {
     'SUI#USDT': 'SUIUSDT',
     'LINK#USDT': 'LINKUSDT',
     'LTC#USDT': 'LTCUSDT',
-    'TON#USDT': 'TONUSDT'
+    'TON#USDT': 'TONUSDT',
+    'DOGE#USDT': 'DOGEUSDT'
 }
 
 # Словарь для преобразования таймфреймов в интервалы Binance
@@ -48,7 +49,7 @@ def normalize_symbol(symbol: str) -> str:
     # Добавляем USDT если символ слишком короткий (только для основных пар)
     if len(normalized) <= 6 and not normalized.endswith('USDT'):
         # Проверяем, есть ли символ в списке поддерживаемых
-        supported_symbols = ['BTC', 'ETH', 'XRP', 'SOL', 'BNB', 'TRX', 'ADA', 'SUI', 'LINK', 'LTC', 'TON']
+        supported_symbols = ['BTC', 'ETH', 'XRP', 'SOL', 'BNB', 'TRX', 'ADA', 'SUI', 'LINK', 'LTC', 'TON','DOGE']
         if normalized in supported_symbols:
             normalized += 'USDT'
     
