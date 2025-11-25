@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMA Strategy Tester</title>
+    <title>Multi Strategy Tester</title>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * {
@@ -165,7 +165,7 @@
             100% { transform: rotate(360deg); }
         }
         
-        .selected-info {
+        .strategy-info {
             background: #3b82f6;
             padding: 10px;
             border-radius: 5px;
@@ -177,12 +177,20 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📊 SMA Strategy Tester</h1>
-            <p>Стратегия SMA(20) - TP 4%, SL 2%, удержание 4 свечи</p>
+            <h1>📊 Multi Strategy Tester</h1>
+            <p>Тестирование различных торговых стратегий</p>
         </div>
         
         <div class="controls">
             <div class="control-group">
+                <div class="control-item">
+                    <label for="strategySelect">Стратегия:</label>
+                    <select id="strategySelect">
+                        <option value="SMA_CROSSOVER">SMA Crossover</option>
+                        <option value="RSI_STRATEGY">RSI Strategy</option>
+                    </select>
+                </div>
+                
                 <div class="control-item">
                     <label for="symbolSelect">Торговая пара:</label>
                     <select id="symbolSelect">
@@ -203,14 +211,14 @@
                     <label for="startDate">Дата начала:</label>
                     <input type="date" id="startDate" value="2022-02-28">
                 </div>
-                
+            </div>
+            
+            <div class="control-group">
                 <div class="control-item">
                     <label for="endDate">Дата окончания:</label>
                     <input type="date" id="endDate">
                 </div>
-            </div>
-            
-            <div class="control-group">
+                
                 <div class="control-item">
                     <label for="initialDeposit">Депозит ($):</label>
                     <input type="number" id="initialDeposit" value="100000" min="1000" step="1000">
@@ -255,13 +263,14 @@
     </div>
 
     <script>
-        class SimpleStrategyTester {
+        class MultiStrategyTester {
             constructor() {
                 this.chart = null;
                 this.candleSeries = null;
                 this.smaSeries = null;
                 this.markers = [];
                 this.currentTrades = [];
+                this.currentStrategy = 'SMA_CROSSOVER';
                 this.initChart();
                 this.bindEvents();
                 this.setDefaultDates();
@@ -294,13 +303,6 @@
                     color: '#3b82f6',
                     lineWidth: 2,
                 });
-                
-                // Обработчик клика по свече
-                this.chart.subscribeClick((param) => {
-                    if (param.time) {
-                        this.onCandleClick(param.time);
-                    }
-                });
             }
             
             setDefaultDates() {
@@ -319,11 +321,6 @@
                 });
             }
             
-            onCandleClick(time) {
-                // Можно добавить функционал выбора конкретной свечи для анализа
-                console.log('Clicked candle time:', time);
-            }
-            
             async runTest() {
                 this.showLoading(true);
                 
@@ -336,8 +333,11 @@
                         initial_deposit: parseFloat(document.getElementById('initialDeposit').value),
                         tp_percent: parseFloat(document.getElementById('tpPercent').value),
                         sl_percent: parseFloat(document.getElementById('slPercent').value),
-                        max_candles: parseInt(document.getElementById('maxCandles').value)
+                        max_candles: parseInt(document.getElementById('maxCandles').value),
+                        strategy: document.getElementById('strategySelect').value
                     };
+                    
+                    console.log('Параметры теста:', params);
                     
                     const response = await fetch('/api/strategy/test', {
                         method: 'POST',
@@ -363,7 +363,6 @@
             }
             
             displayChartWithTrades(result) {
-                // Загружаем данные для графика
                 this.loadChartData({
                     symbol: document.getElementById('symbolSelect').value,
                     timeframe: document.getElementById('timeframeSelect').value,
@@ -371,7 +370,6 @@
                     end_date: document.getElementById('endDate').value
                 });
                 
-                // Сохраняем сделки для отображения маркеров
                 this.currentTrades = result.trades || [];
             }
             
@@ -437,7 +435,7 @@
                         position: 'aboveBar',
                         color: trade.type === 'BUY' ? '#22c55e' : '#ef4444',
                         shape: 'circle',
-                        text: `${trade.type} ${index + 1}`,
+                        text: `${trade.type} #${index + 1}`,
                     });
                     
                     // Маркер выхода
@@ -464,6 +462,11 @@
                 const trades = result.trades || [];
                 
                 let html = `
+                    <div class="strategy-info">
+                        <strong>Стратегия:</strong> ${this.getStrategyName(result.strategy_used)} | 
+                        <strong>Макс. свечей:</strong> ${result.max_candles_used}
+                    </div>
+                    
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-value ${stats.total_return_percent >= 0 ? 'profit' : 'loss'}">
@@ -584,22 +587,38 @@
                 document.getElementById('resultsContent').innerHTML = html;
             }
             
+            getStrategyName(strategyId) {
+                const strategies = {
+                    'SMA_CROSSOVER': 'SMA Crossover',
+                    'RSI_STRATEGY': 'RSI Strategy'
+                };
+                return strategies[strategyId] || strategyId;
+            }
+            
             showTradeDetails(tradeIndex) {
                 const trade = this.currentTrades[tradeIndex];
                 if (!trade) return;
                 
-                alert(
-                    `Детали сделки #${tradeIndex + 1}:\n\n` +
+                let details = `Детали сделки #${tradeIndex + 1}:\n\n` +
                     `Тип: ${trade.type}\n` +
+                    `Стратегия: ${this.getStrategyName(trade.strategy)}\n` +
                     `Вход: ${new Date(trade.timestamp).toLocaleString()}\n` +
                     `Цена входа: $${trade.entry_price.toFixed(2)}\n` +
                     `Цена выхода: $${trade.exit_price.toFixed(2)}\n` +
                     `P&L: ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}% ($${trade.pnl_amount.toFixed(2)})\n` +
                     `Статус: ${trade.status}\n` +
-                    `Удержано: ${trade.candles_held} свечей\n` +
-                    `SMA значение: $${trade.sma_value.toFixed(2)}\n` +
-                    `Отклонение от SMA: ${trade.price_vs_sma.toFixed(2)}%`
-                );
+                    `Удержано: ${trade.candles_held} свечей\n`;
+                
+                if (trade.sma_value) {
+                    details += `SMA значение: $${trade.sma_value.toFixed(2)}\n` +
+                              `Отклонение от SMA: ${trade.price_vs_sma.toFixed(2)}%`;
+                }
+                
+                if (trade.rsi_value) {
+                    details += `RSI значение: ${trade.rsi_value.toFixed(2)}`;
+                }
+                
+                alert(details);
             }
             
             showLoading(show) {
@@ -611,7 +630,7 @@
         // Инициализация при загрузке страницы
         let tester;
         document.addEventListener('DOMContentLoaded', () => {
-            tester = new SimpleStrategyTester();
+            tester = new MultiStrategyTester();
         });
     </script>
 </body>
