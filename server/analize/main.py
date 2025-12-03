@@ -70,16 +70,16 @@ class TradingStrategyTester:
         return rsi
     
     def simulate_trade(self, entry_price: float, trade_type: str, 
-                      entry_index: int, data: pd.DataFrame, 
-                      tp_percent: float = 4, sl_percent: float = 2,
-                      max_candles: int = 4) -> Dict:
+                    entry_index: int, data: pd.DataFrame, 
+                    tp_percent: float = 4, sl_percent: float = 2,
+                    max_candles: int = 4) -> Dict:
         """
         Симуляция одной сделки
         """
         entry_idx = entry_index
         
-        # Анализируем следующие max_candles свечей
-        for j in range(1, max_candles + 1):
+        # Начинаем проверять с ТЕКУЩЕЙ свечи (на которой произошел вход по закрытию)
+        for j in range(0, max_candles + 1):  # Изменено: начинаем с 0
             if entry_idx + j >= len(data):
                 # Если вышли за пределы данных, выходим по текущей цене
                 current_price = data.iloc[-1]['close']
@@ -97,6 +97,10 @@ class TradingStrategyTester:
                 }
                 
             current_price = data.iloc[entry_idx + j]['close']
+            
+            # Для j = 0 это цена входа (та же свеча)
+            if j == 0:
+                continue  # Пропускаем проверку на той же свече
             
             if trade_type == 'BUY':
                 pnl_pct = (current_price - entry_price) / entry_price * 100
@@ -152,7 +156,6 @@ class TradingStrategyTester:
             'exit_price': final_price,
             'exit_type': 'time_exit'
         }
-    
     def find_trading_opportunities_sma(self, data: pd.DataFrame) -> List[Dict]:
         """Поиск торговых возможностей по стратегии SMA(20)"""
         opportunities = []
@@ -414,7 +417,7 @@ class TradingStrategyTester:
             'initial_deposit': initial_deposit,
             'final_deposit': round(equity_curve[-1], 2)
         }
-
+ 
 # Глобальный экземпляр тестера
 tester = TradingStrategyTester()
 
