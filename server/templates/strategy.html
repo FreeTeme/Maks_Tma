@@ -4,633 +4,1062 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi Strategy Tester</title>
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.0.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.min.js"></script>
     <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --surface: #1a222c;
+            --surface-dark: #111827;
+            --surface-light: #2d3748;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #374151;
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: Arial, sans-serif;
-            background: #0f1419;
-            color: white;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-primary);
+            line-height: 1.5;
+            height: 100vh;
+            overflow: hidden;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 20px;
-            background: #1a222c;
-            border-radius: 10px;
-        }
-        
-        .controls {
-            background: #1a222c;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-        
-        .control-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .control-item {
+
+        .app-container {
             display: flex;
             flex-direction: column;
+            height: 100vh;
+            padding: 0;
         }
-        
+
+        /* Header */
+        .app-header {
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .logo-section h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.25rem;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Main Layout - Full Width */
+        .main-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            padding: 1rem;
+            gap: 1rem;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 0 0 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow-y: auto;
+            min-width: 300px;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-width: 600px;
+            overflow: hidden;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        /* Controls */
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
         label {
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #8b99a8;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
         }
-        
-        select, input, button {
-            padding: 10px;
-            border: 1px solid #2d3748;
-            border-radius: 5px;
-            background: #0f1419;
+
+        select, input {
+            padding: 0.5rem 0.75rem;
+            background: var(--surface-dark);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
             color: white;
         }
-        
-        button {
-            background: #3b82f6;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
         }
-        
-        button:hover {
-            background: #2563eb;
+
+        .btn-secondary {
+            background: var(--surface-light);
+            color: var(--text-primary);
         }
-        
-        button:disabled {
-            background: #4b5563;
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--border);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
         }
-        
+
+        /* Chart - Full Size */
         .chart-container {
-            background: #1a222c;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            height: 500px;
+            flex: 1;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            position: relative;
+            min-height: 300px;
         }
-        
+
         #chart {
             width: 100%;
             height: 100%;
         }
-        
-        .results {
-            background: #1a222c;
-            padding: 20px;
-            border-radius: 10px;
+
+        .chart-controls {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            display: flex;
+            gap: 0.375rem;
+            z-index: 10;
         }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-card {
-            background: #0f1419;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .profit { color: #22c55e; }
-        .loss { color: #ef4444; }
-        
-        .trade-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .trade-item {
-            background: #0f1419;
-            padding: 10px;
-            margin-bottom: 8px;
-            border-radius: 5px;
-            border-left: 4px solid #3b82f6;
+
+        .chart-btn {
+            background: rgba(17, 24, 39, 0.9);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.375rem 0.625rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
             cursor: pointer;
+            backdrop-filter: blur(10px);
         }
-        
-        .trade-item:hover {
-            background: #2d3748;
+
+        .chart-btn:hover {
+            background: var(--surface-dark);
         }
-        
-        .trade-item.buy { border-left-color: #22c55e; }
-        .trade-item.sell { border-left-color: #ef4444; }
-        
-        .loading {
-            display: none;
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .metric-card {
+            background: var(--surface-dark);
+            border-radius: 6px;
+            padding: 1rem;
+            border: 1px solid var(--border);
             text-align: center;
-            padding: 20px;
         }
-        
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value.profit { color: var(--success); }
+        .metric-value.loss { color: var(--danger); }
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Trades List */
+        .trades-section {
+            max-height: 250px;
+            overflow-y: auto;
+            margin-top: 1rem;
+        }
+
+        .trades-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .trades-table th {
+            text-align: left;
+            padding: 0.75rem;
+            background: var(--surface-dark);
+            color: var(--text-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+        }
+
+        .trades-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .trade-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .trade-type.buy {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        .trade-type.sell {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(17, 24, 39, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
         .spinner {
-            border: 3px solid #2d3748;
-            border-top: 3px solid #3b82f6;
+            width: 48px;
+            height: 48px;
+            border: 3px solid var(--surface-light);
+            border-top-color: var(--primary);
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
             animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+            margin-bottom: 1rem;
         }
-        
+
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            to { transform: rotate(360deg); }
         }
-        
-        .strategy-info {
-            background: #3b82f6;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-            text-align: center;
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        .status-badge.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .left-panel {
+                flex: 0 0 320px;
+            }
+            
+            .right-panel {
+                min-width: 500px;
+            }
+            
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                flex: 0 0 auto;
+                max-height: 400px;
+            }
+            
+            .right-panel {
+                flex: 1;
+                min-width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .app-header {
+                padding: 0.5rem 1rem;
+            }
+            
+            .main-content {
+                padding: 0.5rem;
+            }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--surface-dark);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--surface-light);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 Multi Strategy Tester</h1>
-            <p>Тестирование различных торговых стратегий</p>
-        </div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <div class="control-item">
-                    <label for="strategySelect">Стратегия:</label>
-                    <select id="strategySelect">
-                        <option value="SMA_CROSSOVER">SMA Crossover</option>
-                        <option value="RSI_STRATEGY">RSI Strategy</option>
-                    </select>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo-section">
+                <h1>Multi Strategy Tester</h1>
+                <p>Профессиональное тестирование торговых стратегий</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Left Panel - Controls -->
+            <div class="left-panel">
+                <div class="card">
+                    <h3 class="card-title">Настройки стратегии</h3>
+                    <div class="control-group">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="strategySelect">Стратегия</label>
+                                <select id="strategySelect">
+                                    <option value="SMA_CROSSOVER">SMA Crossover (20)</option>
+                                    <option value="RSI_STRATEGY">RSI Overbought/Oversold</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="symbolSelect">Торговая пара</label>
+                                <select id="symbolSelect">
+                                    <option value="BTCUSDT">BTC/USDT</option>
+                                    <option value="ETHUSDT">ETH/USDT</option>
+                                    <option value="SOLUSDT">SOL/USDT</option>
+                                    <option value="XRPUSDT">XRP/USDT</option>
+                                    <option value="BNBUSDT">BNB/USDT</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="timeframeSelect">Таймфрейм</label>
+                                <select id="timeframeSelect">
+                                    <option value="1h">1 час</option>
+                                    <option value="4h">4 часа</option>
+                                    <option value="1d">1 день</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="initialDeposit">Начальный депозит ($)</label>
+                                <input type="number" id="initialDeposit" value="100000" min="1000" step="1000">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="control-item">
-                    <label for="symbolSelect">Торговая пара:</label>
-                    <select id="symbolSelect">
-                        <option value="BTCUSDT">BTC/USDT</option>
-                        <option value="ETHUSDT">ETH/USDT</option>
-                        <option value="XRPUSDT">XRP/USDT</option>
-                    </select>
+
+                <div class="card">
+                    <h3 class="card-title">Параметры торговли</h3>
+                    <div class="control-group">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tpPercent">Take Profit (%)</label>
+                                <input type="number" id="tpPercent" value="4.0" min="0.1" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="slPercent">Stop Loss (%)</label>
+                                <input type="number" id="slPercent" value="2.0" min="0.1" step="0.1">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="maxCandles">Макс. свечей удержания</label>
+                                <input type="number" id="maxCandles" value="5" min="1" max="20">
+                            </div>
+                            <div class="form-group">
+                                <label for="commissionPct">Комиссия (%)</label>
+                                <input type="number" id="commissionPct" value="0.05" min="0" step="0.001">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="control-item">
-                    <label for="timeframeSelect">Таймфрейм:</label>
-                    <select id="timeframeSelect">
-                        <option value="1h">1 час</option>
-                    </select>
+
+                <div class="card">
+                    <h3 class="card-title">Период тестирования</h3>
+                    <div class="control-group">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startDate">Начало</label>
+                                <input type="date" id="startDate">
+                            </div>
+                            <div class="form-group">
+                                <label for="endDate">Конец</label>
+                                <input type="date" id="endDate">
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="control-item">
-                    <label for="startDate">Дата начала:</label>
-                    <input type="date" id="startDate" value="2022-02-28">
+
+                <div class="card">
+                    <h3 class="card-title">Дополнительные параметры</h3>
+                    <div class="control-group">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="slippagePct">Проскальзывание (%)</label>
+                                <input type="number" id="slippagePct" value="0.05" min="0" step="0.001">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="runTestBtn" class="btn btn-primary">
+                        <span>▶️</span>
+                        Запустить тест
+                    </button>
+                    <button id="analyticsReportBtn" class="btn btn-secondary" disabled>
+                        <span>📊</span>
+                        Аналитика
+                    </button>
                 </div>
             </div>
-            
-            <div class="control-group">
-                <div class="control-item">
-                    <label for="endDate">Дата окончания:</label>
-                    <input type="date" id="endDate">
+
+            <!-- Right Panel - Chart & Results -->
+            <div class="right-panel">
+                <div class="chart-container">
+                    <div id="chart"></div>
+                    <div class="chart-controls">
+                        <button class="chart-btn" id="zoomInBtn" title="Увеличить">+</button>
+                        <button class="chart-btn" id="zoomOutBtn" title="Уменьшить">-</button>
+                        <button class="chart-btn" id="fitContentBtn" title="Вписать в экран">↔</button>
+                    </div>
+                    <div class="loading-overlay" id="loadingIndicator" style="display: none;">
+                        <div class="spinner"></div>
+                        <p>Выполняем бэктест...</p>
+                    </div>
                 </div>
-                
-                <div class="control-item">
-                    <label for="initialDeposit">Депозит ($):</label>
-                    <input type="number" id="initialDeposit" value="100000" min="1000" step="1000">
-                </div>
-                
-                <div class="control-item">
-                    <label for="tpPercent">Тейк-профит (%):</label>
-                    <input type="number" id="tpPercent" value="4" min="0.1" step="0.1">
-                </div>
-                
-                <div class="control-item">
-                    <label for="slPercent">Стоп-лосс (%):</label>
-                    <input type="number" id="slPercent" value="2" min="0.1" step="0.1">
-                </div>
-                
-                <div class="control-item">
-                    <label for="maxCandles">Макс. свечей:</label>
-                    <input type="number" id="maxCandles" value="4" min="1" max="10">
+
+                <!-- Results Section -->
+                <div class="card" style="overflow-y: auto;">
+                    <div id="resultsContent">
+                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <p style="font-size: 1.125rem; margin-bottom: 0.5rem;">🚀 Настройте параметры и запустите тест</p>
+                            <p>Выберите стратегию, установите параметры и нажмите "Запустить тест"</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <button id="runTestBtn">Запустить тестирование</button>
-            
-            <div class="loading" id="loadingIndicator">
-                <div class="spinner"></div>
-                <p>Выполняется тестирование...</p>
-            </div>
-        </div>
-        
-        <div class="chart-container">
-            <div id="chart"></div>
-        </div>
-        
-        <div class="results">
-            <h3>Результаты тестирования</h3>
-            <div id="resultsContent">
-                <p style="text-align: center; color: #8b99a8; padding: 40px;">
-                    Запустите тестирование для просмотра результатов
-                </p>
-            </div>
-        </div>
+        </main>
     </div>
 
     <script>
-        class MultiStrategyTester {
+        class StrategyTesterUI {
             constructor() {
                 this.chart = null;
                 this.candleSeries = null;
                 this.smaSeries = null;
-                this.markers = [];
                 this.currentTrades = [];
-                this.currentStrategy = 'SMA_CROSSOVER';
+                this.lastTestResult = null;
+
                 this.initChart();
                 this.bindEvents();
                 this.setDefaultDates();
+                this.setupChartControls();
             }
-            
+
+            setDefaultDates() {
+                const today = new Date();
+                const oneYearAgo = new Date(today);
+                oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+                document.getElementById('endDate').value = today.toISOString().split('T')[0];
+                document.getElementById('startDate').value = oneYearAgo.toISOString().split('T')[0];
+            }
+
             initChart() {
-                const chartElement = document.getElementById('chart');
-                this.chart = LightweightCharts.createChart(chartElement, {
-                    width: chartElement.clientWidth,
-                    height: chartElement.clientHeight,
+                const container = document.getElementById('chart');
+                this.chart = LightweightCharts.createChart(container, {
+                    width: container.clientWidth,
+                    height: container.clientHeight,
                     layout: {
                         background: { color: '#0f1419' },
-                        textColor: '#d1d5db',
+                        textColor: '#d1d5db'
                     },
                     grid: {
                         vertLines: { color: '#1f2937' },
-                        horzLines: { color: '#1f2937' },
+                        horzLines: { color: '#1f2937' }
                     },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                    },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                     timeScale: {
                         timeVisible: true,
                         secondsVisible: false,
+                        borderColor: '#2d3748'
                     },
+                    rightPriceScale: { borderColor: '#2d3748' },
                 });
-                
-                this.candleSeries = this.chart.addCandlestickSeries();
+
+                this.candleSeries = this.chart.addCandlestickSeries({
+                    upColor: '#22c55e',
+                    downColor: '#ef4444',
+                    borderVisible: false,
+                    wickUpColor: '#22c55e',
+                    wickDownColor: '#ef4444'
+                });
+
                 this.smaSeries = this.chart.addLineSeries({
-                    color: '#3b82f6',
+                    color: '#60a5fa',
                     lineWidth: 2,
+                    priceLineVisible: false
                 });
-            }
-            
-            setDefaultDates() {
-                const endDate = new Date();
-                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
-            }
-            
-            bindEvents() {
-                document.getElementById('runTestBtn').addEventListener('click', () => this.runTest());
-                
+
                 window.addEventListener('resize', () => {
                     this.chart.applyOptions({
-                        width: document.getElementById('chart').clientWidth,
-                        height: document.getElementById('chart').clientHeight,
+                        width: container.clientWidth,
+                        height: container.clientHeight
                     });
                 });
             }
-            
+
+            setupChartControls() {
+                document.getElementById('zoomInBtn').addEventListener('click', () => {
+                    this.chart.timeScale().scrollPosition += 10;
+                });
+
+                document.getElementById('zoomOutBtn').addEventListener('click', () => {
+                    this.chart.timeScale().scrollPosition -= 10;
+                });
+
+                document.getElementById('fitContentBtn').addEventListener('click', () => {
+                    this.chart.timeScale().fitContent();
+                });
+            }
+
+            bindEvents() {
+                document.getElementById('runTestBtn').addEventListener('click', () => this.runTest());
+                document.getElementById('analyticsReportBtn').addEventListener('click', () => this.showAnalyticalReport());
+            }
+
             async runTest() {
                 this.showLoading(true);
-                
+                document.getElementById('analyticsReportBtn').disabled = true;
+
                 try {
                     const params = {
                         symbol: document.getElementById('symbolSelect').value,
                         timeframe: document.getElementById('timeframeSelect').value,
                         start_date: document.getElementById('startDate').value,
                         end_date: document.getElementById('endDate').value,
-                        initial_deposit: parseFloat(document.getElementById('initialDeposit').value),
-                        tp_percent: parseFloat(document.getElementById('tpPercent').value),
-                        sl_percent: parseFloat(document.getElementById('slPercent').value),
-                        max_candles: parseInt(document.getElementById('maxCandles').value),
+                        initial_deposit: Number(document.getElementById('initialDeposit').value),
+                        tp_percent: Number(document.getElementById('tpPercent').value),
+                        sl_percent: Number(document.getElementById('slPercent').value),
+                        max_candles: Number(document.getElementById('maxCandles').value),
+                        commission_pct: Number(document.getElementById('commissionPct').value) / 100,
+                        slippage_pct: Number(document.getElementById('slippagePct').value) / 100,
                         strategy: document.getElementById('strategySelect').value
                     };
-                    
-                    console.log('Параметры теста:', params);
-                    
-                    const response = await fetch('/api/strategy/test', {
+
+                    const resp = await fetch('/api/strategy/test', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(params)
                     });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        this.displayResults(result);
-                        this.displayChartWithTrades(result);
-                    } else {
-                        alert('Ошибка: ' + result.message);
+
+                    const result = await resp.json();
+
+                    if (!result.success) {
+                        alert(`Ошибка сервера: ${result.message || 'неизвестная ошибка'}`);
+                        return;
                     }
-                } catch (error) {
-                    alert('Ошибка при тестировании: ' + error.message);
+
+                    this.lastTestResult = result;
+                    this.currentTrades = result.trades || [];
+
+                    await this.loadAndDrawChart(params);
+                    this.displayResults(result);
+                    document.getElementById('analyticsReportBtn').disabled = false;
+
+                } catch (err) {
+                    console.error(err);
+                    alert('Ошибка связи с сервером или обработки данных');
                 } finally {
                     this.showLoading(false);
                 }
             }
-            
-            displayChartWithTrades(result) {
-                this.loadChartData({
-                    symbol: document.getElementById('symbolSelect').value,
-                    timeframe: document.getElementById('timeframeSelect').value,
-                    start_date: document.getElementById('startDate').value,
-                    end_date: document.getElementById('endDate').value
-                });
-                
-                this.currentTrades = result.trades || [];
-            }
-            
-            async loadChartData(params) {
+
+            async loadAndDrawChart({ symbol, timeframe, start_date, end_date }) {
                 try {
-                    const response = await fetch(`/api/pattern/ohlcv?symbol=${params.symbol}&timeframe=${params.timeframe}&from=${params.start_date}&to=${params.end_date}`);
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        this.displayChartData(result.candles);
+                    const url = `/api/pattern/ohlcv?symbol=${symbol}&timeframe=${timeframe}&from=${start_date}&to=${end_date}`;
+                    const resp = await fetch(url);
+                    const data = await resp.json();
+
+                    if (!data.success || !data.candles?.length) {
+                        console.warn('Не удалось загрузить свечи для графика');
+                        return;
                     }
-                } catch (error) {
-                    console.error('Ошибка загрузки данных графика:', error);
+
+                    const candles = data.candles.map(c => ({
+                        time: Math.floor(new Date(c.open_time).getTime() / 1000),
+                        open: Number(c.open_price),
+                        high: Number(c.high),
+                        low: Number(c.low),
+                        close: Number(c.close_price),
+                    }));
+
+                    const sma = this.calculateSMA(candles, 20);
+
+                    this.candleSeries.setData(candles);
+                    this.smaSeries.setData(sma);
+
+                    this.addTradeMarkers();
+
+                    this.chart.timeScale().fitContent();
+
+                } catch (err) {
+                    console.error('Ошибка загрузки графика:', err);
                 }
             }
-            
-            displayChartData(candles) {
-                const candleData = candles.map(c => ({
-                    time: Math.floor(new Date(c.open_time).getTime() / 1000),
-                    open: c.open_price,
-                    high: c.high,
-                    low: c.low,
-                    close: c.close_price,
-                }));
-                
-                // Рассчитываем SMA 20
-                const smaData = this.calculateSMA(candleData, 20);
-                
-                this.candleSeries.setData(candleData);
-                this.smaSeries.setData(smaData);
-                
-                // Добавляем маркеры для сделок
-                this.addTradeMarkers();
-                
-                this.chart.timeScale().fitContent();
-            }
-            
-            calculateSMA(candleData, period) {
-                const smaData = [];
-                
-                for (let i = period - 1; i < candleData.length; i++) {
+
+            calculateSMA(candles, period) {
+                const sma = [];
+                for (let i = period - 1; i < candles.length; i++) {
                     let sum = 0;
-                    for (let j = 0; j < period; j++) {
-                        sum += candleData[i - j].close;
-                    }
-                    
-                    smaData.push({
-                        time: candleData[i].time,
-                        value: sum / period
-                    });
+                    for (let j = 0; j < period; j++) sum += candles[i - j].close;
+                    sma.push({ time: candles[i].time, value: sum / period });
                 }
-                
-                return smaData;
+                return sma;
             }
-            
+
             addTradeMarkers() {
+                if (!this.currentTrades.length) return;
+
                 const markers = [];
-                
-                this.currentTrades.forEach((trade, index) => {
-                    // Маркер входа
+
+                this.currentTrades.forEach((trade, idx) => {
+                    const entryTime = Math.floor(new Date(trade.entry_time).getTime() / 1000);
+                    const exitTime = Math.floor(new Date(trade.exit_time).getTime() / 1000);
+
+                    // Вход
                     markers.push({
-                        time: Math.floor(new Date(trade.timestamp).getTime() / 1000),
+                        time: entryTime,
                         position: 'aboveBar',
                         color: trade.type === 'BUY' ? '#22c55e' : '#ef4444',
                         shape: 'circle',
-                        text: `${trade.type} #${index + 1}`,
+                        size: 2,
+                        text: `${trade.type} #${idx+1}`
                     });
-                    
-                    // Маркер выхода
-                    const exitTime = new Date(trade.timestamp);
-                    if (trade.timeframe === '1h') {
-                        exitTime.setHours(exitTime.getHours() + trade.candles_held);
-                    }
-                    
+
+                    // Выход
                     markers.push({
-                        time: Math.floor(exitTime.getTime() / 1000),
+                        time: exitTime,
                         position: 'belowBar',
-                        color: trade.pnl_pct > 0 ? '#22c55e' : '#ef4444',
-                        shape: trade.status === 'TP' ? 'arrowUp' : 
-                               trade.status === 'SL' ? 'arrowDown' : 'square',
-                        text: `${trade.pnl_pct > 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%`,
+                        color: trade.pnl_pct >= 0 ? '#22c55e' : '#ef4444',
+                        shape: trade.exit_type === 'TP' ? 'arrowUp' :
+                               trade.exit_type === 'SL' ? 'arrowDown' : 'square',
+                        size: 1,
+                        text: `${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(1)}%`
                     });
                 });
-                
+
                 this.candleSeries.setMarkers(markers);
             }
-            
+
             displayResults(result) {
-                const stats = result.statistics;
-                const trades = result.trades || [];
-                
+                const s = result.statistics;
+                const strategyName = result.strategy_used === 'SMA_CROSSOVER' 
+                    ? 'SMA Crossover' 
+                    : 'RSI Strategy';
+
                 let html = `
-                    <div class="strategy-info">
-                        <strong>Стратегия:</strong> ${this.getStrategyName(result.strategy_used)} | 
-                        <strong>Макс. свечей:</strong> ${result.max_candles_used}
+                    <div class="card-title" style="margin-bottom: 1.5rem;">
+                        ${strategyName} • ${result.symbol} • ${result.timeframe}
                     </div>
-                    
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.total_return_percent >= 0 ? 'profit' : 'loss'}">
-                                ${stats.total_return_percent}%
+
+                    <div class="results-grid">
+                        <div class="metric-card">
+                            <div class="metric-value ${s.total_return_percent >= 0 ? 'profit' : 'loss'}">
+                                ${s.total_return_percent.toFixed(2)}%
                             </div>
-                            <div class="stat-label">Общая доходность</div>
+                            <div class="metric-label">Доходность стратегии</div>
                         </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.total_trades}</div>
-                            <div class="stat-label">Всего сделок</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.win_rate >= 50 ? 'profit' : 'loss'}">
-                                ${stats.win_rate}%
+
+                        <div class="metric-card">
+                            <div class="metric-value ${s.buy_hold_return >= 0 ? 'profit' : 'loss'}">
+                                ${s.buy_hold_return.toFixed(2)}%
                             </div>
-                            <div class="stat-label">Процент прибыльных</div>
+                            <div class="metric-label">Buy & Hold</div>
                         </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.avg_return_per_trade >= 0 ? 'profit' : 'loss'}">
-                                ${stats.avg_return_per_trade}%
+
+                        <div class="metric-card">
+                            <div class="metric-value ${s.comparison_vs_bh >= 0 ? 'profit' : 'loss'}">
+                                ${s.comparison_vs_bh >= 0 ? '+' : ''}${s.comparison_vs_bh.toFixed(1)}%
                             </div>
-                            <div class="stat-label">Средняя сделка</div>
+                            <div class="metric-label">Преимущество / отставание</div>
                         </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value">$${stats.final_deposit.toLocaleString()}</div>
-                            <div class="stat-label">Финальный депозит</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.comparison_vs_bh >= 0 ? 'profit' : 'loss'}">
-                                ${stats.comparison_vs_bh}%
+
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                $${s.final_deposit.toLocaleString('en-US', {minimumFractionDigits: 0})}
                             </div>
-                            <div class="stat-label">vs Buy & Hold</div>
+                            <div class="metric-label">Итог по стратегии</div>
                         </div>
-                    </div>
-                    
-                    <h4 style="margin: 20px 0 10px 0;">Детали тестирования:</h4>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.profitable_trades}/${stats.losing_trades}</div>
-                            <div class="stat-label">Прибыльные/Убыточные</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.buy_trades_count}/${stats.sell_trades_count}</div>
-                            <div class="stat-label">Покупки/Продажи</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.max_drawdown >= 0 ? 'loss' : 'neutral'}">
-                                ${stats.max_drawdown}%
+
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                $${s.buy_hold_value.toLocaleString('en-US', {minimumFractionDigits: 0})}
                             </div>
-                            <div class="stat-label">Макс. просадка</div>
+                            <div class="metric-label">Итог Buy & Hold</div>
                         </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value">${stats.avg_holding_time_candles}</div>
-                            <div class="stat-label">Ср. время удержания</div>
+
+                        <div class="metric-card">
+                            <div class="metric-value">
+                                ${s.total_trades}
+                            </div>
+                            <div class="metric-label">Всего сделок</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-value ${s.win_rate >= 50 ? 'profit' : 'loss'}">
+                                ${s.win_rate.toFixed(1)}%
+                            </div>
+                            <div class="metric-label">Винрейт</div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="metric-value ${Math.abs(s.max_drawdown) > 20 ? 'loss' : 'neutral'}">
+                                ${s.max_drawdown.toFixed(1)}%
+                            </div>
+                            <div class="metric-label">Макс. просадка</div>
                         </div>
                     </div>
-                    
-                    <h4 style="margin: 20px 0 10px 0;">Сравнение с Buy & Hold:</h4>
-                    <div class="stats-grid">
-                        <div class="stat-card">
-                            <div class="stat-value">$${stats.initial_deposit.toLocaleString()}</div>
-                            <div class="stat-label">Начальный депозит</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.buy_hold_return >= 0 ? 'profit' : 'loss'}">
-                                ${stats.buy_hold_return}%
-                            </div>
-                            <div class="stat-label">Доходность B&H</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value">$${stats.buy_hold_value.toLocaleString()}</div>
-                            <div class="stat-label">Стоимость B&H</div>
-                        </div>
-                        
-                        <div class="stat-card">
-                            <div class="stat-value ${stats.max_buy_hold_drawdown >= 0 ? 'loss' : 'neutral'}">
-                                ${stats.max_buy_hold_drawdown}%
-                            </div>
-                            <div class="stat-label">Просадка B&H</div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.75rem; color: var(--text-primary);">История сделок (${result.trades.length})</h4>
+                        <div class="trades-section">
+                            <table class="trades-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Тип</th>
+                                        <th>Вход</th>
+                                        <th>Выход</th>
+                                        <th>P&L %</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                result.trades.forEach((trade, idx) => {
+                    html += `
+                        <tr onclick="ui.showTradeDetail(${idx})" style="cursor: pointer;">
+                            <td>${idx + 1}</td>
+                            <td><span class="trade-type ${trade.type.toLowerCase()}">${trade.type}</span></td>
+                            <td>${new Date(trade.entry_time).toLocaleDateString('ru-RU')}</td>
+                            <td>${new Date(trade.exit_time).toLocaleDateString('ru-RU')}</td>
+                            <td style="color: ${trade.pnl_pct >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">
+                                ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%
+                            </td>
+                            <td>
+                                <span class="status-badge ${trade.exit_type === 'TP' ? 'success' : trade.exit_type === 'SL' ? 'danger' : 'warning'}">
+                                    ${trade.exit_type}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 `;
-                
-                if (trades.length > 0) {
-                    html += `
-                        <h4 style="margin: 20px 0 10px 0;">История сделок (${trades.length}):</h4>
-                        <div class="trade-list">
-                    `;
-                    
-                    trades.forEach((trade, index) => {
-                        html += `
-                            <div class="trade-item ${trade.type.toLowerCase()}" onclick="tester.showTradeDetails(${index})">
-                                <strong>${trade.type} #${index + 1}</strong> | 
-                                ${new Date(trade.timestamp).toLocaleDateString()} | 
-                                Вход: $${trade.entry_price.toFixed(2)} | 
-                                Выход: $${trade.exit_price.toFixed(2)} | 
-                                <span class="${trade.pnl_pct >= 0 ? 'profit' : 'loss'}">
-                                    ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}%
-                                </span> |
-                                ${trade.status} (${trade.candles_held} свечей)
-                            </div>
-                        `;
-                    });
-                    
-                    html += `</div>`;
-                }
-                
+
                 document.getElementById('resultsContent').innerHTML = html;
             }
-            
-            getStrategyName(strategyId) {
-                const strategies = {
-                    'SMA_CROSSOVER': 'SMA Crossover',
-                    'RSI_STRATEGY': 'RSI Strategy'
-                };
-                return strategies[strategyId] || strategyId;
-            }
-            
-            showTradeDetails(tradeIndex) {
-                const trade = this.currentTrades[tradeIndex];
-                if (!trade) return;
-                
-                let details = `Детали сделки #${tradeIndex + 1}:\n\n` +
-                    `Тип: ${trade.type}\n` +
-                    `Стратегия: ${this.getStrategyName(trade.strategy)}\n` +
-                    `Вход: ${new Date(trade.timestamp).toLocaleString()}\n` +
-                    `Цена входа: $${trade.entry_price.toFixed(2)}\n` +
-                    `Цена выхода: $${trade.exit_price.toFixed(2)}\n` +
-                    `P&L: ${trade.pnl_pct >= 0 ? '+' : ''}${trade.pnl_pct.toFixed(2)}% ($${trade.pnl_amount.toFixed(2)})\n` +
-                    `Статус: ${trade.status}\n` +
-                    `Удержано: ${trade.candles_held} свечей\n`;
-                
-                if (trade.sma_value) {
-                    details += `SMA значение: $${trade.sma_value.toFixed(2)}\n` +
-                              `Отклонение от SMA: ${trade.price_vs_sma.toFixed(2)}%`;
+
+            showTradeDetail(idx) {
+                const t = this.currentTrades[idx];
+                if (!t) return;
+
+                let msg = `Сделка #${idx+1}\n\n`;
+                msg += `Тип: ${t.type}\n`;
+                msg += `Вход: ${new Date(t.entry_time).toLocaleString('ru-RU')}\n`;
+                msg += `Выход: ${new Date(t.exit_time).toLocaleString('ru-RU')}\n`;
+                msg += `Цена входа: ${t.entry_price.toFixed(4)}\n`;
+                msg += `Цена выхода: ${t.exit_price.toFixed(4)}\n`;
+                msg += `P&L: ${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct.toFixed(2)}%  (net)\n`;
+                msg += `Gross P&L: ${t.gross_pnl_pct.toFixed(2)}%\n`;
+                msg += `Статус: ${t.exit_type}\n`;
+                msg += `Удержано: ${t.candles_held} свечей\n`;
+
+                if (t.sma_value) {
+                    msg += `SMA(20): ${t.sma_value.toFixed(2)}\n`;
+                    msg += `Отклонение от SMA: ${t.price_vs_sma.toFixed(2)}%\n`;
                 }
-                
-                if (trade.rsi_value) {
-                    details += `RSI значение: ${trade.rsi_value.toFixed(2)}`;
+                if (t.rsi_value) {
+                    msg += `RSI(14): ${t.rsi_value.toFixed(2)}`;
                 }
-                
-                alert(details);
+
+                alert(msg);
             }
-            
+
+            showAnalyticalReport() {
+                if (!this.lastTestResult) {
+                    alert('Сначала выполните тестирование');
+                    return;
+                }
+
+                const s = this.lastTestResult.statistics;
+                const strat = this.lastTestResult.strategy_used === 'SMA_CROSSOVER'
+                    ? 'SMA(20) пересечение'
+                    : 'RSI(14) зоны перекупленности/перепроданности';
+                const symbol = this.lastTestResult.symbol;
+                const tf = this.lastTestResult.timeframe;
+
+                let text = `<strong>Стратегия:</strong> ${strat}<br>`;
+                text += `<strong>Актив / Таймфрейм:</strong> ${symbol} ${tf}<br><br>`;
+
+                const retColor = s.total_return_percent >= 0 ? '#22c55e' : '#ef4444';
+                text += `<strong>Доходность:</strong> <span style="color:${retColor};font-weight:bold;">${s.total_return_percent.toFixed(2)}%</span><br>`;
+
+                let mood = s.total_return_percent > 40 ? 'очень сильный'
+                         : s.total_return_percent > 15 ? 'хороший'
+                         : s.total_return_percent > 0  ? 'положительный, но скромный'
+                         : s.total_return_percent > -10 ? 'около нуля / шума'
+                         : 'систематически убыточный';
+
+                text += `Оценка: <em>${mood}</em>.<br><br>`;
+
+                if (s.win_rate >= 60) {
+                    text += `<span style="color:#86efac">Высокий винрейт (${s.win_rate}%) — хороший знак.</span><br>`;
+                } else if (s.win_rate < 45) {
+                    text += `<span style="color:#fca5a5">Низкий винрейт (${s.win_rate}%) требует очень высокого R:R.</span><br>`;
+                }
+
+                const bhDiff = s.comparison_vs_bh;
+                if (Math.abs(bhDiff) < 10) {
+                    text += `Результат близок к Buy&Hold.<br>`;
+                } else if (bhDiff > 15) {
+                    text += `<span style="color:#86efac">Существенно лучше пассивного удержания (+${bhDiff.toFixed(1)}%).</span><br>`;
+                } else if (bhDiff < -15) {
+                    text += `<span style="color:#fca5a5">Заметно хуже Buy&Hold (${bhDiff.toFixed(1)}%).</span><br>`;
+                }
+
+                const dd = s.max_drawdown;
+                if (Math.abs(dd) > 30) {
+                    text += `<span style="color:#fca5a5">Просадка ${dd.toFixed(1)}% — очень высокая.</span><br>`;
+                } else if (Math.abs(dd) > 18) {
+                    text += `Просадка ${dd.toFixed(1)}% — умеренно высокая.<br>`;
+                } else {
+                    text += `<span style="color:#86efac">Просадка под контролем (${dd.toFixed(1)}%).</span><br>`;
+                }
+
+                text += '<br><strong>Рекомендация:</strong> ';
+                if (s.total_return_percent > 25 && Math.abs(dd) < 20 && s.win_rate > 55) {
+                    text += '<span style="color:#60a5fa;font-weight:bold;">Перспективно. Можно оптимизировать и тестировать дальше.</span>';
+                } else if (s.total_return_percent > 8 && bhDiff > 5) {
+                    text += 'Есть смысл дорабатывать фильтры и параметры.';
+                } else {
+                    text += 'На текущих настройках edge не наблюдается. Требуется серьёзная переработка.';
+                }
+
+                // Модальное окно
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position:fixed; inset:0; background:rgba(0,0,0,0.8);
+                    display:flex; align-items:center; justify-content:center; z-index:9999;
+                `;
+
+                const box = document.createElement('div');
+                box.style.cssText = `
+                    background:#1a222c; border-radius:12px; max-width:640px; width:92%;
+                    max-height:90vh; overflow-y:auto; padding:32px; position:relative;
+                    border:1px solid #2d3748; color:#e2e8f0; line-height:1.6;
+                `;
+
+                const close = document.createElement('button');
+                close.textContent = '×';
+                close.style.cssText = `
+                    position:absolute; top:12px; right:20px; background:none; border:none;
+                    font-size:36px; color:#94a3b8; cursor:pointer;
+                `;
+                close.onclick = () => modal.remove();
+
+                const title = document.createElement('h2');
+                title.textContent = 'Аналитическое заключение';
+                title.style.cssText = 'margin:0 0 24px; color:#60a5fa; text-align:center;';
+
+                const content = document.createElement('div');
+                content.innerHTML = text;
+
+                box.append(close, title, content);
+                modal.appendChild(box);
+                document.body.appendChild(modal);
+
+                modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+            }
+
             showLoading(show) {
-                document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+                document.getElementById('loadingIndicator').style.display = show ? 'flex' : 'none';
                 document.getElementById('runTestBtn').disabled = show;
             }
         }
-        
-        // Инициализация при загрузке страницы
-        let tester;
+
+        // ────────────────────────────────────────────────
+        let ui;
         document.addEventListener('DOMContentLoaded', () => {
-            tester = new MultiStrategyTester();
+            ui = new StrategyTesterUI();
         });
     </script>
 </body>

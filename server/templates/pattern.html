@@ -2332,11 +2332,11 @@ class PatternChart {
         if (idx === -1) return;
         
         // Блокируем выбор свечей вне границ датасета
-        const t = new Date(this.allCandles[idx].open_time);
-        if (this.datasetStart && this.datasetEnd && (t < this.datasetStart || t > this.datasetEnd)) {
-            this.toast('Свеча вне диапазона датасета');
-            return;
-        }
+        // const t = new Date(this.allCandles[idx].open_time);
+        // if (this.datasetStart && this.datasetEnd && (t < this.datasetStart || t > this.datasetEnd)) {
+        //     this.toast('Свеча вне диапазона датасета');
+        //     return;
+        // }
         
         if (this.selectedIndices.has(idx)) {
             this.selectedIndices.delete(idx);
